@@ -12,7 +12,6 @@
 {% endblock %}
 
 {% block content %}
-<script>(function(){var y=sessionStorage.getItem('trackScrollY');if(y){sessionStorage.removeItem('trackScrollY');window.scrollTo(0,+y);}})();</script>
 <style>
   .qa-grid {
     display: flex;
@@ -53,8 +52,8 @@
     flex-shrink: 0;
     transition: color 0.15s ease;
     padding: 0 4px;
+    touch-action: manipulation;
   }
-  .qa-plus:hover { color: #000; }
 
   .qa-body {
     background-color: #ffffff;
@@ -146,8 +145,8 @@
     text-decoration: none;
     white-space: nowrap;
     transition: background 0.12s;
+    touch-action: manipulation;
   }
-  .qa-timer-use:hover { background: #1a2a45; color: #fff; }
   .qa-timer-stop {
     width: 30px;
     height: 30px;
@@ -165,7 +164,6 @@
     transition: background 0.12s, color 0.12s;
     touch-action: manipulation;
   }
-  .qa-timer-stop:hover { background: #c0392b; color: #fff; }
 
   /* Start Quick Timer button */
   .qa-timer-start {
@@ -181,7 +179,6 @@
     transition: background 0.15s, color 0.15s;
     touch-action: manipulation;
   }
-  .qa-timer-start:hover { background: #2e3d5f; color: #fff; }
 
   /* ── Pump side buttons ── */
   .qa-pump-btn {
@@ -199,7 +196,6 @@
     transition: background 0.15s, color 0.15s;
     touch-action: manipulation;
   }
-  .qa-pump-btn:hover { background: #2e3d5f; color: #fff; }
   .qa-pump-btn.qa-pump-active { background: #2e3d5f; color: #fff; }
 
   /* ── Quick-action buttons (Feed, Diaper) ── */
@@ -222,10 +218,48 @@
     text-decoration: none;
     display: block;
     transition: background 0.15s, color 0.15s;
+    touch-action: manipulation;
   }
-  .qa-btn:hover {
-    background: #2e3d5f;
+
+  @media (hover: hover) {
+    .qa-plus:hover        { color: #000; }
+    .qa-btn:hover         { background: #2e3d5f; color: #fff; }
+    .qa-timer-use:hover   { background: #1a2a45; color: #fff; }
+    .qa-timer-stop:hover  { background: #c0392b; color: #fff; }
+    .qa-timer-start:hover { background: #2e3d5f; color: #fff; }
+    .qa-pump-btn:hover    { background: #2e3d5f; color: #fff; }
+  }
+
+  /* ── Swipe to discard ── */
+  .qa-swipe-wrap {
+    position: relative;
+    overflow: hidden;
+  }
+  .qa-swipe-bg {
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    background: #c0392b;
+    display: flex;
+    align-items: center;
+    padding: 0 1.1rem;
+    z-index: 0;
+  }
+  .qa-swipe-discard-btn {
+    background: transparent;
+    border: none;
     color: #fff;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    touch-action: manipulation;
+    white-space: nowrap;
+    padding: 0;
+  }
+  .qa-swipe-row {
+    position: relative;
+    z-index: 1;
+    touch-action: pan-y;
+    user-select: none;
   }
 </style>
 
@@ -246,23 +280,27 @@
       {% if active_timers %}
       <div class="qa-timer-list">
         {% for timer in active_timers %}
-        <div class="qa-timer-row">
-          <i class="icon-timer qa-icon" style="font-size:1.3rem;opacity:0.7;" aria-hidden="true"></i>
-          <span class="qa-timer-name">
-            {% if timer.name %}{{ timer.name }}{% else %}{% trans "Timer" %} #{{ forloop.counter }}{% endif %}
-          </span>
-          <span class="qa-timer-clock" data-start="{{ timer.start|date:'c' }}">0:00:00</span>
-          <a href="{% url 'dashboard:timer-use' object.slug timer.pk %}" class="qa-timer-use">
-            {% trans "Use" %}
-          </a>
+        <div class="qa-swipe-wrap" style="border-radius:10px;">
           {% if perms.core.delete_timer %}
-          <form method="post"
-                action="{% url 'dashboard:timer-stop' object.slug timer.pk %}"
-                style="margin:0;">
-            {% csrf_token %}
-            <button type="submit" class="qa-timer-stop" title="{% trans "Stop timer" %}">✕</button>
-          </form>
+          <div class="qa-swipe-bg">
+            <form method="post"
+                  action="{% url 'dashboard:timer-stop' object.slug timer.pk %}"
+                  style="margin:0;">
+              {% csrf_token %}
+              <button type="submit" class="qa-swipe-discard-btn">{% trans "Discard" %}</button>
+            </form>
+          </div>
           {% endif %}
+          <div class="qa-timer-row qa-swipe-row">
+            <i class="icon-timer qa-icon" style="font-size:1.3rem;opacity:0.7;" aria-hidden="true"></i>
+            <span class="qa-timer-name">
+              {% if timer.name %}{{ timer.name }}{% else %}{% trans "Timer" %} #{{ forloop.counter }}{% endif %}
+            </span>
+            <span class="qa-timer-clock" data-start="{{ timer.start|date:'c' }}">0:00:00</span>
+            <a href="{% url 'dashboard:timer-use' object.slug timer.pk %}" class="qa-timer-use">
+              {% trans "Use" %}
+            </a>
+          </div>
         </div>
         {% endfor %}
       </div>
@@ -352,37 +390,39 @@
       <i class="icon-sleep qa-icon" aria-hidden="true"></i>
       {% if sleep_timer %}
       {# A sleep/nap timer is running — show it #}
-      <div style="flex:1;display:flex;flex-direction:column;gap:0.5rem;">
-        {# Name + live clock #}
-        <div style="display:flex;align-items:center;gap:0.5rem;">
-          <span class="qa-timer-name" style="font-size:0.95rem;">{{ sleep_timer.name }}</span>
-          <span class="qa-timer-clock" data-start="{{ sleep_timer.start|date:'c' }}"
-                style="flex:1;text-align:right;">0:00:00</span>
-        </div>
-        {# Action buttons #}
-        <div style="display:flex;gap:0.4rem;align-items:center;">
-          {% if perms.core.add_sleep %}
-          <form method="post"
-                action="{% url 'dashboard:sleep-timer-save' object.slug sleep_timer.pk %}"
-                style="flex:1;margin:0;">
-            {% csrf_token %}
-            <button type="submit" class="qa-timer-start" style="font-size:0.82rem;padding:0.4rem 0.5rem;">
-              {% trans "Save" %}
-            </button>
-          </form>
-          <a href="{% url 'dashboard:sleep-timer-note' object.slug sleep_timer.pk %}"
-             class="qa-timer-start"
-             style="flex:2;font-size:0.82rem;padding:0.4rem 0.5rem;text-align:center;text-decoration:none;">
-            {% trans "Add note & Save" %}
-          </a>
-          {% endif %}
-          {% if perms.core.delete_timer %}
+      <div class="qa-swipe-wrap" style="flex:1;">
+        {% if perms.core.delete_timer %}
+        <div class="qa-swipe-bg">
           <form method="post"
                 action="{% url 'dashboard:timer-stop' object.slug sleep_timer.pk %}"
                 style="margin:0;">
             {% csrf_token %}
-            <button type="submit" class="qa-timer-stop" title="{% trans "Stop timer" %}">✕</button>
+            <button type="submit" class="qa-swipe-discard-btn">{% trans "Discard" %}</button>
           </form>
+        </div>
+        {% endif %}
+        <div class="qa-swipe-row" style="display:flex;flex-direction:column;gap:0.5rem;background:#fff;">
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <span class="qa-timer-name" style="font-size:0.95rem;">{{ sleep_timer.name }}</span>
+            <span class="qa-timer-clock" data-start="{{ sleep_timer.start|date:'c' }}"
+                  style="flex:1;text-align:right;">0:00:00</span>
+          </div>
+          {% if perms.core.add_sleep %}
+          <div style="display:flex;gap:0.4rem;">
+            <form method="post"
+                  action="{% url 'dashboard:sleep-timer-save' object.slug sleep_timer.pk %}"
+                  style="flex:1;margin:0;">
+              {% csrf_token %}
+              <button type="submit" class="qa-timer-start" style="font-size:0.82rem;padding:0.4rem 0.5rem;">
+                {% trans "Save" %}
+              </button>
+            </form>
+            <a href="{% url 'dashboard:sleep-timer-note' object.slug sleep_timer.pk %}"
+               class="qa-timer-start"
+               style="flex:2;font-size:0.82rem;padding:0.4rem 0.5rem;text-align:center;text-decoration:none;">
+              {% trans "Add note & Save" %}
+            </a>
+          </div>
           {% endif %}
         </div>
       </div>
@@ -424,90 +464,85 @@
       {% if perms.core.add_timer or perms.core.add_pumping %}
       <div style="flex:1;display:flex;flex-direction:column;gap:0.5rem;">
 
-        {# Left row — always rendered for stable height #}
-        <div style="display:flex;align-items:center;gap:0.5rem;">
-          <span style="width:3rem;font-size:0.88rem;font-weight:600;color:#2d2d2d;flex-shrink:0;">{% trans "Left" %}</span>
-          <span style="flex:1;font-size:1rem;font-weight:700;font-variant-numeric:tabular-nums;color:#2e3d5f;min-width:0;">
-            {% if pump_left_timer %}
-              <span class="qa-timer-clock"
-                    data-start="{{ pump_left_timer.start|date:'c' }}"
-                    data-offset="{{ pump_left_pending_seconds }}">0:00:00</span>
-            {% elif pump_left_pending_duration %}
-              ✓ {{ pump_left_pending_duration }}
+        {# Left row #}
+        <div class="qa-swipe-wrap" style="border-radius:10px;">
+          {% if pump_left_timer or pump_left_pending_duration %}{% if perms.core.add_timer %}
+          <div class="qa-swipe-bg">
+            <form method="post"
+                  action="{% url 'dashboard:pump-side-discard' object.slug 'left' %}"
+                  style="margin:0;">
+              {% csrf_token %}
+              <button type="submit" class="qa-swipe-discard-btn">{% trans "Discard" %}</button>
+            </form>
+          </div>
+          {% endif %}{% endif %}
+          <div class="qa-swipe-row" style="display:flex;align-items:center;gap:0.5rem;background:#fff;border-radius:10px;">
+            <span style="width:3rem;font-size:0.88rem;font-weight:600;color:#2d2d2d;flex-shrink:0;">{% trans "Left" %}</span>
+            <span style="flex:1;font-size:1rem;font-weight:700;font-variant-numeric:tabular-nums;color:#2e3d5f;min-width:0;">
+              {% if pump_left_timer %}
+                <span class="qa-timer-clock"
+                      data-start="{{ pump_left_timer.start|date:'c' }}"
+                      data-offset="{{ pump_left_pending_seconds }}">0:00:00</span>
+              {% elif pump_left_pending_duration %}
+                ✓ {{ pump_left_pending_duration }}
+              {% endif %}
+            </span>
+            {% if perms.core.add_timer %}
+            <form method="post"
+                  action="{% url 'dashboard:pump-timer-toggle' object.slug 'left' %}"
+                  style="margin:0;">
+              {% csrf_token %}
+              <button type="submit"
+                      class="qa-pump-btn{% if pump_left_timer %} qa-pump-active{% endif %}">
+                {% if pump_left_timer %}⏹ {% trans "Stop" %}
+                {% elif pump_left_pending_duration %}↺ {% trans "Resume" %}
+                {% else %}▶ {% trans "Start" %}{% endif %}
+              </button>
+            </form>
             {% endif %}
-          </span>
-          {% if perms.core.add_timer %}
-          <form method="post"
-                action="{% url 'dashboard:pump-timer-toggle' object.slug 'left' %}" data-pump-form
-                style="margin:0;">
-            {% csrf_token %}
-            <button type="submit"
-                    class="qa-pump-btn{% if pump_left_timer %} qa-pump-active{% endif %}">
-              {% if pump_left_timer %}⏹ {% trans "Stop" %}
-              {% elif pump_left_pending_duration %}↺ {% trans "Resume" %}
-              {% else %}▶ {% trans "Start" %}{% endif %}
-            </button>
-          </form>
-          {% if pump_left_timer or pump_left_pending_duration %}
-          <form method="post"
-                action="{% url 'dashboard:pump-side-discard' object.slug 'left' %}" data-pump-form
-                style="margin:0;">
-            {% csrf_token %}
-            <button type="submit" class="qa-timer-stop" title="{% trans "Discard" %}">✕</button>
-          </form>
-          {% endif %}
-          {% endif %}
+          </div>
         </div>
 
-        {# Right row — always rendered for stable height #}
-        <div style="display:flex;align-items:center;gap:0.5rem;">
-          <span style="width:3rem;font-size:0.88rem;font-weight:600;color:#2d2d2d;flex-shrink:0;">{% trans "Right" %}</span>
-          <span style="flex:1;font-size:1rem;font-weight:700;font-variant-numeric:tabular-nums;color:#2e3d5f;min-width:0;">
-            {% if pump_right_timer %}
-              <span class="qa-timer-clock"
-                    data-start="{{ pump_right_timer.start|date:'c' }}"
-                    data-offset="{{ pump_right_pending_seconds }}">0:00:00</span>
-            {% elif pump_right_pending_duration %}
-              ✓ {{ pump_right_pending_duration }}
+        {# Right row #}
+        <div class="qa-swipe-wrap" style="border-radius:10px;">
+          {% if pump_right_timer or pump_right_pending_duration %}{% if perms.core.add_timer %}
+          <div class="qa-swipe-bg">
+            <form method="post"
+                  action="{% url 'dashboard:pump-side-discard' object.slug 'right' %}"
+                  style="margin:0;">
+              {% csrf_token %}
+              <button type="submit" class="qa-swipe-discard-btn">{% trans "Discard" %}</button>
+            </form>
+          </div>
+          {% endif %}{% endif %}
+          <div class="qa-swipe-row" style="display:flex;align-items:center;gap:0.5rem;background:#fff;border-radius:10px;">
+            <span style="width:3rem;font-size:0.88rem;font-weight:600;color:#2d2d2d;flex-shrink:0;">{% trans "Right" %}</span>
+            <span style="flex:1;font-size:1rem;font-weight:700;font-variant-numeric:tabular-nums;color:#2e3d5f;min-width:0;">
+              {% if pump_right_timer %}
+                <span class="qa-timer-clock"
+                      data-start="{{ pump_right_timer.start|date:'c' }}"
+                      data-offset="{{ pump_right_pending_seconds }}">0:00:00</span>
+              {% elif pump_right_pending_duration %}
+                ✓ {{ pump_right_pending_duration }}
+              {% endif %}
+            </span>
+            {% if perms.core.add_timer %}
+            <form method="post"
+                  action="{% url 'dashboard:pump-timer-toggle' object.slug 'right' %}"
+                  style="margin:0;">
+              {% csrf_token %}
+              <button type="submit"
+                      class="qa-pump-btn{% if pump_right_timer %} qa-pump-active{% endif %}">
+                {% if pump_right_timer %}⏹ {% trans "Stop" %}
+                {% elif pump_right_pending_duration %}↺ {% trans "Resume" %}
+                {% else %}▶ {% trans "Start" %}{% endif %}
+              </button>
+            </form>
             {% endif %}
-          </span>
-          {% if perms.core.add_timer %}
-          <form method="post"
-                action="{% url 'dashboard:pump-timer-toggle' object.slug 'right' %}" data-pump-form
-                style="margin:0;">
-            {% csrf_token %}
-            <button type="submit"
-                    class="qa-pump-btn{% if pump_right_timer %} qa-pump-active{% endif %}">
-              {% if pump_right_timer %}⏹ {% trans "Stop" %}
-              {% elif pump_right_pending_duration %}↺ {% trans "Resume" %}
-              {% else %}▶ {% trans "Start" %}{% endif %}
-            </button>
-          </form>
-          {% if pump_right_timer or pump_right_pending_duration %}
-          <form method="post"
-                action="{% url 'dashboard:pump-side-discard' object.slug 'right' %}" data-pump-form
-                style="margin:0;">
-            {% csrf_token %}
-            <button type="submit" class="qa-timer-stop" title="{% trans "Discard" %}">✕</button>
-          </form>
-          {% endif %}
-          {% endif %}
+          </div>
         </div>
 
-        {# Both button — always rendered #}
-        {% if perms.core.add_timer %}
-        <form method="post"
-              action="{% url 'dashboard:pump-timer-toggle' object.slug 'both' %}" data-pump-form
-              style="margin:0;">
-          {% csrf_token %}
-          <button type="submit" class="qa-timer-start"
-            {% if pump_left_timer or pump_right_timer %}style="background:#2e3d5f;color:#fff;"{% endif %}>
-            {% if pump_left_timer or pump_right_timer %}⏹ {% trans "Stop Both" %}{% else %}{% trans "Start Both" %}{% endif %}
-          </button>
-        </form>
-        {% endif %}
-
-        {# Review & Save — always visible; disabled when nothing to save #}
+{# Review & Save — always visible; disabled when nothing to save #}
         {% if pump_left_timer or pump_right_timer or pending_pump %}
         <a href="{% url 'dashboard:pump-commit' object.slug %}"
            class="qa-btn" style="text-align:center;">
@@ -539,35 +574,39 @@
     <div class="qa-body">
       <i class="icon-tummytime qa-icon" aria-hidden="true"></i>
       {% if tummy_timer %}
-      <div style="flex:1;display:flex;flex-direction:column;gap:0.5rem;">
-        <div style="display:flex;align-items:center;gap:0.5rem;">
-          <span class="qa-timer-name" style="font-size:0.95rem;">{% trans "Tummy Time" %}</span>
-          <span class="qa-timer-clock" data-start="{{ tummy_timer.start|date:'c' }}"
-                style="flex:1;text-align:right;">0:00:00</span>
-        </div>
-        <div style="display:flex;gap:0.4rem;align-items:center;">
-          {% if perms.core.add_tummytime %}
-          <form method="post"
-                action="{% url 'dashboard:tummytime-timer-save' object.slug tummy_timer.pk %}"
-                style="flex:1;margin:0;">
-            {% csrf_token %}
-            <button type="submit" class="qa-timer-start" style="font-size:0.82rem;padding:0.4rem 0.5rem;">
-              {% trans "Save" %}
-            </button>
-          </form>
-          <a href="{% url 'dashboard:tummytime-timer-note' object.slug tummy_timer.pk %}"
-             class="qa-timer-start"
-             style="flex:2;font-size:0.82rem;padding:0.4rem 0.5rem;text-align:center;text-decoration:none;">
-            {% trans "Add milestone & Save" %}
-          </a>
-          {% endif %}
-          {% if perms.core.delete_timer %}
+      <div class="qa-swipe-wrap" style="flex:1;">
+        {% if perms.core.delete_timer %}
+        <div class="qa-swipe-bg">
           <form method="post"
                 action="{% url 'dashboard:timer-stop' object.slug tummy_timer.pk %}"
                 style="margin:0;">
             {% csrf_token %}
-            <button type="submit" class="qa-timer-stop" title="{% trans "Discard timer" %}">✕</button>
+            <button type="submit" class="qa-swipe-discard-btn">{% trans "Discard" %}</button>
           </form>
+        </div>
+        {% endif %}
+        <div class="qa-swipe-row" style="display:flex;flex-direction:column;gap:0.5rem;background:#fff;">
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <span class="qa-timer-name" style="font-size:0.95rem;">{% trans "Tummy Time" %}</span>
+            <span class="qa-timer-clock" data-start="{{ tummy_timer.start|date:'c' }}"
+                  style="flex:1;text-align:right;">0:00:00</span>
+          </div>
+          {% if perms.core.add_tummytime %}
+          <div style="display:flex;gap:0.4rem;">
+            <form method="post"
+                  action="{% url 'dashboard:tummytime-timer-save' object.slug tummy_timer.pk %}"
+                  style="flex:1;margin:0;">
+              {% csrf_token %}
+              <button type="submit" class="qa-timer-start" style="font-size:0.82rem;padding:0.4rem 0.5rem;">
+                {% trans "Save" %}
+              </button>
+            </form>
+            <a href="{% url 'dashboard:tummytime-timer-note' object.slug tummy_timer.pk %}"
+               class="qa-timer-start"
+               style="flex:2;font-size:0.82rem;padding:0.4rem 0.5rem;text-align:center;text-decoration:none;">
+              {% trans "Add milestone & Save" %}
+            </a>
+          </div>
           {% endif %}
         </div>
       </div>
@@ -603,46 +642,139 @@
 
 <script>
 (function () {
-  const pad = n => String(n).padStart(2, '0');
-
-  function formatElapsed(totalSecs) {
-    const h = Math.floor(totalSecs / 3600);
-    const m = Math.floor((totalSecs % 3600) / 60);
-    const s = totalSecs % 60;
-    return h + ':' + pad(m) + ':' + pad(s);
+  // ── Clocks ────────────────────────────────────────────────────────────────
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function formatElapsed(s) {
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return h + ':' + pad(m) + ':' + pad(sec);
   }
-
+  var clockInterval;
   function updateClocks() {
     document.querySelectorAll('.qa-timer-clock[data-start]').forEach(function (el) {
-      const start = new Date(el.dataset.start);
-      const offset = parseInt(el.dataset.offset || '0', 10);
-      const elapsed = Math.max(0, Math.floor((Date.now() - start.getTime()) / 1000));
+      var start = new Date(el.dataset.start);
+      var offset = parseInt(el.dataset.offset || '0', 10);
+      var elapsed = Math.max(0, Math.floor((Date.now() - start.getTime()) / 1000));
       el.textContent = formatElapsed(elapsed + offset);
     });
   }
+  function initClocks() {
+    if (clockInterval) clearInterval(clockInterval);
+    updateClocks();
+    clockInterval = setInterval(updateClocks, 1000);
+  }
 
-  updateClocks();
-  setInterval(updateClocks, 1000);
-})();
+  // ── Content refresh (no page reload) ─────────────────────────────────────
+  var refreshing = false;
+  function refreshContent(scrollY) {
+    openSwipeWrap = null;
+    if (refreshing) return;
+    refreshing = true;
+    fetch(window.location.href, { credentials: 'same-origin' })
+      .then(function (r) { return r.text(); })
+      .then(function (html) {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var newEl = doc.getElementById('view-dashboard:track-child');
+        var curEl = document.getElementById('view-dashboard:track-child');
+        if (newEl && curEl) curEl.innerHTML = newEl.innerHTML;
+        initClocks();
+        bindForms();
+        initSwipeToDiscard();
+        window.scrollTo(0, scrollY);
+        refreshing = false;
+      })
+      .catch(function () { refreshing = false; window.location.reload(); });
+  }
 
-// All track-page forms — POST via fetch and reload in place (no scroll jump)
-(function () {
-  document.querySelectorAll('form').forEach(function (form) {
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();
-      var scrollY = window.scrollY;
-      fetch(form.action, {
-        method: 'POST',
-        body: new FormData(form),
-        credentials: 'same-origin',
-      }).then(function () {
-        sessionStorage.setItem('trackScrollY', scrollY);
-        window.location.reload();
-      }).catch(function () {
-        form.submit();
+  function bindForms() {
+    document.querySelectorAll('form').forEach(function (form) {
+      if (form.dataset.bound) return;
+      form.dataset.bound = '1';
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var scrollY = window.scrollY;
+        fetch(form.action, { method: 'POST', body: new FormData(form), credentials: 'same-origin' })
+          .then(function () { refreshContent(scrollY); })
+          .catch(function () { form.submit(); });
       });
     });
-  });
+  }
+
+  // ── Swipe to discard ──────────────────────────────────────────────────────
+  var openSwipeWrap = null;
+
+  document.addEventListener('pointerdown', function (e) {
+    if (openSwipeWrap && !openSwipeWrap.contains(e.target)) {
+      var r = openSwipeWrap.querySelector('.qa-swipe-row');
+      if (r) { r.style.transition = 'transform 0.25s ease'; r.style.transform = 'translateX(0)'; }
+      openSwipeWrap = null;
+    }
+  }, { passive: true });
+
+  function initSwipeToDiscard() {
+    document.querySelectorAll('.qa-swipe-wrap').forEach(function (wrap) {
+      if (wrap.dataset.swipeBound) return;
+      wrap.dataset.swipeBound = '1';
+      var row = wrap.querySelector('.qa-swipe-row');
+      var bg  = wrap.querySelector('.qa-swipe-bg');
+      if (!row || !bg) return;
+
+      var startX, startY, dirDetermined, isHoriz, startTransX, activePtr;
+
+      function getBgW() { return bg.offsetWidth || 90; }
+      function getTransX() {
+        var m = row.style.transform.match(/translateX\(([^)]+)px\)/);
+        return m ? parseFloat(m[1]) : 0;
+      }
+      function setX(x, animate) {
+        row.style.transition = animate ? 'transform 0.25s ease' : 'none';
+        row.style.transform = 'translateX(' + x + 'px)';
+      }
+      function snapOpen()  { openSwipeWrap = wrap; setX(-getBgW(), true); }
+      function snapClose() { if (openSwipeWrap === wrap) openSwipeWrap = null; setX(0, true); }
+
+      row.addEventListener('pointerdown', function (e) {
+        if (activePtr != null) return;
+        activePtr = e.pointerId;
+        startX = e.clientX;
+        startY = e.clientY;
+        startTransX = getTransX();
+        dirDetermined = false;
+        isHoriz = false;
+      });
+
+      row.addEventListener('pointermove', function (e) {
+        if (e.pointerId !== activePtr) return;
+        var dx = e.clientX - startX;
+        var dy = e.clientY - startY;
+        if (!dirDetermined) {
+          if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+          dirDetermined = true;
+          isHoriz = Math.abs(dx) > Math.abs(dy);
+          if (isHoriz) row.setPointerCapture(activePtr);
+        }
+        if (!isHoriz) return;
+        setX(Math.min(0, Math.max(-getBgW(), startTransX + dx)), false);
+      });
+
+      row.addEventListener('pointerup', function (e) {
+        if (e.pointerId !== activePtr) return;
+        activePtr = null;
+        if (!dirDetermined || !isHoriz) { if (openSwipeWrap === wrap) snapClose(); return; }
+        if (getTransX() < -(getBgW() / 2)) snapOpen(); else snapClose();
+      });
+
+      row.addEventListener('pointercancel', function (e) {
+        if (e.pointerId !== activePtr) return;
+        activePtr = null;
+        snapClose();
+      });
+    });
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  initClocks();
+  bindForms();
+  initSwipeToDiscard();
 })();
 </script>
 {% endblock %}
