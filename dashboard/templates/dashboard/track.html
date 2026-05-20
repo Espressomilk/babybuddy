@@ -679,6 +679,7 @@
         initClocks();
         bindForms();
         initSwipeToDiscard();
+        initTouchLinks();
         window.scrollTo(0, scrollY);
         refreshing = false;
       })
@@ -771,10 +772,23 @@
     });
   }
 
+  // ── Single-tap fix for iOS Safari nav links ───────────────────────────────
+  // iOS simulates hover on first tap for <a> elements; an empty touchstart
+  // listener signals that the element handles touch, bypassing hover simulation.
+  function initTouchLinks() {
+    var root = document.getElementById('view-dashboard:track-child') || document;
+    root.querySelectorAll('a').forEach(function (el) {
+      if (el.dataset.touchLinked) return;
+      el.dataset.touchLinked = '1';
+      el.addEventListener('touchstart', function () {}, { passive: true });
+    });
+  }
+
   // ── Boot ──────────────────────────────────────────────────────────────────
   initClocks();
   bindForms();
   initSwipeToDiscard();
+  initTouchLinks();
 })();
 </script>
 {% endblock %}
