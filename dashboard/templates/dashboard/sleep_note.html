@@ -1,0 +1,159 @@
+{% extends 'babybuddy/page.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Save Sleep" %} - {{ child }}{% endblock %}
+
+{% block breadcrumbs %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'core:child-list' %}">{% trans "Children" %}</a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="{% url 'dashboard:track-child' child.slug %}">{{ child }}</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">{% trans "Save Sleep" %}</li>
+{% endblock %}
+
+{% block content %}
+<style>
+  .sn-wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 1rem 0 3rem;
+  }
+
+  .sn-section {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #888;
+    margin: 1.5rem 0 0.5rem;
+  }
+
+  /* ── Timer summary ── */
+  .sn-summary {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.9rem 1.1rem;
+    background: #f0f4fb;
+    border-radius: 12px;
+  }
+  .sn-type-badge {
+    padding: 0.3rem 0.85rem;
+    border-radius: 20px;
+    background: #2e3d5f;
+    color: #fff;
+    font-size: 0.88rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .sn-elapsed {
+    font-size: 1.5rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.03em;
+    color: #2e3d5f;
+    flex: 1;
+    text-align: right;
+  }
+
+  /* ── Notes ── */
+  .sn-notes textarea {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border: 1.5px solid #ddd;
+    border-radius: 12px;
+    font-size: 1rem;
+    color: #2d2d2d;
+    background: #fff;
+    box-sizing: border-box;
+    resize: vertical;
+    transition: border-color 0.15s;
+  }
+  .sn-notes textarea:focus {
+    outline: none;
+    border-color: #2e3d5f;
+  }
+
+  /* ── Buttons ── */
+  .sn-actions {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 2rem;
+  }
+  .sn-save {
+    flex: 2;
+    padding: 0.85rem;
+    border: none;
+    border-radius: 14px;
+    background: #2e3d5f;
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+    touch-action: manipulation;
+  }
+  .sn-save:hover { background: #1a2a45; }
+  .sn-cancel {
+    flex: 1;
+    padding: 0.85rem;
+    border: 2px solid #aaa;
+    border-radius: 14px;
+    background: transparent;
+    color: #666;
+    font-size: 1.05rem;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .sn-cancel:hover { border-color: #555; color: #333; }
+</style>
+
+<div class="sn-wrap">
+  <form method="post" id="sn-form">
+    {% csrf_token %}
+
+    {# ── Timer summary ── #}
+    <p class="sn-section">{% trans "Timer" %}</p>
+    <div class="sn-summary">
+      <span class="sn-type-badge">{{ timer.name }}</span>
+      <span class="sn-elapsed" data-start="{{ timer.start|date:'c' }}">0:00:00</span>
+    </div>
+
+    {# ── Notes ── #}
+    <p class="sn-section">{% trans "Notes" %}</p>
+    <div class="sn-notes">
+      {{ form.notes }}
+    </div>
+
+    <div class="sn-actions">
+      <button type="submit" class="sn-save">{% trans "Save" %}</button>
+      <a href="{% url 'dashboard:track-child' child.slug %}" class="sn-cancel">
+        {% trans "Cancel" %}
+      </a>
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  const pad = n => String(n).padStart(2, '0');
+  function formatElapsed(s) {
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return h + ':' + pad(m) + ':' + pad(sec);
+  }
+  function tick() {
+    document.querySelectorAll('.sn-elapsed[data-start]').forEach(function (el) {
+      const elapsed = Math.max(0, Math.floor((Date.now() - new Date(el.dataset.start).getTime()) / 1000));
+      el.textContent = formatElapsed(elapsed);
+    });
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
+{% endblock %}

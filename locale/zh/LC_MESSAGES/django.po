@@ -302,10 +302,8 @@ msgstr "奶瓶喂食"
 #: core/templates/core/medication_list.html:4
 #: core/templates/core/medication_list.html:7
 #: core/templates/core/medication_list.html:11
-#, fuzzy
-#| msgid "Add Feeding"
 msgid "Medication"
-msgstr "新增喂食记录"
+msgstr "用药"
 
 #: babybuddy/templates/babybuddy/nav-dropdown.html:70
 #: babybuddy/templates/babybuddy/nav-dropdown.html:288 core/models.py:517
@@ -319,7 +317,7 @@ msgstr "新增喂食记录"
 #: reports/templates/reports/pumping_amounts.html:4
 #: reports/templates/reports/pumping_amounts.html:9
 msgid "Pumping"
-msgstr "吸奶"
+msgstr "挤奶"
 
 #: babybuddy/templates/babybuddy/nav-dropdown.html:76
 #: babybuddy/templates/babybuddy/nav-dropdown.html:150 core/models.py:462
@@ -525,7 +523,7 @@ msgstr "喂食"
 
 #: babybuddy/templates/babybuddy/nav-dropdown.html:294
 msgid "Pumping entry"
-msgstr "吸奶记录"
+msgstr "挤奶记录"
 
 #: babybuddy/templates/babybuddy/nav-dropdown.html:306
 msgid "Sleep entry"
@@ -1141,7 +1139,7 @@ msgstr "另一个条目与指定的时间段相交。"
 #, fuzzy
 #| msgid "Pumping entry"
 msgid "Conflicting entry"
-msgstr "吸奶记录"
+msgstr "挤奶记录"
 
 #: core/models.py:98
 msgid "Date/time can not be in the future."
@@ -1645,21 +1643,21 @@ msgstr "未找到记录。"
 
 #: core/templates/core/pumping_confirm_delete.html:4
 msgid "Delete a Pumping Entry"
-msgstr "删除一条吸奶记录"
+msgstr "删除一条挤奶记录"
 
 #: core/templates/core/pumping_form.html:7
 #: core/templates/core/pumping_form.html:17
 #: core/templates/core/pumping_form.html:26
 msgid "Add a Pumping Entry"
-msgstr "新增一条吸奶记录"
+msgstr "新增一条挤奶记录"
 
 #: core/templates/core/pumping_list.html:14
 msgid "Add Pumping Entry"
-msgstr "新增吸奶记录"
+msgstr "新增挤奶记录"
 
 #: core/templates/core/pumping_list.html:83
 msgid "No pumping entries found."
-msgstr "未找到吸奶记录。"
+msgstr "未找到挤奶记录。"
 
 #: core/templates/core/quick_timer_nav.html:10
 #: core/templates/core/quick_timer_nav.html:33
@@ -1772,7 +1770,7 @@ msgstr "标注的活动"
 
 #: core/templates/core/tag_detail.html:90
 msgid "Pumpings"
-msgstr "吸奶"
+msgstr "挤奶"
 
 #: core/templates/core/tag_detail.html:95
 msgid "Sleeps"
@@ -2194,7 +2192,7 @@ msgstr ""
 
 #: dashboard/templates/cards/pumping_last.html:4
 msgid "Last Pumping"
-msgstr "吸奶"
+msgstr "挤奶"
 
 #: dashboard/templates/cards/pumping_recent.html:4
 #, fuzzy
@@ -2497,11 +2495,11 @@ msgstr "喂食间隔（小时）"
 
 #: reports/graphs/pumping_amounts.py:59
 msgid "Total Pumping Amount"
-msgstr "合计吸奶量"
+msgstr "合计挤奶量"
 
 #: reports/graphs/pumping_amounts.py:62
 msgid "Pumping Amount"
-msgstr "吸奶量"
+msgstr "挤奶量"
 
 #: reports/graphs/sleep_pattern.py:165
 #: reports/templates/reports/report_list.html:48
@@ -2603,7 +2601,7 @@ msgstr "世界卫生组织女孩身高百分位数 （厘米）"
 
 #: reports/templates/reports/report_list.html:46
 msgid "Pumping Amounts"
-msgstr "吸奶量"
+msgstr "挤奶量"
 
 #: reports/templates/reports/report_list.html:54
 msgid "Tummy Time Durations (Sum)"
@@ -2917,11 +2915,157 @@ msgstr "世界卫生组织女孩体重百分位数 （公斤）"
 #~ msgstr "<div class=\"text-center small text-muted\"> %(since)s </div>"
 
 #~ msgid "<b>Total Pumping Amount</b>"
-#~ msgstr "<b>合计吸奶量</b>"
+#~ msgstr "<b>合计挤奶量</b>"
 
 #~ msgid "Are you sure you want to delete %(number)s inactive timer?"
 #~ msgid_plural "Are you sure you want to delete %(number)s inactive timers?"
 #~ msgstr[0] "确定要删除%(number)s个非活动的计时器?"
+
+#: babybuddy/templates/babybuddy/nav-dropdown.html
+#: dashboard/templates/dashboard/track.html
+msgid "Track"
+msgstr "记录"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Feed"
+msgstr "喂食"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Pump"
+msgstr "挤奶"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Diaper"
+msgstr "换尿布"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Track a feeding session"
+msgstr "记录一次喂食"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Track a pumping session"
+msgstr "记录一次挤奶"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Track a diaper change"
+msgstr "记录一次换尿布"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Track a sleep session"
+msgstr "记录一次睡眠"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Add feeding"
+msgstr "添加喂食"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Add pumping"
+msgstr "添加挤奶"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Add diaper change"
+msgstr "添加换尿布"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Add sleep"
+msgstr "添加睡眠"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Add tummy time"
+msgstr "添加趴趴时间"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Track a tummy time session"
+msgstr "记录一次趴趴时间"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Add medication"
+msgstr "添加用药记录"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Track a medication"
+msgstr "记录一次用药"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Breastfeed"
+msgstr "母乳喂养"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Bottle Feed"
+msgstr "奶瓶喂食"
+
+#: dashboard/templates/dashboard/breastfeed.html
+msgid "Start Time"
+msgstr "开始时间"
+
+#: dashboard/templates/dashboard/breastfeed.html
+msgid "Left"
+msgstr "左侧"
+
+#: dashboard/templates/dashboard/breastfeed.html
+msgid "Right"
+msgstr "右侧"
+
+#: dashboard/templates/dashboard/breastfeed.html
+msgid "Stop Timer"
+msgstr "停止计时"
+
+#: dashboard/templates/dashboard/breastfeed.html
+msgid "or enter manually"
+msgstr "或手动输入"
+
+#: dashboard/templates/dashboard/breastfeed.html
+msgid "minutes"
+msgstr "分钟"
+
+#: dashboard/templates/dashboard/breastfeed.html
+msgid "Save"
+msgstr "保存"
+
+#: dashboard/views.py
+msgid "Breastfeeding entry added!"
+msgstr "母乳喂养记录已添加！"
+
+#: dashboard/templates/dashboard/breastfeed.html
+msgid "Log Past Feed"
+msgstr "补记喂养"
+
+#: dashboard/templates/dashboard/breastfeed.html
+msgid "Live Timer"
+msgstr "实时计时"
+
+#: dashboard/templates/dashboard/breastfeed.html
+msgid "Will record start time as now"
+msgstr "开始时间将记录为当前时间"
+
+#: dashboard/templates/dashboard/breastfeed.html
+msgid "Stop & Save"
+msgstr "停止并保存"
+
+#: dashboard/templates/dashboard/breastfeed.html
+msgid "Discard"
+msgstr "取消计时"
+
+#: dashboard/templates/dashboard/breastfeed.html
+msgid "Elapsed"
+msgstr "已用时间"
+
+#: dashboard/templates/dashboard/bottlefeed.html
+msgid "Breast Milk"
+msgstr "母乳"
+
+#: dashboard/templates/dashboard/bottlefeed.html
+#: dashboard/templates/dashboard/breastfeed.html
+msgid "Both"
+msgstr "两者"
+
+#: dashboard/views.py
+msgid "Bottle feeding entry added!"
+msgstr "奶瓶喂食记录已添加！"
+
+#: dashboard/forms.py
+msgid "Please enter an amount."
+msgstr "请输入喂量。"
 
 #~ msgid "%(count)s active timer"
 #~ msgid_plural "%(count)s active timers"

@@ -1,0 +1,19 @@
+services:
+  babybuddy:
+    build: .
+    container_name: babybuddy
+    environment:
+      - SECRET_KEY=change-me-to-something-long-and-random
+      - DJANGO_SETTINGS_MODULE=babybuddy.settings.base
+      - ALLOWED_HOSTS=*
+      - CSRF_TRUSTED_ORIGINS=http://YOUR-NAS-IP:8000  # replace YOUR-NAS-IP with your NAS local IP
+    volumes:
+      - babybuddy-data:/app/data    # SQLite database
+      - babybuddy-media:/app/media  # uploaded photos
+    ports:
+      - 8000:8000
+    restart: unless-stopped
+
+volumes:
+  babybuddy-data:
+  babybuddy-media:

@@ -46,3 +46,8 @@ devenv.local.nix
 .pre-commit-config.yaml
 
 .vscode
+# Local runtime data (SQLite DB, media uploads)
+local-data/
+
+# Claude Code memory and session files
+.claude/

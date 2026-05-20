@@ -69,7 +69,7 @@ class RootRouter(LoginRequiredMixin, RedirectView):
     """
 
     def get_redirect_url(self, *args, **kwargs):
-        self.url = reverse("dashboard:dashboard")
+        self.url = reverse("dashboard:track")
         return super(RootRouter, self).get_redirect_url(self, *args, **kwargs)
 
 

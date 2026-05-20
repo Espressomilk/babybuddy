@@ -1,0 +1,558 @@
+{% extends 'babybuddy/page.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Breastfeed" %} - {{ child }}{% endblock %}
+
+{% block breadcrumbs %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'core:child-list' %}">{% trans "Children" %}</a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="{% url 'dashboard:track-child' child.slug %}">{{ child }}</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">{% trans "Breastfeed" %}</li>
+{% endblock %}
+
+{% block content %}
+<style>
+  .bf-wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 1rem 0 3rem;
+  }
+
+  /* ── Section label ── */
+  .bf-section {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #888;
+    margin: 1.5rem 0 0.5rem;
+  }
+
+  /* ── Method pills ── */
+  .bf-pills {
+    display: flex;
+    gap: 0.6rem;
+  }
+  .bf-pill {
+    flex: 1;
+    padding: 0.7rem 0.5rem;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    background: transparent;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: inherit;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .bf-pill:hover { border-color: #2e3d5f; }
+  .bf-pill.active {
+    background: #2e3d5f;
+    border-color: #2e3d5f;
+    color: #fff;
+  }
+
+  /* ── Mode tabs ── */
+  .bf-mode-tabs {
+    display: flex;
+    gap: 0;
+    border: 2px solid #2e3d5f;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 1.75rem;
+  }
+  .bf-mode-tab {
+    flex: 1;
+    padding: 0.7rem 0.5rem;
+    border: none;
+    background: transparent;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: inherit;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    user-select: none;
+  }
+  .bf-mode-tab + .bf-mode-tab {
+    border-left: 2px solid #2e3d5f;
+  }
+  .bf-mode-tab.active {
+    background: #2e3d5f;
+    color: #fff;
+  }
+
+  /* ── Duration stepper ── */
+  .bf-stepper-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .bf-stepper {
+    display: flex;
+    align-items: stretch;
+    border: 1.5px solid #ddd;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .bf-step-btn {
+    width: 56px;
+    min-height: 56px;
+    border: none;
+    background: #eef0f4;
+    color: #2d2d2d;
+    font-size: 1.6rem;
+    font-weight: 300;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    user-select: none;
+    touch-action: manipulation;
+    transition: background 0.12s;
+  }
+  .bf-step-btn:hover  { background: #dde1ea; }
+  .bf-step-btn:active { background: #c8cedb; }
+  .bf-stepper input[type="number"] {
+    width: 64px;
+    border: none;
+    border-left: 1.5px solid #ddd;
+    border-right: 1.5px solid #ddd;
+    font-size: 1.2rem;
+    font-weight: 700;
+    text-align: center;
+    background: #fff;
+    color: #2d2d2d;
+    -moz-appearance: textfield;
+  }
+  .bf-stepper input[type="number"]::-webkit-inner-spin-button,
+  .bf-stepper input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .bf-stepper-unit {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: inherit;
+  }
+
+  /* ── Start-time hint below stepper ── */
+  .bf-time-hint {
+    margin: 0.6rem 0 0;
+    font-size: 0.92rem;
+    color: #888;
+    min-height: 1.3em;
+  }
+
+  /* ── Live timer panel ── */
+  .bf-timer-start-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 1.1rem;
+    border: 2px solid #2e3d5f;
+    border-radius: 14px;
+    background: transparent;
+    color: inherit;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: background 0.15s, color 0.15s;
+  }
+  .bf-timer-start-btn:hover {
+    background: #2e3d5f;
+    color: #fff;
+  }
+
+  .bf-timer-running {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.5rem 0 0.5rem;
+  }
+  .bf-timer-label {
+    font-size: 0.85rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .bf-clock {
+    font-size: 4rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .bf-timer-started-at {
+    font-size: 0.9rem;
+    color: #888;
+    margin-bottom: 0.5rem;
+  }
+  /* Stale-timer warning banner */
+  .bf-stale-warning {
+    display: none;
+    width: 100%;
+    padding: 0.65rem 1rem;
+    border-radius: 10px;
+    background: #7a4500;
+    color: #ffd580;
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 0.5rem;
+  }
+  .bf-timer-stale .bf-stale-warning { display: block; }
+  .bf-timer-stale .bf-clock         { color: #c0392b; }
+  .bf-timer-actions {
+    display: flex;
+    gap: 0.75rem;
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+  .bf-stop-save-btn {
+    flex: 2;
+    padding: 0.85rem;
+    border: none;
+    border-radius: 12px;
+    background: #2e3d5f;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+    touch-action: manipulation;
+  }
+  .bf-stop-save-btn:hover { background: #1a2a45; }
+  .bf-discard-btn {
+    flex: 1;
+    padding: 0.85rem;
+    border: 2px solid #c0392b;
+    border-radius: 12px;
+    background: transparent;
+    color: #c0392b;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    touch-action: manipulation;
+  }
+  .bf-discard-btn:hover { background: #c0392b; color: #fff; }
+
+  /* ── Save button (log mode) ── */
+  .bf-save {
+    width: 100%;
+    padding: 0.85rem;
+    border: none;
+    border-radius: 14px;
+    background: #2e3d5f;
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 1.75rem;
+    transition: background 0.15s;
+    touch-action: manipulation;
+  }
+  .bf-save:hover { background: #1a2a45; }
+
+  /* ── Notes ── */
+  .bf-notes textarea {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border: 1.5px solid #ddd;
+    border-radius: 12px;
+    font-size: 1rem;
+    color: #2d2d2d;
+    background: #fff;
+    box-sizing: border-box;
+    resize: vertical;
+    transition: border-color 0.15s;
+  }
+  .bf-notes textarea:focus {
+    outline: none;
+    border-color: #2e3d5f;
+  }
+
+</style>
+
+<div class="bf-wrap">
+
+  <form method="post" id="bf-form">
+    {% csrf_token %}
+    {# All fields are hidden — JS sets values before submit #}
+    {{ form.child }}
+    {{ form.method }}
+    {{ form.start }}
+    {{ form.duration_minutes }}
+
+    {# ── METHOD (always visible) ── #}
+    <p class="bf-section">{% trans "Method" %}</p>
+    <div class="bf-pills">
+      <div class="bf-pill" data-value="left breast">{% trans "Left" %}</div>
+      <div class="bf-pill" data-value="right breast">{% trans "Right" %}</div>
+      <div class="bf-pill" data-value="both breasts">{% trans "Both" %}</div>
+    </div>
+
+    {# ── MODE TABS ── #}
+    <div class="bf-mode-tabs">
+      <button type="button" class="bf-mode-tab" id="tab-log">
+        {% trans "Log Past Feed" %}
+      </button>
+      <button type="button" class="bf-mode-tab" id="tab-timer">
+        ▶ {% trans "Live Timer" %}
+      </button>
+    </div>
+
+    {# ── LOG PAST FEED PANEL ── #}
+    <div id="panel-log">
+      <p class="bf-section">{% trans "Duration" %}</p>
+      <div class="bf-stepper-row">
+        <div class="bf-stepper">
+          <button type="button" class="bf-step-btn" id="log-minus">−</button>
+          <input type="number" id="log-dur" min="0" value="0" step="1">
+          <button type="button" class="bf-step-btn" id="log-plus">+</button>
+        </div>
+        <span class="bf-stepper-unit">{% trans "min" %}</span>
+      </div>
+      <p class="bf-time-hint" id="log-hint"></p>
+      <button type="submit" class="bf-save" id="log-save">{% trans "Save" %}</button>
+    </div>
+
+    {# ── LIVE TIMER PANEL ── #}
+    <div id="panel-timer" style="display:none">
+
+      <div id="timer-idle">
+        <button type="button" class="bf-timer-start-btn" id="timer-start-btn">
+          ▶ {% trans "Start Timer" %}
+        </button>
+      </div>
+
+      <div id="timer-running" style="display:none">
+        <div class="bf-stale-warning" id="timer-stale-msg">
+          ⚠️ {% trans "Timer started a long time ago — discard it and start fresh." %}
+        </div>
+        <div class="bf-timer-running">
+          <span class="bf-timer-label">{% trans "Elapsed" %}</span>
+          <div class="bf-clock" id="timer-clock">00:00</div>
+          <span class="bf-timer-started-at" id="timer-started-at"></span>
+        </div>
+        <div class="bf-timer-actions">
+          <button type="button" class="bf-stop-save-btn" id="timer-stop-save">
+            {% trans "Stop & Save" %}
+          </button>
+          <button type="button" class="bf-discard-btn" id="timer-discard">
+            {% trans "Discard" %}
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    {# ── NOTES (shared between both modes) ── #}
+    <p class="bf-section">{% trans "Notes" %}</p>
+    <div class="bf-notes">
+      {{ form.notes }}
+    </div>
+
+  </form>
+</div>
+
+<script>
+(function () {
+  /* ── Constants ── */
+  const CHILD_SLUG = '{{ child.slug|escapejs }}';
+  const TIMER_KEY  = 'bf_timer_' + CHILD_SLUG;   // stores ISO start timestamp
+
+  /* ── Form fields (all hidden) ── */
+  const methodInput = document.getElementById('id_method');
+  const startInput  = document.getElementById('id_start');
+  const durInput    = document.getElementById('id_duration_minutes');
+
+  /* ── Helpers ── */
+  const pad = n => String(n).padStart(2, '0');
+
+  // Always format as UTC — clean_start() in the form forces Django to interpret
+  // this as UTC regardless of the user's active BabyBuddy timezone setting.
+  function toDjango(dt) {
+    return dt.getUTCFullYear() + '-' + pad(dt.getUTCMonth() + 1) + '-' + pad(dt.getUTCDate()) +
+           ' ' + pad(dt.getUTCHours()) + ':' + pad(dt.getUTCMinutes()) + ':' + pad(dt.getUTCSeconds());
+  }
+
+  // Format for display in UTC — matches BabyBuddy's own timezone setting (UTC).
+  // Using UTC here keeps the 'Started at' hint consistent with what gets stored.
+  function toTimeStr(dt) {
+    let h = dt.getUTCHours(), m = dt.getUTCMinutes();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return h + ':' + pad(m) + ' ' + ampm;
+  }
+
+  const STALE_SECS = 4 * 3600; // timers older than 4 hours are considered stale
+
+  function formatElapsed(secs) {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    if (h > 0) return h + ':' + pad(m) + ':' + pad(s);
+    return pad(m) + ':' + pad(s);
+  }
+
+  /* ── Method pills ── */
+  const pills = document.querySelectorAll('.bf-pill');
+  function activatePill(value) {
+    pills.forEach(p => p.classList.toggle('active', p.dataset.value === value));
+    methodInput.value = value;
+  }
+  pills.forEach(p => p.addEventListener('click', () => activatePill(p.dataset.value)));
+  activatePill(methodInput.value || 'left breast');
+
+  /* ── Mode tabs ── */
+  const panelLog   = document.getElementById('panel-log');
+  const panelTimer = document.getElementById('panel-timer');
+  const tabLog     = document.getElementById('tab-log');
+  const tabTimer   = document.getElementById('tab-timer');
+
+  function setMode(mode) {
+    const isLog = mode === 'log';
+    panelLog.style.display   = isLog ? '' : 'none';
+    panelTimer.style.display = isLog ? 'none' : '';
+    tabLog.classList.toggle('active',   isLog);
+    tabTimer.classList.toggle('active', !isLog);
+  }
+
+  tabLog.addEventListener('click',   () => setMode('log'));
+  tabTimer.addEventListener('click', () => setMode('timer'));
+
+  /* ── Log Past Feed ── */
+  const logDur  = document.getElementById('log-dur');
+  const logHint = document.getElementById('log-hint');
+
+  // Snapshot of computed start time (updated when duration changes, locked until next change)
+  let logComputedStart = new Date();
+
+  function updateLogHint() {
+    const mins = Math.max(0, parseInt(logDur.value) || 0);
+    logComputedStart = new Date(Date.now() - mins * 60000);
+    if (mins === 0) {
+      logHint.textContent = '{% trans "Will record start time as now" %}';
+    } else {
+      logHint.textContent = '{% trans "Started at" %} ' + toTimeStr(logComputedStart);
+    }
+  }
+
+  document.getElementById('log-minus').addEventListener('click', () => {
+    logDur.value = Math.max(0, (parseInt(logDur.value) || 0) - 5);
+    updateLogHint();
+  });
+  document.getElementById('log-plus').addEventListener('click', () => {
+    logDur.value = (parseInt(logDur.value) || 0) + 5;
+    updateLogHint();
+  });
+  logDur.addEventListener('input', updateLogHint);
+  updateLogHint();
+
+  // Before submit (log mode): lock in the values
+  document.getElementById('bf-form').addEventListener('submit', () => {
+    const mins = Math.max(0, parseInt(logDur.value) || 0);
+    startInput.value = toDjango(logComputedStart);
+    durInput.value   = mins;
+  });
+
+  /* ── Live Timer ── */
+  const timerIdle    = document.getElementById('timer-idle');
+  const timerRunning = document.getElementById('timer-running');
+  const timerClock   = document.getElementById('timer-clock');
+  const timerStartedAt = document.getElementById('timer-started-at');
+  let clockInterval = null;
+
+  function getStoredStart() {
+    const v = localStorage.getItem(TIMER_KEY);
+    return v ? new Date(v) : null;
+  }
+
+  function tickClock(startDt) {
+    const elapsed = Math.floor((Date.now() - startDt.getTime()) / 1000);
+    timerClock.textContent = formatElapsed(elapsed);
+  }
+
+  function showRunning(startDt) {
+    timerIdle.style.display    = 'none';
+    timerRunning.style.display = '';
+    timerStartedAt.textContent = '{% trans "Started at" %} ' + toTimeStr(startDt);
+    // Mark stale if the timer is unreasonably old
+    const age = (Date.now() - startDt.getTime()) / 1000;
+    timerRunning.classList.toggle('bf-timer-stale', age > STALE_SECS);
+    tickClock(startDt);
+    if (clockInterval) clearInterval(clockInterval);
+    clockInterval = setInterval(() => {
+      tickClock(startDt);
+      // Re-evaluate staleness each tick
+      const currentAge = (Date.now() - startDt.getTime()) / 1000;
+      timerRunning.classList.toggle('bf-timer-stale', currentAge > STALE_SECS);
+    }, 1000);
+  }
+
+  function showIdle() {
+    if (clockInterval) { clearInterval(clockInterval); clockInterval = null; }
+    timerRunning.style.display = 'none';
+    timerIdle.style.display    = '';
+  }
+
+  document.getElementById('timer-start-btn').addEventListener('click', () => {
+    const now = new Date();
+    localStorage.setItem(TIMER_KEY, now.toISOString());
+    showRunning(now);
+  });
+
+  document.getElementById('timer-stop-save').addEventListener('click', () => {
+    const startDt = getStoredStart();
+    if (!startDt) return;
+    const elapsed = Math.floor((Date.now() - startDt.getTime()) / 1000);
+    // Block saves for stale timers — the user must discard them
+    if (elapsed > STALE_SECS) {
+      document.getElementById('timer-stale-msg').style.display = 'block';
+      return;
+    }
+    const mins = Math.max(1, Math.round(elapsed / 60));
+    startInput.value = toDjango(startDt);
+    durInput.value   = mins;
+    localStorage.removeItem(TIMER_KEY);
+    clearInterval(clockInterval);
+    document.getElementById('bf-form').submit();
+  });
+
+  document.getElementById('timer-discard').addEventListener('click', () => {
+    localStorage.removeItem(TIMER_KEY);
+    showIdle();
+    setMode('log');
+  });
+
+  /* ── Initialise on load ── */
+  const stored = getStoredStart();
+  if (stored) {
+    // A timer was running — restore it
+    setMode('timer');
+    showRunning(stored);
+  } else {
+    setMode('log');
+    // Restore duration if redisplaying after a validation error
+    const prevDur = parseInt('{{ form.duration_minutes.value|default:"0" }}') || 0;
+    if (prevDur > 0) {
+      logDur.value = prevDur;
+      updateLogHint();
+    }
+  }
+})();
+</script>
+{% endblock %}

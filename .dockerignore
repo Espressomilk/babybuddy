@@ -1,0 +1,23 @@
+# Data directories — never bake live data into the image.
+# These are bind-mounted (or named-volume-mounted) at runtime.
+local-data/
+local-media/
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Version control
+.git/
+.gitignore
+
+# Editor / OS noise
+.DS_Store
+*.swp
+*.swo
+
+# Env files with secrets
+.env
+.env.*

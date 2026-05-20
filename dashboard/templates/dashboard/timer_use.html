@@ -1,0 +1,216 @@
+{% extends 'babybuddy/page.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Use Timer" %} - {{ child }}{% endblock %}
+
+{% block breadcrumbs %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'core:child-list' %}">{% trans "Children" %}</a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="{% url 'dashboard:track-child' child.slug %}">{{ child }}</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">{% trans "Use Timer" %}</li>
+{% endblock %}
+
+{% block content %}
+<style>
+  .tu-wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 1rem 0 3rem;
+  }
+
+  .tu-section {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #888;
+    margin: 1.5rem 0 0.5rem;
+  }
+
+  /* ── Timer summary ── */
+  .tu-summary {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.9rem 1.1rem;
+    background: #f0f4fb;
+    border-radius: 12px;
+  }
+  .tu-name {
+    flex: 1;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #2d2d2d;
+  }
+  .tu-elapsed {
+    font-size: 1.5rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.03em;
+    color: #2e3d5f;
+  }
+
+  /* ── Activity buttons ── */
+  .tu-btn-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .tu-btn {
+    flex: 1;
+    padding: 0.65rem 0.5rem;
+    border-radius: 10px;
+    border: 2px solid #2e3d5f;
+    background: #fff;
+    color: #2e3d5f;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    touch-action: manipulation;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .tu-btn:hover { background: #2e3d5f; color: #fff; }
+
+  .tu-btn-form { flex: 1; margin: 0; }
+
+  /* ── Bottom actions ── */
+  .tu-footer {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 2.5rem;
+  }
+  .tu-back {
+    flex: 1;
+    padding: 0.75rem;
+    border-radius: 12px;
+    border: 2px solid #aaa;
+    background: transparent;
+    color: #666;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .tu-back:hover { border-color: #555; color: #333; }
+  .tu-discard {
+    flex: 1;
+    padding: 0.75rem;
+    border-radius: 12px;
+    border: 2px solid #c0392b;
+    background: transparent;
+    color: #c0392b;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    touch-action: manipulation;
+  }
+  .tu-discard:hover { background: #c0392b; color: #fff; }
+</style>
+
+<div class="tu-wrap">
+
+  {# ── Timer summary ── #}
+  <p class="tu-section">{% trans "Timer" %}</p>
+  <div class="tu-summary">
+    <span class="tu-name">{{ timer.name|default:timer }}</span>
+    <span class="tu-elapsed" data-start="{{ timer.start|date:'c' }}">0:00:00</span>
+  </div>
+
+  {# ── Sleep / Nap ── #}
+  {% if perms.core.add_sleep %}
+  <p class="tu-section">{% trans "Sleep" %}</p>
+  <div class="tu-btn-row">
+    <form class="tu-btn-form" method="post"
+          action="{% url 'dashboard:timer-use-save' child.slug timer.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="activity" value="sleep">
+      <button type="submit" class="tu-btn">{% trans "Sleep" %}</button>
+    </form>
+    <form class="tu-btn-form" method="post"
+          action="{% url 'dashboard:timer-use-save' child.slug timer.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="activity" value="nap">
+      <button type="submit" class="tu-btn">{% trans "Nap" %}</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {# ── Tummy Time ── #}
+  {% if perms.core.add_tummytime %}
+  <p class="tu-section">{% trans "Tummy Time" %}</p>
+  <div class="tu-btn-row">
+    <form class="tu-btn-form" method="post"
+          action="{% url 'dashboard:timer-use-save' child.slug timer.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="activity" value="tummytime">
+      <button type="submit" class="tu-btn">{% trans "Tummy Time" %}</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {# ── Pumping (needs amount — navigate to form) ── #}
+  {% if perms.core.add_pumping %}
+  <p class="tu-section">{% trans "Pumping" %}</p>
+  <div class="tu-btn-row">
+    <a href="{% url 'core:pumping-add' %}?timer={{ timer.pk }}&child={{ child.slug }}"
+       class="tu-btn">
+      {% trans "Pumping" %}
+    </a>
+  </div>
+  {% endif %}
+
+  {# ── Feeding (navigate to our custom forms) ── #}
+  {% if perms.core.add_feeding %}
+  <p class="tu-section">{% trans "Feeding" %}</p>
+  <div class="tu-btn-row">
+    <a href="{% url 'dashboard:breastfeed-add' child.slug %}"
+       class="tu-btn">{% trans "Breastfeed" %}</a>
+    <a href="{% url 'dashboard:bottlefeed-add' child.slug %}"
+       class="tu-btn">{% trans "Bottle Feed" %}</a>
+  </div>
+  {% endif %}
+
+  {# ── Footer ── #}
+  <div class="tu-footer">
+    <a href="{% url 'dashboard:track-child' child.slug %}" class="tu-back">
+      {% trans "Back" %}
+    </a>
+    {% if perms.core.delete_timer %}
+    <form style="flex:1;margin:0;" method="post"
+          action="{% url 'dashboard:timer-stop' child.slug timer.pk %}">
+      {% csrf_token %}
+      <button type="submit" class="tu-discard" style="width:100%;">
+        {% trans "Discard Timer" %}
+      </button>
+    </form>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+(function () {
+  const pad = n => String(n).padStart(2, '0');
+  function fmt(s) {
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return h + ':' + pad(m) + ':' + pad(sec);
+  }
+  function tick() {
+    document.querySelectorAll('.tu-elapsed[data-start]').forEach(function (el) {
+      el.textContent = fmt(Math.max(0, Math.floor((Date.now() - new Date(el.dataset.start)) / 1000)));
+    });
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
+{% endblock %}

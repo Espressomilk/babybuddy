@@ -1,0 +1,293 @@
+{% extends 'babybuddy/page.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Bottle Feed" %} - {{ child }}{% endblock %}
+
+{% block breadcrumbs %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'core:child-list' %}">{% trans "Children" %}</a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="{% url 'dashboard:track-child' child.slug %}">{{ child }}</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">{% trans "Bottle Feed" %}</li>
+{% endblock %}
+
+{% block content %}
+<style>
+  .bf-wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 1rem 0 3rem;
+  }
+
+  .bf-section {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #888;
+    margin: 1.5rem 0 0.4rem;
+  }
+
+  /* ── Type pills ── */
+  .bf-pills {
+    display: flex;
+    gap: 0.6rem;
+  }
+  .bf-pill {
+    flex: 1;
+    padding: 0.65rem 0.5rem;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    background: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #555;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .bf-pill:hover { border-color: #2e3d5f; color: #2e3d5f; }
+  .bf-pill.active {
+    background: #2e3d5f;
+    border-color: #2e3d5f;
+    color: #fff;
+  }
+
+  /* ── Start time ── */
+  .bf-start input[type="text"],
+  .bf-start input[type="datetime-local"] {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border: 1.5px solid #ddd;
+    border-radius: 12px;
+    font-size: 1.05rem;
+    background: #fff;
+    color: #2d2d2d;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+  }
+  .bf-start input:focus {
+    outline: none;
+    border-color: #2e3d5f;
+  }
+
+  /* ── Amount block ── */
+  .bf-amount-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+  .bf-amount-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .bf-amount-row label {
+    flex: 1;
+    font-size: 0.95rem;
+    color: inherit;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  /* Custom stepper: [−] [value] [+] ml */
+  .bf-stepper {
+    display: flex;
+    align-items: stretch;
+    border: 1.5px solid #ddd;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .bf-stepper-btn {
+    width: 52px;
+    min-height: 52px;
+    border: none;
+    background: #eef0f4;
+    color: #2d2d2d;
+    font-size: 1.6rem;
+    font-weight: 300;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    user-select: none;
+    touch-action: manipulation;
+    transition: background 0.12s;
+  }
+  .bf-stepper-btn:hover  { background: #dde1ea; }
+  .bf-stepper-btn:active { background: #c8cedb; }
+  .bf-stepper input[type="number"] {
+    width: 72px;
+    border: none;
+    border-left: 1.5px solid #ddd;
+    border-right: 1.5px solid #ddd;
+    font-size: 1.15rem;
+    font-weight: 600;
+    text-align: center;
+    background: #fff;
+    color: #2d2d2d;
+    /* hide native spinner */
+    -moz-appearance: textfield;
+  }
+  .bf-stepper input[type="number"]::-webkit-inner-spin-button,
+  .bf-stepper input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .bf-stepper input[type="number"]:focus {
+    outline: none;
+    border-color: #2e3d5f;
+  }
+
+  .bf-amount-unit {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: inherit;
+    min-width: 24px;
+  }
+
+  /* ── Notes ── */
+  .bf-notes textarea {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border: 1.5px solid #ddd;
+    border-radius: 12px;
+    font-size: 1rem;
+    color: #2d2d2d;
+    background: #fff;
+    box-sizing: border-box;
+    resize: vertical;
+    transition: border-color 0.15s;
+  }
+  .bf-notes textarea:focus {
+    outline: none;
+    border-color: #2e3d5f;
+  }
+
+  /* ── Save ── */
+  .bf-save {
+    width: 100%;
+    padding: 0.85rem;
+    border: none;
+    border-radius: 14px;
+    background: #2e3d5f;
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 2rem;
+    transition: background 0.15s;
+  }
+  .bf-save:hover { background: #1a2a45; }
+
+
+  /* ── Show/hide amount rows ── */
+  .bf-row-bm,
+  .bf-row-formula { transition: opacity 0.15s; }
+  .bf-row-hidden { display: none; }
+</style>
+
+<div class="bf-wrap">
+
+  <form method="post" id="bf-form">
+    {% csrf_token %}
+    {{ form.feed_type }}
+
+    {# ── Milk type ── #}
+    <p class="bf-section">{% trans "Type" %}</p>
+    <div class="bf-pills">
+      <div class="bf-pill" data-value="breast milk">{% trans "Breast Milk" %}</div>
+      <div class="bf-pill" data-value="formula">{% trans "Formula" %}</div>
+      <div class="bf-pill" data-value="both">{% trans "Both" %}</div>
+    </div>
+
+    {# ── Start time ── #}
+    <p class="bf-section">{% trans "Start Time" %}</p>
+    <div class="bf-start">
+      {{ form.start }}
+    </div>
+
+    {# ── Amount ── #}
+    <p class="bf-section">{% trans "Amount" %}</p>
+    <div class="bf-amount-grid">
+      <div class="bf-amount-row bf-row-bm">
+        <label for="id_amount_breast_milk">{% trans "Breast Milk" %}</label>
+        <div class="bf-stepper">
+          <button type="button" class="bf-stepper-btn" data-target="id_amount_breast_milk" data-delta="-5">−</button>
+          {{ form.amount_breast_milk }}
+          <button type="button" class="bf-stepper-btn" data-target="id_amount_breast_milk" data-delta="5">+</button>
+        </div>
+        <span class="bf-amount-unit">ml</span>
+      </div>
+      <div class="bf-amount-row bf-row-formula">
+        <label for="id_amount_formula">{% trans "Formula" %}</label>
+        <div class="bf-stepper">
+          <button type="button" class="bf-stepper-btn" data-target="id_amount_formula" data-delta="-5">−</button>
+          {{ form.amount_formula }}
+          <button type="button" class="bf-stepper-btn" data-target="id_amount_formula" data-delta="5">+</button>
+        </div>
+        <span class="bf-amount-unit">ml</span>
+      </div>
+    </div>
+
+    {# ── Notes ── #}
+    <p class="bf-section">{% trans "Notes" %}</p>
+    <div class="bf-notes">
+      {{ form.notes }}
+    </div>
+
+    <button type="submit" class="bf-save">{% trans "Save" %}</button>
+  </form>
+
+</div>
+
+<script>
+(function () {
+  const typeInput = document.getElementById('id_feed_type');
+  const pills = document.querySelectorAll('.bf-pill');
+  const rowBm = document.querySelector('.bf-row-bm');
+  const rowFormula = document.querySelector('.bf-row-formula');
+
+  function applyType(value) {
+    typeInput.value = value;
+    pills.forEach(p => p.classList.toggle('active', p.dataset.value === value));
+
+    if (value === 'breast milk') {
+      rowBm.classList.remove('bf-row-hidden');
+      rowFormula.classList.add('bf-row-hidden');
+    } else if (value === 'formula') {
+      rowBm.classList.add('bf-row-hidden');
+      rowFormula.classList.remove('bf-row-hidden');
+    } else {
+      // both
+      rowBm.classList.remove('bf-row-hidden');
+      rowFormula.classList.remove('bf-row-hidden');
+    }
+  }
+
+  pills.forEach(pill => {
+    pill.addEventListener('click', () => applyType(pill.dataset.value));
+  });
+
+  // Initialise from current value (e.g. after validation error redisplay)
+  applyType(typeInput.value || 'breast milk');
+
+  // ── Stepper buttons ──
+  document.querySelectorAll('.bf-stepper-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.target);
+      const delta = parseFloat(btn.dataset.delta);
+      const current = parseFloat(input.value) || 0;
+      const min = parseFloat(input.min) || 0;
+      input.value = Math.max(min, Math.round((current + delta) * 10) / 10);
+    });
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,235 @@
+{% extends 'babybuddy/page.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Diaper Change" %} - {{ child }}{% endblock %}
+
+{% block breadcrumbs %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'core:child-list' %}">{% trans "Children" %}</a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="{% url 'dashboard:track-child' child.slug %}">{{ child }}</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">{% trans "Diaper Change" %}</li>
+{% endblock %}
+
+{% block content %}
+<style>
+  .dc-wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 1rem 0 3rem;
+  }
+
+  .dc-section {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #888;
+    margin: 1.5rem 0 0.5rem;
+  }
+
+  /* ── Type pills ── */
+  .dc-pills {
+    display: flex;
+    gap: 0.6rem;
+  }
+  .dc-pill {
+    flex: 1;
+    padding: 0.7rem 0.5rem;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    background: transparent;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: inherit;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .dc-pill:hover { border-color: #2e3d5f; }
+  .dc-pill.active {
+    background: #2e3d5f;
+    border-color: #2e3d5f;
+    color: #fff;
+  }
+
+  /* ── Time input ── */
+  .dc-time input[type="datetime-local"] {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border: 1.5px solid #ddd;
+    border-radius: 12px;
+    font-size: 1.05rem;
+    background: #fff;
+    color: #2d2d2d;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+  }
+  .dc-time input:focus {
+    outline: none;
+    border-color: #2e3d5f;
+  }
+
+  /* ── Color swatches ── */
+  .dc-colors {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .dc-swatch-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .dc-swatch {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.20);
+    transition: transform 0.12s, outline-color 0.12s;
+    user-select: none;
+    touch-action: manipulation;
+  }
+  .dc-swatch:hover  { transform: scale(1.08); }
+  .dc-swatch.active {
+    outline-color: #2e3d5f;
+    transform: scale(1.12);
+  }
+  .dc-swatch-none {
+    background: #e0e0e0;
+    color: #999;
+    font-size: 1.5rem;
+    font-weight: 300;
+    line-height: 1;
+  }
+  .dc-swatch-label {
+    font-size: 0.72rem;
+    color: #888;
+    text-align: center;
+  }
+
+  /* ── Notes ── */
+  .dc-notes textarea {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border: 1.5px solid #ddd;
+    border-radius: 12px;
+    font-size: 1rem;
+    color: #2d2d2d;
+    background: #fff;
+    box-sizing: border-box;
+    resize: vertical;
+    transition: border-color 0.15s;
+  }
+  .dc-notes textarea:focus {
+    outline: none;
+    border-color: #2e3d5f;
+  }
+
+  /* ── Save ── */
+  .dc-save {
+    width: 100%;
+    padding: 0.85rem;
+    border: none;
+    border-radius: 14px;
+    background: #2e3d5f;
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 2rem;
+    transition: background 0.15s;
+    touch-action: manipulation;
+  }
+  .dc-save:hover { background: #1a2a45; }
+</style>
+
+<div class="dc-wrap">
+  <form method="post" id="dc-form">
+    {% csrf_token %}
+    {# Hidden fields set by JS #}
+    {{ form.child }}
+    {{ form.diaper_type }}
+    {{ form.color }}
+
+    {# ── Type ── #}
+    <p class="dc-section">{% trans "Type" %}</p>
+    <div class="dc-pills">
+      <div class="dc-pill" data-value="wet">{% trans "Wet" %}</div>
+      <div class="dc-pill" data-value="solid">{% trans "Solid" %}</div>
+      <div class="dc-pill" data-value="mixed">{% trans "Mixed" %}</div>
+    </div>
+
+    {# ── Time ── #}
+    <p class="dc-section">{% trans "Time" %}</p>
+    <div class="dc-time">{{ form.time }}</div>
+
+    {# ── Color ── #}
+    <p class="dc-section">{% trans "Color" %}</p>
+    <div class="dc-colors">
+      <div class="dc-swatch-wrap">
+        <div class="dc-swatch dc-swatch-none" data-value="">—</div>
+        <span class="dc-swatch-label">{% trans "None" %}</span>
+      </div>
+      <div class="dc-swatch-wrap">
+        <div class="dc-swatch" data-value="black" style="background:#1c1c1e;"></div>
+        <span class="dc-swatch-label">{% trans "Black" %}</span>
+      </div>
+      <div class="dc-swatch-wrap">
+        <div class="dc-swatch" data-value="brown" style="background:#8B4513;"></div>
+        <span class="dc-swatch-label">{% trans "Brown" %}</span>
+      </div>
+      <div class="dc-swatch-wrap">
+        <div class="dc-swatch" data-value="green" style="background:#4a7a40;"></div>
+        <span class="dc-swatch-label">{% trans "Green" %}</span>
+      </div>
+      <div class="dc-swatch-wrap">
+        <div class="dc-swatch" data-value="yellow" style="background:#c9940a;"></div>
+        <span class="dc-swatch-label">{% trans "Yellow" %}</span>
+      </div>
+    </div>
+
+    {# ── Notes ── #}
+    <p class="dc-section">{% trans "Notes" %}</p>
+    <div class="dc-notes">{{ form.notes }}</div>
+
+    <button type="submit" class="dc-save">{% trans "Save" %}</button>
+  </form>
+</div>
+
+<script>
+(function () {
+  const typeInput  = document.getElementById('id_diaper_type');
+  const colorInput = document.getElementById('id_color');
+
+  /* ── Type pills ── */
+  const typePills = document.querySelectorAll('.dc-pill');
+  function activateType(value) {
+    typeInput.value = value;
+    typePills.forEach(p => p.classList.toggle('active', p.dataset.value === value));
+  }
+  typePills.forEach(p => p.addEventListener('click', () => activateType(p.dataset.value)));
+  activateType(typeInput.value || 'wet');
+
+  /* ── Color swatches ── */
+  const swatches = document.querySelectorAll('.dc-swatch');
+  function activateColor(value) {
+    colorInput.value = value;
+    swatches.forEach(s => s.classList.toggle('active', s.dataset.value === value));
+  }
+  swatches.forEach(s => s.addEventListener('click', () => activateColor(s.dataset.value)));
+  activateColor(colorInput.value || '');
+})();
+</script>
+{% endblock %}
