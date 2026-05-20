@@ -25,6 +25,13 @@
         <link rel="shortcut icon"
               href="{% static "babybuddy/root/favicon.ico" %}?v=20211218" />
         <link rel="stylesheet" href="{% static "babybuddy/css/app.css" %}" />
+        <style>
+        /* iOS Safari: explicit cursor+touch-action makes all links/buttons fire click on first tap */
+        a, button, [role="button"] {
+          cursor: pointer;
+          touch-action: manipulation;
+        }
+        </style>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="Baby Buddy" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black" />
@@ -37,7 +44,7 @@
         <meta name="viewport"
               content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     </head>
-    <body>
+    <body onclick="">
         {% block nav %}{% endblock %}
         {% block breadcrumb_nav %}
             <nav aria-label="breadcrumb" role="navigation">
@@ -54,11 +61,9 @@
         <script src="{% static "babybuddy/js/app.js" %}"></script>
         {% if user.is_authenticated %}<script>BabyBuddy.PullToRefresh.init()</script>{% endif %}
         <script>
-        /* iOS Safari single-tap fix: prevent hover-simulation double-tap on all links/buttons */
-        document.addEventListener('DOMContentLoaded', function () {
-          document.querySelectorAll('a, button').forEach(function (el) {
-            el.addEventListener('touchstart', function () {}, { passive: true });
-          });
+        /* iOS Safari single-tap fix — runs immediately (DOM already parsed at end of body) */
+        document.querySelectorAll('a, button, [role="button"]').forEach(function (el) {
+          el.addEventListener('touchstart', function () {}, { passive: true });
         });
         </script>
         {% block javascript %}{% endblock %}
