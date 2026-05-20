@@ -26,11 +26,9 @@
               href="{% static "babybuddy/root/favicon.ico" %}?v=20211218" />
         <link rel="stylesheet" href="{% static "babybuddy/css/app.css" %}" />
         <style>
-        /* iOS Safari: explicit cursor+touch-action makes all links/buttons fire click on first tap */
-        a, button, [role="button"] {
-          cursor: pointer;
-          touch-action: manipulation;
-        }
+        a, button, [role="button"] { cursor: pointer; touch-action: manipulation; }
+        /* pressed state shown on touchstart, cleared on touchend */
+        .touch-pressed { opacity: 0.55 !important; transition: none !important; }
         </style>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="Baby Buddy" />
@@ -44,7 +42,7 @@
         <meta name="viewport"
               content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     </head>
-    <body onclick="">
+    <body>
         {% block nav %}{% endblock %}
         {% block breadcrumb_nav %}
             <nav aria-label="breadcrumb" role="navigation">
@@ -61,10 +59,48 @@
         <script src="{% static "babybuddy/js/app.js" %}"></script>
         {% if user.is_authenticated %}<script>BabyBuddy.PullToRefresh.init()</script>{% endif %}
         <script>
-        /* iOS Safari single-tap fix — runs immediately (DOM already parsed at end of body) */
-        document.querySelectorAll('a, button, [role="button"]').forEach(function (el) {
-          el.addEventListener('touchstart', function () {}, { passive: true });
-        });
+        /* iOS Safari: intercept touch events so press shows feedback and release fires action.
+           This bypasses hover-simulation entirely — no double-tap needed. */
+        (function () {
+          var pressedEl = null, tapX = 0, tapY = 0, tapMoved = false;
+
+          document.addEventListener('touchstart', function (e) {
+            var t = e.target.closest('a, button, [role="button"]');
+            if (!t) return;
+            pressedEl = t; tapX = e.touches[0].clientX; tapY = e.touches[0].clientY; tapMoved = false;
+            t.classList.add('touch-pressed');
+          }, { passive: true });
+
+          document.addEventListener('touchmove', function (e) {
+            if (!pressedEl || tapMoved) return;
+            if (Math.abs(e.touches[0].clientX - tapX) > 8 || Math.abs(e.touches[0].clientY - tapY) > 8) {
+              tapMoved = true;
+              pressedEl.classList.remove('touch-pressed');
+            }
+          }, { passive: true });
+
+          document.addEventListener('touchend', function (e) {
+            var el = pressedEl;
+            if (el) el.classList.remove('touch-pressed');
+            pressedEl = null;
+            if (tapMoved || !el) return;
+            e.preventDefault(); /* cancel iOS synthetic mouse/click events */
+            var bsToggle = el.getAttribute('data-bs-toggle');
+            var rawHref  = el.getAttribute('href');
+            if (bsToggle) {
+              el.click();
+            } else if (el.tagName === 'A' && rawHref && rawHref !== '#' && rawHref.indexOf('javascript:') !== 0) {
+              window.location.href = el.href;
+            } else {
+              el.click();
+            }
+          }, { passive: false });
+
+          document.addEventListener('touchcancel', function () {
+            if (pressedEl) { pressedEl.classList.remove('touch-pressed'); pressedEl = null; }
+            tapMoved = true;
+          }, { passive: true });
+        })();
         </script>
         {% block javascript %}{% endblock %}
     </body>
