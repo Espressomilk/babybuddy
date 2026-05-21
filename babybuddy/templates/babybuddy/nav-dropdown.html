@@ -23,7 +23,7 @@
             &nbsp;
         </div>
         <div>
-        <a class="{% if request.resolver_match.view_name == 'core:timeline' %}text-primary{% else %}text-body-secondary{% endif %}"
+        <a class="{% if request.resolver_match.view_name == 'core:timeline' or request.resolver_match.view_name == 'core:child' %}text-primary{% else %}text-body-secondary{% endif %}"
            href="{% url 'core:timeline' %}"
            aria-expanded="false"><i class="icon-2x icon-timeline" aria-hidden="true"></i>
     </a>
