@@ -84,6 +84,11 @@ urlpatterns = [
         name="pump-quick",
     ),
     path(
+        "children/<str:slug>/timer/<int:pk>/breastfeed-quick/",
+        views.QuickBreastfeedSave.as_view(),
+        name="breastfeed-quick",
+    ),
+    path(
         "children/<str:slug>/pump-timer/<str:side>/toggle/",
         views.PumpTimerToggle.as_view(),
         name="pump-timer-toggle",
@@ -102,5 +107,45 @@ urlpatterns = [
         "children/<str:slug>/pump/discard/",
         views.PumpPendingDiscard.as_view(),
         name="pump-discard",
+    ),
+    path(
+        "children/<str:slug>/health/temperature/",
+        views.HealthTempQuick.as_view(),
+        name="health-temp-quick",
+    ),
+    path(
+        "children/<str:slug>/health/vaccine/",
+        views.HealthVaccineQuick.as_view(),
+        name="health-vaccine-quick",
+    ),
+    path(
+        "children/<str:slug>/health/medication/",
+        views.HealthMedQuick.as_view(),
+        name="health-med-quick",
+    ),
+    path(
+        "children/<str:slug>/health/",
+        views.HealthHub.as_view(),
+        name="health-hub",
+    ),
+    path(
+        "children/<str:slug>/health/bmi/",
+        views.HealthBMIQuick.as_view(),
+        name="health-bmi-quick",
+    ),
+    path(
+        "children/<str:slug>/health/head-circumference/",
+        views.HealthHeadCircQuick.as_view(),
+        name="health-headcirc-quick",
+    ),
+    path(
+        "children/<str:slug>/health/height/",
+        views.HealthHeightQuick.as_view(),
+        name="health-height-quick",
+    ),
+    path(
+        "children/<str:slug>/health/weight/",
+        views.HealthWeightQuick.as_view(),
+        name="health-weight-quick",
     ),
 ]

@@ -1,0 +1,197 @@
+{% extends 'babybuddy/page.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Breastfeed" %} - {{ child }}{% endblock %}
+
+{% block breadcrumbs %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'core:child-list' %}">{% trans "Children" %}</a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="{% url 'dashboard:track-child' child.slug %}">{{ child }}</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">{% trans "Breastfeed" %}</li>
+{% endblock %}
+
+{% block content %}
+<style>
+  .bq-wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 1rem 0 3rem;
+  }
+
+  .bq-section {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #888;
+    margin: 1.5rem 0 0.4rem;
+  }
+
+  /* ── Side pills ── */
+  .bq-pills {
+    display: flex;
+    gap: 0.6rem;
+  }
+  .bq-pill {
+    flex: 1;
+    padding: 0.85rem 0.5rem;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    background: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #555;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .bq-pill:hover { border-color: #2e3d5f; color: #2e3d5f; }
+  .bq-pill.active {
+    background: #2e3d5f;
+    border-color: #2e3d5f;
+    color: #fff;
+  }
+  .bq-pill-error {
+    border-color: #dc3545 !important;
+  }
+
+  /* ── Info rows ── */
+  .bq-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.7rem 1rem;
+    border: 1.5px solid #ddd;
+    border-radius: 12px;
+    background: #f7f8fa;
+    font-size: 1.05rem;
+    color: #2d2d2d;
+  }
+  .bq-info-label {
+    font-size: 0.85rem;
+    color: #888;
+    font-weight: 600;
+  }
+  .bq-elapsed {
+    font-size: 1.3rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #2e3d5f;
+    letter-spacing: 0.03em;
+  }
+
+  /* ── Notes ── */
+  .bq-notes textarea {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border: 1.5px solid #ddd;
+    border-radius: 12px;
+    font-size: 1rem;
+    color: #2d2d2d;
+    background: #fff;
+    box-sizing: border-box;
+    resize: vertical;
+    transition: border-color 0.15s;
+  }
+  .bq-notes textarea:focus {
+    outline: none;
+    border-color: #2e3d5f;
+  }
+
+  /* ── Save ── */
+  .bq-save {
+    width: 100%;
+    padding: 0.9rem;
+    border: none;
+    border-radius: 14px;
+    background: #2e3d5f;
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 2rem;
+    transition: background 0.15s;
+  }
+  .bq-save:hover { background: #1a2a45; }
+</style>
+
+<div class="bq-wrap">
+  <form method="post" id="bq-form">
+    {% csrf_token %}
+    <input type="hidden" name="method" id="bq-method" value="">
+
+    {# ── Side ── #}
+    <p class="bq-section">{% trans "Side" %}</p>
+    <div class="bq-pills" id="bq-pills">
+      <div class="bq-pill" data-value="left breast">{% trans "Left" %}</div>
+      <div class="bq-pill" data-value="right breast">{% trans "Right" %}</div>
+      <div class="bq-pill" data-value="both breasts">{% trans "Both" %}</div>
+    </div>
+
+    {# ── Start time ── #}
+    <p class="bq-section">{% trans "Start Time" %}</p>
+    <div class="bq-info">
+      <span class="bq-info-label">{% trans "Started" %}</span>
+      <span>{{ timer.start|date:"N j, Y, g:i a" }}</span>
+    </div>
+
+    {# ── Duration ── #}
+    <p class="bq-section">{% trans "Duration" %}</p>
+    <div class="bq-info">
+      <span class="bq-info-label">{% trans "Elapsed" %}</span>
+      <span class="bq-elapsed" id="bq-elapsed">—</span>
+    </div>
+
+    {# ── Notes ── #}
+    <p class="bq-section">{% trans "Notes" %}</p>
+    <div class="bq-notes">
+      <textarea name="notes" id="bq-notes" rows="3" placeholder="{% trans "Optional notes…" %}"></textarea>
+    </div>
+
+    <button type="submit" class="bq-save">{% trans "Save" %}</button>
+  </form>
+</div>
+
+<script>
+(function () {
+  var start = new Date("{{ timer.start|date:'c' }}");
+  var el = document.getElementById('bq-elapsed');
+  var methodInput = document.getElementById('bq-method');
+  var pills = document.querySelectorAll('.bq-pill');
+  var pillContainer = document.getElementById('bq-pills');
+
+  function updateElapsed() {
+    var diff = Math.floor((Date.now() - start.getTime()) / 1000);
+    if (diff < 0) diff = 0;
+    var h = Math.floor(diff / 3600);
+    var m = Math.floor((diff % 3600) / 60);
+    var s = diff % 60;
+    el.textContent = h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  updateElapsed();
+  setInterval(updateElapsed, 1000);
+
+  pills.forEach(function (pill) {
+    pill.addEventListener('click', function () {
+      pills.forEach(function (p) { p.classList.remove('active'); });
+      pill.classList.add('active');
+      methodInput.value = pill.dataset.value;
+      pillContainer.classList.remove('bq-pill-error');
+      pills.forEach(function (p) { p.classList.remove('bq-pill-error'); });
+    });
+  });
+
+  document.getElementById('bq-form').addEventListener('submit', function (e) {
+    if (!methodInput.value) {
+      e.preventDefault();
+      pills.forEach(function (p) { p.classList.add('bq-pill-error'); });
+      pillContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
+})();
+</script>
+{% endblock %}

@@ -139,4 +139,8 @@ urlpatterns = [
     path("bmi/add/", views.BMIAdd.as_view(), name="bmi-add"),
     path("bmi/<int:pk>/", views.BMIUpdate.as_view(), name="bmi-update"),
     path("bmi/<int:pk>/delete/", views.BMIDelete.as_view(), name="bmi-delete"),
+    path("vaccine/", views.VaccineList.as_view(), name="vaccine-list"),
+    path("vaccine/add/", views.VaccineAdd.as_view(), name="vaccine-add"),
+    path("vaccine/<int:pk>/", views.VaccineUpdate.as_view(), name="vaccine-update"),
+    path("vaccine/<int:pk>/delete/", views.VaccineDelete.as_view(), name="vaccine-delete"),
 ]

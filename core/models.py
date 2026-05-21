@@ -853,6 +853,45 @@ class Medication(models.Model):
         return str(_("Medication"))
 
 
+class Vaccine(models.Model):
+    model_name = "vaccine"
+
+    child = models.ForeignKey(
+        "Child",
+        on_delete=models.CASCADE,
+        related_name="vaccine",
+        verbose_name=_("Child"),
+    )
+    name = models.CharField(
+        max_length=255,
+        blank=False,
+        null=False,
+        verbose_name=_("Vaccine Name"),
+    )
+    date = models.DateTimeField(
+        blank=False,
+        default=timezone.localtime,
+        null=False,
+        verbose_name=_("Date"),
+    )
+    notes = models.TextField(blank=True, null=True, verbose_name=_("Notes"))
+    tags = TaggableManager(blank=True, through=Tagged)
+
+    objects = models.Manager()
+
+    class Meta:
+        default_permissions = ("view", "add", "change", "delete")
+        ordering = ["-date"]
+        verbose_name = _("Vaccine")
+        verbose_name_plural = _("Vaccines")
+
+    def __str__(self):
+        return str(_("Vaccine"))
+
+    def clean(self):
+        validate_time(self.date, "date")
+
+
 class WeightPercentile(models.Model):
     model_name = "weight percentile"
     age_in_days = models.DurationField(null=False)

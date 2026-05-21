@@ -51,6 +51,12 @@ class MedicationFilter(TagFilter):
         fields = ["child", "name", "dosage_unit"]
 
 
+class VaccineFilter(TagFilter):
+    class Meta:
+        model = models.Vaccine
+        fields = ["child", "name"]
+
+
 class NoteFilter(TagFilter):
     class Meta:
         model = models.Note

@@ -80,10 +80,17 @@
   .qa-sleep      { --qa-color: #A8C5DA; }
   .qa-pump       { --qa-color: #C4715A; }
   .qa-tummytime  { --qa-color: #8FCB9B; }
-  .qa-medication { --qa-color: #E8A0A0; }
+  .qa-health { --qa-color: #E8A0A0; }
+
+  .qa-card-icon {
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+    object-fit: contain;
+  }
 
   .qa-timer .qa-header, .qa-feed .qa-header, .qa-diaper .qa-header, .qa-sleep .qa-header,
-  .qa-pump .qa-header, .qa-tummytime .qa-header, .qa-medication .qa-header {
+  .qa-pump .qa-header, .qa-tummytime .qa-header, .qa-health .qa-header {
     background-color: var(--qa-color);
   }
 
@@ -93,7 +100,7 @@
   .qa-sleep      .qa-icon { color: #4a7fa0; }
   .qa-pump       .qa-icon { color: #943d28; }
   .qa-tummytime  .qa-icon { color: #2d7a4f; }
-  .qa-medication .qa-icon { color: #a03030; }
+  .qa-health .qa-icon { color: #a03030; }
 
   /* ── Timer card body ── */
   .qa-timer-body {
@@ -332,7 +339,7 @@
       {% endif %}
     </div>
     <div class="qa-body">
-      <i class="icon-feeding qa-icon" aria-hidden="true"></i>
+      <img src="{% static 'babybuddy/logo/feed_icon.png' %}" class="qa-card-icon" alt="" aria-hidden="true">
       {% if perms.core.add_feeding %}
       <div class="qa-btn-row">
         <a href="{% url 'dashboard:breastfeed-add' object.slug %}" class="qa-btn">
@@ -358,7 +365,7 @@
       {% endif %}
     </div>
     <div class="qa-body">
-      <i class="icon-diaperchange qa-icon" aria-hidden="true"></i>
+      <img src="{% static 'babybuddy/logo/diaper_icon.png' %}" class="qa-card-icon" alt="" aria-hidden="true">
       {% if perms.core.add_diaperchange %}
       <div class="qa-btn-row">
         <a href="{% url 'dashboard:diaper-add' object.slug %}?type=wet" class="qa-btn">
@@ -387,7 +394,7 @@
       {% endif %}
     </div>
     <div class="qa-body">
-      <i class="icon-sleep qa-icon" aria-hidden="true"></i>
+      <img src="{% static 'babybuddy/logo/sleep_icon.png' %}" class="qa-card-icon" alt="" aria-hidden="true">
       {% if sleep_timer %}
       {# A sleep/nap timer is running — show it #}
       <div class="qa-swipe-wrap" style="flex:1;">
@@ -460,7 +467,7 @@
       {% endif %}
     </div>
     <div class="qa-body">
-      <i class="icon-pumping qa-icon" aria-hidden="true"></i>
+      <img src="{% static 'babybuddy/logo/pump_icon.png' %}" class="qa-card-icon" alt="" aria-hidden="true">
       {% if perms.core.add_timer or perms.core.add_pumping %}
       <div style="flex:1;display:flex;flex-direction:column;gap:0.5rem;">
 
@@ -572,7 +579,7 @@
       {% endif %}
     </div>
     <div class="qa-body">
-      <i class="icon-tummytime qa-icon" aria-hidden="true"></i>
+      <img src="{% static 'babybuddy/logo/tummy_time_icon.png' %}" class="qa-card-icon" alt="" aria-hidden="true">
       {% if tummy_timer %}
       <div class="qa-swipe-wrap" style="flex:1;">
         {% if perms.core.delete_timer %}
@@ -623,18 +630,26 @@
     </div>
   </div>
 
-  {# Medication #}
-  <div class="qa-card qa-medication">
+  {# Health #}
+  <div class="qa-card qa-health">
     <div class="qa-header">
-      <span class="qa-label">{% trans "Medication" %}</span>
-      {% if perms.core.add_medication %}
-        <a href="{% url 'core:medication-add' %}?child={{ object.slug }}"
-           class="qa-plus" title="{% trans "Add medication" %}">+</a>
-      {% endif %}
+      <span class="qa-label">{% trans "Health" %}</span>
+      <a href="{% url 'dashboard:health-hub' object.slug %}" class="qa-plus" title="{% trans "Health hub" %}">+</a>
     </div>
     <div class="qa-body">
-      <i class="icon-medication qa-icon" aria-hidden="true"></i>
-      <span class="qa-desc">{% trans "Track a medication" %}</span>
+      <div style="flex:1;">
+        <div class="qa-btn-row">
+          {% if perms.core.add_temperature %}
+          <a href="{% url 'dashboard:health-temp-quick' object.slug %}" class="qa-btn">{% trans "Temp" %}</a>
+          {% endif %}
+          {% if perms.core.add_vaccine %}
+          <a href="{% url 'dashboard:health-vaccine-quick' object.slug %}" class="qa-btn">{% trans "Vaccine" %}</a>
+          {% endif %}
+          {% if perms.core.add_medication %}
+          <a href="{% url 'dashboard:health-med-quick' object.slug %}" class="qa-btn">{% trans "Medication" %}</a>
+          {% endif %}
+        </div>
+      </div>
     </div>
   </div>
 

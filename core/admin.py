@@ -248,6 +248,13 @@ class TemperatureAdmin(ImportExportMixin, ExportActionMixin, admin.ModelAdmin):
     resource_class = TemperatureImportExportResource
 
 
+@admin.register(models.Vaccine)
+class VaccineAdmin(ImportExportMixin, ExportActionMixin, admin.ModelAdmin):
+    list_display = ("child", "name", "date")
+    list_filter = ("child", "tags")
+    search_fields = ("child__first_name", "child__last_name", "name")
+
+
 @admin.register(models.Timer)
 class TimerAdmin(admin.ModelAdmin):
     list_display = ("name", "child", "start", "duration", "user")

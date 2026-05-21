@@ -171,7 +171,7 @@
   <p class="tu-section">{% trans "Feeding" %}</p>
   <div class="tu-btn-row">
     <button type="button" class="tu-btn" data-action="navigate"
-            data-url="{% url 'dashboard:breastfeed-add' child.slug %}?timer={{ timer.pk }}">{% trans "Breastfeed" %}</button>
+            data-url="{% url 'dashboard:breastfeed-quick' child.slug timer.pk %}">{% trans "Breastfeed" %}</button>
     <button type="button" class="tu-btn" data-action="navigate"
             data-url="{% url 'dashboard:bottlefeed-add' child.slug %}?timer={{ timer.pk }}">{% trans "Bottle Feed" %}</button>
   </div>

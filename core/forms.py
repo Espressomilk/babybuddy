@@ -367,6 +367,22 @@ class MedicationForm(CoreModelForm, TaggableModelForm):
         return None
 
 
+class VaccineForm(CoreModelForm, TaggableModelForm):
+    fieldsets = [
+        {"fields": ["child", "date", "name"], "layout": "required"},
+        {"fields": ["notes", "tags"], "layout": "advanced"},
+    ]
+
+    class Meta:
+        model = models.Vaccine
+        fields = ["child", "name", "date", "notes", "tags"]
+        widgets = {
+            "child": ChildRadioSelect,
+            "date": DateTimeInput(),
+            "notes": forms.Textarea(attrs={"rows": 5}),
+        }
+
+
 class PumpingForm(CoreModelForm, TaggableModelForm):
     fieldsets = [
         {"fields": ["child", "start", "end"], "layout": "required"},

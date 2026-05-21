@@ -1,0 +1,78 @@
+{% extends 'babybuddy/page.html' %}
+{% load datetime i18n widget_tweaks %}
+{% block title %}
+    {% trans "Vaccine" %}
+{% endblock %}
+{% block breadcrumbs %}
+    <li class="breadcrumb-item active" aria-current="page">{% trans "Vaccine" %}</li>
+{% endblock %}
+{% block content %}
+    <h1>
+        {% trans "Vaccine" %}
+        {% if perms.core.add_vaccine %}
+            <a href="{% url 'core:vaccine-add' %}" class="btn btn-sm btn-success">
+                <i class="icon-add" aria-hidden="true"></i> {% trans "Add Vaccine" %}
+            </a>
+        {% endif %}
+    </h1>
+    {% include 'babybuddy/filter.html' %}
+    <div class="table-responsive">
+        <table class="table table-instances table-borderless table-striped table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>{% trans "Actions" %}</th>
+                    <th>{% trans "Date" %}</th>
+                    {% if not unique_child %}
+                        <th>{% trans "Child" %}</th>
+                    {% endif %}
+                    <th>{% trans "Vaccine Name" %}</th>
+                    <th>{% trans "Tags" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for vaccine in object_list %}
+                    <tr>
+                        <td>
+                            <div class="btn-group btn-group-sm"
+                                 role="group"
+                                 aria-label="{% trans "Actions" %}">
+                                {% if perms.core.change_vaccine %}
+                                    <a href="{% url 'core:vaccine-update' vaccine.id %}"
+                                       class="btn btn-primary">
+                                        <i class="icon-update" aria-hidden="true"></i>
+                                    </a>
+                                {% endif %}
+                                {% if perms.core.delete_vaccine %}
+                                    <a href="{% url 'core:vaccine-delete' vaccine.id %}"
+                                       class="btn btn-danger">
+                                        <i class="icon-delete" aria-hidden="true"></i>
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <th scope="row">{{ vaccine.date|datetime_short }}</th>
+                        {% if not unique_child %}
+                            <td>
+                                <a href="{% url 'core:child' vaccine.child.slug %}">{{ vaccine.child }}</a>
+                            </td>
+                        {% endif %}
+                        <td>{{ vaccine.name }}</td>
+                        <td>{% include "core/render_tag_list.html" with tags=vaccine.tags.all %}</td>
+                    </tr>
+                    {% if vaccine.notes %}
+                        <tr class="{{ row_class }} row-details">
+                            <td colspan="5">
+                                <i class="icon-note me-2" aria-hidden="true"></i>{{ vaccine.notes }}
+                            </td>
+                        </tr>
+                    {% endif %}
+                {% empty %}
+                    <tr>
+                        <th colspan="5">{% trans "No vaccine entries found." %}</th>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include 'babybuddy/paginator.html' %}
+{% endblock %}

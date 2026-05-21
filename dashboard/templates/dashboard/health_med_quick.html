@@ -1,0 +1,142 @@
+{% extends 'babybuddy/page.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Medication" %} - {{ child }}{% endblock %}
+
+{% block breadcrumbs %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'core:child-list' %}">{% trans "Children" %}</a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="{% url 'dashboard:track-child' child.slug %}">{{ child }}</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">{% trans "Medication" %}</li>
+{% endblock %}
+
+{% block content %}
+<style>
+  .hq-wrap { max-width: 480px; margin: 0 auto; padding: 1rem 0 3rem; }
+  .hq-section {
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #888; margin: 1.5rem 0 0.4rem;
+  }
+  .hq-info {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.7rem 1rem; border: 1.5px solid #ddd; border-radius: 12px;
+    background: #f7f8fa; font-size: 1.05rem; color: #2d2d2d;
+  }
+  .hq-info-label { font-size: 0.85rem; color: #888; font-weight: 600; }
+  .hq-input {
+    width: 100%; padding: 0.75rem 1rem; border: 1.5px solid #ddd;
+    border-radius: 12px; font-size: 1.05rem; color: #2d2d2d;
+    background: #fff; box-sizing: border-box; transition: border-color 0.15s;
+    appearance: none;
+  }
+  .hq-input:focus { outline: none; border-color: #2e3d5f; }
+  .hq-input.error { border-color: #dc3545; }
+
+  /* Dosage row */
+  .hq-dosage-row { display: flex; gap: 0.6rem; align-items: stretch; }
+  .hq-dosage-row .hq-input:first-child { flex: 1; }
+  .hq-dosage-row .hq-input:last-child { flex: 0 0 120px; }
+
+  /* Pills for unit */
+  .hq-pills { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .hq-pill {
+    padding: 0.55rem 0.9rem; border: 2px solid #ddd; border-radius: 10px;
+    background: #fff; font-size: 0.9rem; font-weight: 600; color: #555;
+    cursor: pointer; transition: all 0.15s; user-select: none;
+  }
+  .hq-pill.active { background: #2e3d5f; border-color: #2e3d5f; color: #fff; }
+
+  .hq-notes textarea {
+    width: 100%; padding: 0.7rem 1rem; border: 1.5px solid #ddd;
+    border-radius: 12px; font-size: 1rem; color: #2d2d2d;
+    background: #fff; box-sizing: border-box; resize: vertical;
+    transition: border-color 0.15s;
+  }
+  .hq-notes textarea:focus { outline: none; border-color: #2e3d5f; }
+  .hq-save {
+    width: 100%; padding: 0.9rem; border: none; border-radius: 14px;
+    background: #2e3d5f; color: #fff; font-size: 1.1rem; font-weight: 700;
+    cursor: pointer; margin-top: 2rem; transition: background 0.15s;
+  }
+  .hq-save:hover { background: #1a2a45; }
+</style>
+
+<div class="hq-wrap">
+  <form method="post" id="hq-form">
+    {% csrf_token %}
+    <input type="hidden" name="dosage_unit" id="hq-unit-val" value="">
+
+    <p class="hq-section">{% trans "Time" %}</p>
+    <div class="hq-info">
+      <span class="hq-info-label">{% trans "Now" %}</span>
+      <span id="hq-time-display">—</span>
+    </div>
+
+    <p class="hq-section">{% trans "Medication Name" %}</p>
+    <input type="text" name="name" id="hq-name" class="hq-input"
+           placeholder="{% trans "e.g. Tylenol, Ibuprofen…" %}" autocomplete="off">
+
+    <p class="hq-section">{% trans "Dosage" %} <span style="font-weight:400;text-transform:none;letter-spacing:0;">({% trans "optional" %})</span></p>
+    <input type="number" name="dosage" class="hq-input"
+           placeholder="0.0" step="0.1" min="0" style="margin-bottom:0.5rem;">
+
+    <p class="hq-section">{% trans "Unit" %}</p>
+    <div class="hq-pills" id="hq-unit-pills">
+      <div class="hq-pill" data-unit="mg">mg</div>
+      <div class="hq-pill" data-unit="ml">ml</div>
+      <div class="hq-pill" data-unit="tablets">{% trans "Tablets" %}</div>
+      <div class="hq-pill" data-unit="drops">{% trans "Drops" %}</div>
+    </div>
+
+    <p class="hq-section">{% trans "Notes" %}</p>
+    <div class="hq-notes">
+      <textarea name="notes" rows="3" placeholder="{% trans "Optional notes…" %}"></textarea>
+    </div>
+
+    <button type="submit" class="hq-save">{% trans "Save" %}</button>
+  </form>
+</div>
+
+<script>
+(function () {
+  var timeEl  = document.getElementById('hq-time-display');
+  var unitVal = document.getElementById('hq-unit-val');
+  var pills   = document.querySelectorAll('.hq-pill');
+
+  function updateTime() {
+    var now = new Date();
+    timeEl.textContent = now.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+  }
+  updateTime();
+  setInterval(updateTime, 30000);
+
+  pills.forEach(function (pill) {
+    pill.addEventListener('click', function () {
+      if (pill.classList.contains('active')) {
+        pill.classList.remove('active');
+        unitVal.value = '';
+      } else {
+        pills.forEach(function (p) { p.classList.remove('active'); });
+        pill.classList.add('active');
+        unitVal.value = pill.dataset.unit;
+      }
+    });
+  });
+
+  document.getElementById('hq-form').addEventListener('submit', function (e) {
+    var name = document.getElementById('hq-name');
+    if (!name.value.trim()) {
+      e.preventDefault();
+      name.classList.add('error');
+      name.focus();
+    }
+  });
+  document.getElementById('hq-name').addEventListener('input', function () {
+    this.classList.remove('error');
+  });
+})();
+</script>
+{% endblock %}

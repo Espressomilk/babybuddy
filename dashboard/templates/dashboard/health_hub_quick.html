@@ -1,0 +1,93 @@
+{% extends 'babybuddy/page.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Health" %} - {{ child }}{% endblock %}
+
+{% block breadcrumbs %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'core:child-list' %}">{% trans "Children" %}</a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="{% url 'dashboard:track-child' child.slug %}">{{ child }}</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">{% trans "Health" %}</li>
+{% endblock %}
+
+{% block content %}
+<style>
+  .hh-wrap { max-width: 480px; margin: 0 auto; padding: 1rem 0 3rem; }
+  .hh-section {
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #888; margin: 1.5rem 0 0.5rem;
+  }
+  .hh-grid { display: flex; flex-direction: column; gap: 0.6rem; }
+  .hh-item {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 0.95rem 1.1rem; background: #fff;
+    border: 1.5px solid #e0e0e0; border-radius: 14px;
+    text-decoration: none; color: #2d2d2d;
+    font-size: 1rem; font-weight: 600;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .hh-item:active { background: #f0f4ff; border-color: #2e3d5f; color: #2e3d5f; }
+  @media (hover: hover) {
+    .hh-item:hover { background: #f0f4ff; border-color: #2e3d5f; color: #2e3d5f; }
+  }
+  .hh-label { flex: 1; }
+  .hh-arrow { color: #bbb; font-size: 1.2rem; line-height: 1; }
+</style>
+
+<div class="hh-wrap">
+
+  <p class="hh-section">{% trans "Measurements" %}</p>
+  <div class="hh-grid">
+    {% if perms.core.add_bmi %}
+    <a href="{% url 'dashboard:health-bmi-quick' child.slug %}" class="hh-item">
+      <span class="hh-label">{% trans "BMI" %}</span>
+      <span class="hh-arrow">›</span>
+    </a>
+    {% endif %}
+    {% if perms.core.add_headcircumference %}
+    <a href="{% url 'dashboard:health-headcirc-quick' child.slug %}" class="hh-item">
+      <span class="hh-label">{% trans "Head Circumference" %}</span>
+      <span class="hh-arrow">›</span>
+    </a>
+    {% endif %}
+    {% if perms.core.add_height %}
+    <a href="{% url 'dashboard:health-height-quick' child.slug %}" class="hh-item">
+      <span class="hh-label">{% trans "Height" %}</span>
+      <span class="hh-arrow">›</span>
+    </a>
+    {% endif %}
+    {% if perms.core.add_weight %}
+    <a href="{% url 'dashboard:health-weight-quick' child.slug %}" class="hh-item">
+      <span class="hh-label">{% trans "Weight" %}</span>
+      <span class="hh-arrow">›</span>
+    </a>
+    {% endif %}
+  </div>
+
+  <p class="hh-section">{% trans "Health Events" %}</p>
+  <div class="hh-grid">
+    {% if perms.core.add_temperature %}
+    <a href="{% url 'dashboard:health-temp-quick' child.slug %}" class="hh-item">
+      <span class="hh-label">{% trans "Temperature" %}</span>
+      <span class="hh-arrow">›</span>
+    </a>
+    {% endif %}
+    {% if perms.core.add_vaccine %}
+    <a href="{% url 'dashboard:health-vaccine-quick' child.slug %}" class="hh-item">
+      <span class="hh-label">{% trans "Vaccine" %}</span>
+      <span class="hh-arrow">›</span>
+    </a>
+    {% endif %}
+    {% if perms.core.add_medication %}
+    <a href="{% url 'dashboard:health-med-quick' child.slug %}" class="hh-item">
+      <span class="hh-label">{% trans "Medication" %}</span>
+      <span class="hh-arrow">›</span>
+    </a>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

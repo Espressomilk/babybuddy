@@ -13,7 +13,7 @@ from django.views.generic.detail import DetailView
 from django.views.generic.edit import CreateView, FormView
 
 from babybuddy.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from core.models import Child, Pumping, Sleep, Timer, TummyTime
+from core.models import BMI, Child, Feeding, HeadCircumference, Height, Medication, Pumping, Sleep, Temperature, Timer, TummyTime, Vaccine, Weight
 
 from .forms import BottleFeedForm, BreastfeedForm, DiaperChangeQuickForm, PumpCommitForm, SleepNoteForm, TummyTimeMilestoneForm
 from .models import PumpPending
@@ -647,6 +647,52 @@ class QuickPumpSave(PermissionRequiredMixin, View):
         )
 
 
+class QuickBreastfeedSave(PermissionRequiredMixin, View):
+    """Show a streamlined breastfeed form seeded from a generic timer; save on POST."""
+
+    permission_required = ("core.add_feeding",)
+    template_name = "dashboard/breastfeed_quick.html"
+
+    def get_child(self):
+        return get_object_or_404(Child, slug=self.kwargs["slug"])
+
+    def get(self, request, *args, **kwargs):
+        child = self.get_child()
+        timer = get_object_or_404(Timer, pk=kwargs["pk"], child=child)
+        return render(request, self.template_name, {"child": child, "timer": timer})
+
+    def post(self, request, *args, **kwargs):
+        child = self.get_child()
+        timer = get_object_or_404(Timer, pk=kwargs["pk"], child=child)
+        method = request.POST.get("method", "")
+        notes = request.POST.get("notes", "").strip()
+        valid_methods = {"left breast", "right breast", "both breasts"}
+        if method not in valid_methods:
+            messages.error(request, _("Please select a side."))
+            return render(request, self.template_name, {"child": child, "timer": timer})
+        end = timezone.now()
+        try:
+            entry = Feeding(
+                child=child,
+                start=timer.start,
+                end=end,
+                type="breast milk",
+                method=method,
+                notes=notes,
+            )
+            entry.full_clean()
+            entry.save()
+            timer.stop()
+            messages.success(request, _("Breastfeeding entry saved."))
+            _broadcast_track(kwargs["slug"])
+        except ValidationError as e:
+            for msg in e.messages:
+                messages.error(request, msg)
+        return HttpResponseRedirect(
+            reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})
+        )
+
+
 class DiaperChangeAdd(PermissionRequiredMixin, SuccessMessageMixin, CreateView):
     permission_required = ("core.add_diaperchange",)
     form_class = DiaperChangeQuickForm
@@ -702,3 +748,219 @@ class BottleFeedAdd(PermissionRequiredMixin, FormView):
 
     def get_success_url(self):
         return reverse("dashboard:track-child", kwargs={"slug": self.kwargs["slug"]})
+
+
+class HealthTempQuick(PermissionRequiredMixin, View):
+    permission_required = ("core.add_temperature",)
+    template_name = "dashboard/health_temp_quick.html"
+
+    def get_child(self):
+        return get_object_or_404(Child, slug=self.kwargs["slug"])
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name, {"child": self.get_child()})
+
+    def post(self, request, *args, **kwargs):
+        child = self.get_child()
+        raw = request.POST.get("temperature", "").strip()
+        unit = request.POST.get("unit", "F").strip()
+        notes = request.POST.get("notes", "").strip()
+        try:
+            val = float(raw)
+            val_c = (val - 32) * 5 / 9 if unit == "F" else val
+            entry = Temperature(child=child, temperature=val_c, time=timezone.now(), notes=notes or None)
+            entry.full_clean()
+            entry.save()
+            messages.success(request, _("Temperature recorded."))
+        except (ValueError, ValidationError) as e:
+            msgs = e.messages if hasattr(e, "messages") else [str(e)]
+            for m in msgs:
+                messages.error(request, m)
+        return HttpResponseRedirect(reverse("dashboard:track-child", kwargs={"slug": self.kwargs["slug"]}))
+
+
+class HealthHub(PermissionRequiredMixin, View):
+    permission_required = ("core.view_temperature",)
+    template_name = "dashboard/health_hub_quick.html"
+
+    def get_child(self):
+        return get_object_or_404(Child, slug=self.kwargs["slug"])
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name, {"child": self.get_child()})
+
+
+class HealthBMIQuick(PermissionRequiredMixin, View):
+    permission_required = ("core.add_bmi",)
+    template_name = "dashboard/health_bmi_quick.html"
+
+    def get_child(self):
+        return get_object_or_404(Child, slug=self.kwargs["slug"])
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name, {"child": self.get_child()})
+
+    def post(self, request, *args, **kwargs):
+        child = self.get_child()
+        raw = request.POST.get("bmi", "").strip()
+        notes = request.POST.get("notes", "").strip()
+        try:
+            entry = BMI(child=child, bmi=float(raw), date=timezone.localdate(), notes=notes or None)
+            entry.full_clean()
+            entry.save()
+            messages.success(request, _("BMI recorded."))
+        except (ValueError, ValidationError) as e:
+            msgs = e.messages if hasattr(e, "messages") else [str(e)]
+            for m in msgs:
+                messages.error(request, m)
+        return HttpResponseRedirect(reverse("dashboard:health-hub", kwargs={"slug": self.kwargs["slug"]}))
+
+
+class HealthHeadCircQuick(PermissionRequiredMixin, View):
+    permission_required = ("core.add_headcircumference",)
+    template_name = "dashboard/health_headcirc_quick.html"
+
+    def get_child(self):
+        return get_object_or_404(Child, slug=self.kwargs["slug"])
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name, {"child": self.get_child()})
+
+    def post(self, request, *args, **kwargs):
+        child = self.get_child()
+        raw = request.POST.get("head_circumference", "").strip()
+        unit = request.POST.get("unit", "cm").strip()
+        notes = request.POST.get("notes", "").strip()
+        try:
+            val = float(raw)
+            val_cm = val if unit == "cm" else val * 2.54
+            entry = HeadCircumference(child=child, head_circumference=round(val_cm, 2), date=timezone.localdate(), notes=notes or None)
+            entry.full_clean()
+            entry.save()
+            messages.success(request, _("Head circumference recorded."))
+        except (ValueError, ValidationError) as e:
+            msgs = e.messages if hasattr(e, "messages") else [str(e)]
+            for m in msgs:
+                messages.error(request, m)
+        return HttpResponseRedirect(reverse("dashboard:health-hub", kwargs={"slug": self.kwargs["slug"]}))
+
+
+class HealthHeightQuick(PermissionRequiredMixin, View):
+    permission_required = ("core.add_height",)
+    template_name = "dashboard/health_height_quick.html"
+
+    def get_child(self):
+        return get_object_or_404(Child, slug=self.kwargs["slug"])
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name, {"child": self.get_child()})
+
+    def post(self, request, *args, **kwargs):
+        child = self.get_child()
+        raw = request.POST.get("height", "").strip()
+        unit = request.POST.get("unit", "cm").strip()
+        notes = request.POST.get("notes", "").strip()
+        try:
+            val = float(raw)
+            val_cm = val if unit == "cm" else val * 2.54
+            entry = Height(child=child, height=round(val_cm, 2), date=timezone.localdate(), notes=notes or None)
+            entry.full_clean()
+            entry.save()
+            messages.success(request, _("Height recorded."))
+        except (ValueError, ValidationError) as e:
+            msgs = e.messages if hasattr(e, "messages") else [str(e)]
+            for m in msgs:
+                messages.error(request, m)
+        return HttpResponseRedirect(reverse("dashboard:health-hub", kwargs={"slug": self.kwargs["slug"]}))
+
+
+class HealthWeightQuick(PermissionRequiredMixin, View):
+    permission_required = ("core.add_weight",)
+    template_name = "dashboard/health_weight_quick.html"
+
+    def get_child(self):
+        return get_object_or_404(Child, slug=self.kwargs["slug"])
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name, {"child": self.get_child()})
+
+    def post(self, request, *args, **kwargs):
+        child = self.get_child()
+        raw = request.POST.get("weight", "").strip()
+        unit = request.POST.get("unit", "kg").strip()
+        notes = request.POST.get("notes", "").strip()
+        try:
+            val = float(raw)
+            val_kg = val if unit == "kg" else val / 2.20462
+            entry = Weight(child=child, weight=round(val_kg, 3), date=timezone.localdate(), notes=notes or None)
+            entry.full_clean()
+            entry.save()
+            messages.success(request, _("Weight recorded."))
+        except (ValueError, ValidationError) as e:
+            msgs = e.messages if hasattr(e, "messages") else [str(e)]
+            for m in msgs:
+                messages.error(request, m)
+        return HttpResponseRedirect(reverse("dashboard:health-hub", kwargs={"slug": self.kwargs["slug"]}))
+
+
+class HealthVaccineQuick(PermissionRequiredMixin, View):
+    permission_required = ("core.add_vaccine",)
+    template_name = "dashboard/health_vaccine_quick.html"
+
+    def get_child(self):
+        return get_object_or_404(Child, slug=self.kwargs["slug"])
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name, {"child": self.get_child()})
+
+    def post(self, request, *args, **kwargs):
+        child = self.get_child()
+        name = request.POST.get("name", "").strip()
+        notes = request.POST.get("notes", "").strip()
+        if not name:
+            messages.error(request, _("Vaccine name is required."))
+            return render(request, self.template_name, {"child": child})
+        try:
+            entry = Vaccine(child=child, name=name, date=timezone.now(), notes=notes or None)
+            entry.full_clean()
+            entry.save()
+            messages.success(request, _("Vaccine recorded."))
+        except ValidationError as e:
+            for m in e.messages:
+                messages.error(request, m)
+        return HttpResponseRedirect(reverse("dashboard:track-child", kwargs={"slug": self.kwargs["slug"]}))
+
+
+class HealthMedQuick(PermissionRequiredMixin, View):
+    permission_required = ("core.add_medication",)
+    template_name = "dashboard/health_med_quick.html"
+
+    def get_child(self):
+        return get_object_or_404(Child, slug=self.kwargs["slug"])
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name, {"child": self.get_child()})
+
+    def post(self, request, *args, **kwargs):
+        child = self.get_child()
+        name = request.POST.get("name", "").strip()
+        notes = request.POST.get("notes", "").strip()
+        dosage_unit = request.POST.get("dosage_unit", "").strip()
+        raw_dosage = request.POST.get("dosage", "").strip()
+        if not name:
+            messages.error(request, _("Medication name is required."))
+            return render(request, self.template_name, {"child": child})
+        try:
+            dosage = float(raw_dosage) if raw_dosage else None
+            entry = Medication(
+                child=child, name=name, dosage=dosage, dosage_unit=dosage_unit,
+                time=timezone.now(), notes=notes or None
+            )
+            entry.full_clean()
+            entry.save()
+            messages.success(request, _("Medication recorded."))
+        except (ValueError, ValidationError) as e:
+            msgs = e.messages if hasattr(e, "messages") else [str(e)]
+            for m in msgs:
+                messages.error(request, m)
+        return HttpResponseRedirect(reverse("dashboard:track-child", kwargs={"slug": self.kwargs["slug"]}))

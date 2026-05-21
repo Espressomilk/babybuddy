@@ -288,6 +288,18 @@
 {% trans "Medication" %}
 </a>
 {% endif %}
+{% if perms.core.view_vaccine %}
+<a class="dropdown-item{% if request.path == '/vaccine/' %} active{% endif %}"
+   href="{% url 'core:vaccine-list' %}"><i class="icon-note" aria-hidden="true"></i>
+{% trans "Vaccine" %}
+</a>
+{% endif %}
+{% if perms.core.add_vaccine %}
+<a class="dropdown-item ps-5{% if request.path == '/vaccine/add/' %} active{% endif %}"
+   href="{% url 'core:vaccine-add' %}"><i class="icon-add" aria-hidden="true"></i>
+{% trans "Vaccine" %}
+</a>
+{% endif %}
 {% if perms.core.view_pumping %}
     <a class="dropdown-item{% if request.path == '/pumping/' %} active{% endif %}"
        href="{% url 'core:pumping-list' %}">

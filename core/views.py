@@ -300,6 +300,33 @@ class MedicationDelete(CoreDeleteView):
     success_url = reverse_lazy("core:medication-list")
 
 
+class VaccineList(PermissionRequiredMixin, BabyBuddyPaginatedView, BabyBuddyFilterView):
+    model = models.Vaccine
+    template_name = "core/vaccine_list.html"
+    permission_required = ("core.view_vaccine",)
+    filterset_class = filters.VaccineFilter
+
+
+class VaccineAdd(CoreAddView):
+    model = models.Vaccine
+    permission_required = ("core.add_vaccine",)
+    form_class = forms.VaccineForm
+    success_url = reverse_lazy("core:vaccine-list")
+
+
+class VaccineUpdate(CoreUpdateView):
+    model = models.Vaccine
+    permission_required = ("core.change_vaccine",)
+    form_class = forms.VaccineForm
+    success_url = reverse_lazy("core:vaccine-list")
+
+
+class VaccineDelete(CoreDeleteView):
+    model = models.Vaccine
+    permission_required = ("core.delete_vaccine",)
+    success_url = reverse_lazy("core:vaccine-list")
+
+
 class NoteList(PermissionRequiredMixin, BabyBuddyPaginatedView, BabyBuddyFilterView):
     model = models.Note
     template_name = "core/note_list.html"
