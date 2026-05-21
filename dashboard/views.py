@@ -43,6 +43,12 @@ class Dashboard(LoginRequiredMixin, TemplateView):
             return HttpResponseRedirect(
                 reverse("dashboard:dashboard-child", args={Child.objects.first().slug})
             )
+        # Multiple children — go to last visited child's dashboard if known
+        last_slug = request.session.get("last_child_slug")
+        if last_slug and Child.objects.filter(slug=last_slug).exists():
+            return HttpResponseRedirect(
+                reverse("dashboard:dashboard-child", kwargs={"slug": last_slug})
+            )
         return super(Dashboard, self).get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -56,11 +62,19 @@ class ChildDashboard(PermissionRequiredMixin, DetailView):
     permission_required = ("core.view_child",)
     template_name = "dashboard/child.html"
 
+    def get(self, request, *args, **kwargs):
+        request.session["last_child_slug"] = kwargs["slug"]
+        return super().get(request, *args, **kwargs)
+
 
 class ChildTrack(PermissionRequiredMixin, DetailView):
     model = Child
     permission_required = ("core.view_child",)
     template_name = "dashboard/track.html"
+
+    def get(self, request, *args, **kwargs):
+        request.session["last_child_slug"] = kwargs["slug"]
+        return super().get(request, *args, **kwargs)
 
     SLEEP_TIMER_NAMES = ["Sleep", "Nap"]
     PUMP_TIMER_NAMES = ["Pump Left", "Pump Right"]
@@ -121,6 +135,12 @@ class Track(LoginRequiredMixin, TemplateView):
         elif children == 1:
             return HttpResponseRedirect(
                 reverse("dashboard:track-child", args={Child.objects.first().slug})
+            )
+        # Multiple children — go to last visited child's track page if known
+        last_slug = request.session.get("last_child_slug")
+        if last_slug and Child.objects.filter(slug=last_slug).exists():
+            return HttpResponseRedirect(
+                reverse("dashboard:track-child", kwargs={"slug": last_slug})
             )
         return super().get(request, *args, **kwargs)
 
