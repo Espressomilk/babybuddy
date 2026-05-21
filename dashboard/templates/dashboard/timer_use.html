@@ -68,38 +68,39 @@
     font-size: 0.9rem;
     font-weight: 600;
     text-align: center;
-    text-decoration: none;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
     touch-action: manipulation;
-    display: block;
-    width: 100%;
     box-sizing: border-box;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
   }
-  .tu-btn:hover { background: #2e3d5f; color: #fff; }
+  .tu-btn.tu-selected {
+    background: #2e3d5f;
+    color: #fff;
+  }
 
-  .tu-btn-form { flex: 1; margin: 0; }
-
-  /* ── Bottom actions ── */
+  /* ── Footer ── */
   .tu-footer {
     display: flex;
     gap: 0.6rem;
     margin-top: 2.5rem;
   }
-  .tu-back {
+  .tu-confirm {
     flex: 1;
     padding: 0.75rem;
     border-radius: 12px;
-    border: 2px solid #aaa;
-    background: transparent;
-    color: #666;
+    border: none;
+    background: #2e3d5f;
+    color: #fff;
     font-size: 0.95rem;
-    font-weight: 600;
-    text-align: center;
-    text-decoration: none;
-    transition: border-color 0.15s, color 0.15s;
+    font-weight: 700;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background 0.15s, opacity 0.15s;
   }
-  .tu-back:hover { border-color: #555; color: #333; }
+  .tu-confirm:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
   .tu-discard {
     flex: 1;
     padding: 0.75rem;
@@ -110,11 +111,23 @@
     font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
     touch-action: manipulation;
+    transition: background 0.15s, color 0.15s;
   }
-  .tu-discard:hover { background: #c0392b; color: #fff; }
+
+  @media (hover: hover) {
+    .tu-btn:not(.tu-selected):hover { background: #e8eef8; }
+    .tu-confirm:not(:disabled):hover { background: #1a2a45; }
+    .tu-discard:hover { background: #c0392b; color: #fff; }
+  }
 </style>
+
+{# Single hidden form for all POST activities #}
+<form id="tu-post-form" method="post"
+      action="{% url 'dashboard:timer-use-save' child.slug timer.pk %}">
+  {% csrf_token %}
+  <input type="hidden" name="activity" id="tu-activity-input" value="">
+</form>
 
 <div class="tu-wrap">
 
@@ -129,18 +142,8 @@
   {% if perms.core.add_sleep %}
   <p class="tu-section">{% trans "Sleep" %}</p>
   <div class="tu-btn-row">
-    <form class="tu-btn-form" method="post"
-          action="{% url 'dashboard:timer-use-save' child.slug timer.pk %}">
-      {% csrf_token %}
-      <input type="hidden" name="activity" value="sleep">
-      <button type="submit" class="tu-btn">{% trans "Sleep" %}</button>
-    </form>
-    <form class="tu-btn-form" method="post"
-          action="{% url 'dashboard:timer-use-save' child.slug timer.pk %}">
-      {% csrf_token %}
-      <input type="hidden" name="activity" value="nap">
-      <button type="submit" class="tu-btn">{% trans "Nap" %}</button>
-    </form>
+    <button type="button" class="tu-btn" data-action="post" data-activity="sleep">{% trans "Sleep" %}</button>
+    <button type="button" class="tu-btn" data-action="post" data-activity="nap">{% trans "Nap" %}</button>
   </div>
   {% endif %}
 
@@ -148,42 +151,35 @@
   {% if perms.core.add_tummytime %}
   <p class="tu-section">{% trans "Tummy Time" %}</p>
   <div class="tu-btn-row">
-    <form class="tu-btn-form" method="post"
-          action="{% url 'dashboard:timer-use-save' child.slug timer.pk %}">
-      {% csrf_token %}
-      <input type="hidden" name="activity" value="tummytime">
-      <button type="submit" class="tu-btn">{% trans "Tummy Time" %}</button>
-    </form>
+    <button type="button" class="tu-btn" data-action="post" data-activity="tummytime">{% trans "Tummy Time" %}</button>
   </div>
   {% endif %}
 
-  {# ── Pumping (needs amount — navigate to form) ── #}
+  {# ── Pumping ── #}
   {% if perms.core.add_pumping %}
   <p class="tu-section">{% trans "Pumping" %}</p>
   <div class="tu-btn-row">
-    <a href="{% url 'core:pumping-add' %}?timer={{ timer.pk }}&child={{ child.slug }}"
-       class="tu-btn">
+    <button type="button" class="tu-btn" data-action="navigate"
+            data-url="{% url 'core:pumping-add' %}?timer={{ timer.pk }}&child={{ child.slug }}">
       {% trans "Pumping" %}
-    </a>
+    </button>
   </div>
   {% endif %}
 
-  {# ── Feeding (navigate to our custom forms) ── #}
+  {# ── Feeding ── #}
   {% if perms.core.add_feeding %}
   <p class="tu-section">{% trans "Feeding" %}</p>
   <div class="tu-btn-row">
-    <a href="{% url 'dashboard:breastfeed-add' child.slug %}"
-       class="tu-btn">{% trans "Breastfeed" %}</a>
-    <a href="{% url 'dashboard:bottlefeed-add' child.slug %}"
-       class="tu-btn">{% trans "Bottle Feed" %}</a>
+    <button type="button" class="tu-btn" data-action="navigate"
+            data-url="{% url 'dashboard:breastfeed-add' child.slug %}">{% trans "Breastfeed" %}</button>
+    <button type="button" class="tu-btn" data-action="navigate"
+            data-url="{% url 'dashboard:bottlefeed-add' child.slug %}">{% trans "Bottle Feed" %}</button>
   </div>
   {% endif %}
 
   {# ── Footer ── #}
   <div class="tu-footer">
-    <a href="{% url 'dashboard:track-child' child.slug %}" class="tu-back">
-      {% trans "Back" %}
-    </a>
+    <button type="button" id="tu-confirm" class="tu-confirm" disabled>{% trans "Confirm" %}</button>
     {% if perms.core.delete_timer %}
     <form style="flex:1;margin:0;" method="post"
           action="{% url 'dashboard:timer-stop' child.slug timer.pk %}">
@@ -199,6 +195,7 @@
 
 <script>
 (function () {
+  /* ── Clock ── */
   const pad = n => String(n).padStart(2, '0');
   function fmt(s) {
     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
@@ -211,6 +208,37 @@
   }
   tick();
   setInterval(tick, 1000);
+
+  /* ── Select / Confirm ── */
+  var selectedBtn  = null;
+  var confirmBtn   = document.getElementById('tu-confirm');
+  var postForm     = document.getElementById('tu-post-form');
+  var activityInput = document.getElementById('tu-activity-input');
+
+  document.querySelectorAll('.tu-btn[data-action]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      if (selectedBtn === btn) {
+        btn.classList.remove('tu-selected');
+        selectedBtn = null;
+        confirmBtn.disabled = true;
+      } else {
+        if (selectedBtn) selectedBtn.classList.remove('tu-selected');
+        btn.classList.add('tu-selected');
+        selectedBtn = btn;
+        confirmBtn.disabled = false;
+      }
+    });
+  });
+
+  confirmBtn.addEventListener('click', function () {
+    if (!selectedBtn || confirmBtn.disabled) return;
+    if (selectedBtn.getAttribute('data-action') === 'navigate') {
+      window.location.href = selectedBtn.getAttribute('data-url');
+    } else {
+      activityInput.value = selectedBtn.getAttribute('data-activity');
+      postForm.submit();
+    }
+  });
 })();
 </script>
 {% endblock %}
