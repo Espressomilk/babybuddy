@@ -268,6 +268,7 @@
     touch-action: pan-y;
     user-select: none;
   }
+
 </style>
 
 <div class="qa-grid">
@@ -657,18 +658,6 @@
 
 <script>
 (function () {
-  // ── Scroll position restore (Safari form-submit scroll fix) ───────────────
-  var savedY = sessionStorage.getItem('trackScrollY');
-  if (savedY !== null) {
-    sessionStorage.removeItem('trackScrollY');
-    window.scrollTo(0, parseInt(savedY, 10));
-  }
-  document.querySelectorAll('form').forEach(function (form) {
-    form.addEventListener('submit', function () {
-      sessionStorage.setItem('trackScrollY', window.scrollY);
-    });
-  });
-
   // ── Clocks ────────────────────────────────────────────────────────────────
   function pad(n) { return String(n).padStart(2, '0'); }
   function formatElapsed(s) {
@@ -692,23 +681,67 @@
 
   // ── Content refresh (no page reload) ─────────────────────────────────────
   var refreshing = false;
-  function refreshContent(scrollY) {
+  var postInFlight = false;   // true while a form POST is awaiting its response
+
+  // applyHtml does the actual DOM swap + toast extraction for a given HTML string.
+  function applyHtml(html, scrollY) {
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var newEl = doc.getElementById('view-dashboard:track-child');
+    var curEl = document.getElementById('view-dashboard:track-child');
+    if (newEl && curEl) {
+      // Lift any Django messages out before the DOM swap so they never
+      // cause a layout shift.  Show them as floating snackbars instead.
+      var toasts = [];
+      newEl.querySelectorAll('.alert').forEach(function (alertEl) {
+        var type = 'default';
+        if (alertEl.classList.contains('alert-success')) type = 'success';
+        else if (alertEl.classList.contains('alert-danger'))  type = 'danger';
+        else if (alertEl.classList.contains('alert-warning')) type = 'warning';
+        else if (alertEl.classList.contains('alert-info'))    type = 'info';
+        var clone = alertEl.cloneNode(true);
+        var closeBtn = clone.querySelector('.btn-close');
+        if (closeBtn) closeBtn.remove();
+        toasts.push({ text: clone.textContent.trim(), type: type });
+        alertEl.remove();
+      });
+
+      // Freeze the viewport during the DOM swap so Safari never sees a scroll
+      document.body.style.position = 'fixed';
+      document.body.style.top      = '-' + scrollY + 'px';
+      document.body.style.width    = '100%';
+      curEl.innerHTML = newEl.innerHTML;
+      document.body.style.position = '';
+      document.body.style.top      = '';
+      document.body.style.width    = '';
+      window.scrollTo(0, scrollY);
+
+      toasts.forEach(function (t) { showToast(t.text, t.type); });
+    }
+    initClocks();
+    bindForms();
+    initSwipeToDiscard();
+    refreshing = false;
+  }
+
+  // refreshContent fetches a fresh copy of the page and applies it.
+  // Pass preloadedHtml to skip the extra GET (used after form POSTs, where
+  // the POST response already carries the correct Django messages — a second
+  // GET would miss them because they are consumed on first render).
+  //
+  // When preloadedHtml is supplied we always apply it immediately, bypassing
+  // the refreshing guard, so a concurrent WS-triggered refresh cannot block it.
+  function refreshContent(scrollY, preloadedHtml) {
     openSwipeWrap = null;
+    if (preloadedHtml) {
+      refreshing = true;
+      applyHtml(preloadedHtml, scrollY);
+      return;
+    }
     if (refreshing) return;
     refreshing = true;
     fetch(window.location.href, { credentials: 'same-origin' })
       .then(function (r) { return r.text(); })
-      .then(function (html) {
-        var doc = new DOMParser().parseFromString(html, 'text/html');
-        var newEl = doc.getElementById('view-dashboard:track-child');
-        var curEl = document.getElementById('view-dashboard:track-child');
-        if (newEl && curEl) curEl.innerHTML = newEl.innerHTML;
-        initClocks();
-        bindForms();
-        initSwipeToDiscard();
-        window.scrollTo(0, scrollY);
-        refreshing = false;
-      })
+      .then(function (html) { applyHtml(html, scrollY); })
       .catch(function () { refreshing = false; window.location.reload(); });
   }
 
@@ -719,9 +752,14 @@
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         var scrollY = window.scrollY;
+        postInFlight = true;
+        // Capture the POST response text directly — Django messages are
+        // consumed when the redirected page is rendered, so a second GET
+        // (done by refreshContent with no preloadedHtml) would miss them.
         fetch(form.action, { method: 'POST', body: new FormData(form), credentials: 'same-origin' })
-          .then(function () { refreshContent(scrollY); })
-          .catch(function () { form.submit(); });
+          .then(function (r) { return r.text(); })
+          .then(function (html) { postInFlight = false; refreshContent(scrollY, html); })
+          .catch(function () { postInFlight = false; form.submit(); });
       });
     });
   }
@@ -805,7 +843,10 @@
     ws = new WebSocket(scheme + '://' + window.location.host + '/ws/track/{{ object.slug }}/');
     ws.onmessage = function (e) {
       var data = JSON.parse(e.data);
-      if (data.type === 'refresh') refreshContent(window.scrollY);
+      // Suppress WS-triggered refresh while a form POST is in flight:
+      // the POST response will call refreshContent with preloaded HTML,
+      // and a concurrent WS GET would race to consume the Django message first.
+      if (data.type === 'refresh' && !postInFlight) refreshContent(window.scrollY);
     };
     ws.onclose = function () {
       if (wsReconnectTimer) clearTimeout(wsReconnectTimer);

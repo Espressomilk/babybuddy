@@ -29,7 +29,67 @@
         a, button, [role="button"] { cursor: pointer; touch-action: manipulation; }
         /* pressed state shown on touchstart, cleared on touchend */
         .touch-pressed { opacity: 0.55 !important; transition: none !important; }
+        /* Django success/info/warning alerts are intercepted as floating toasts —
+           hide them in the normal document flow so they never cause a layout shift */
+        .alert-success, .alert-info, .alert-warning { display: none !important; }
+        /* ── Floating snackbar toasts ─────────────────────────────────────── */
+        #bb-toast-container {
+          position: fixed; bottom: 1.75rem; left: 50%; transform: translateX(-50%);
+          z-index: 9999; display: flex; flex-direction: column-reverse;
+          align-items: center; gap: 0.5rem;
+          width: calc(100% - 2rem); max-width: 480px; pointer-events: none;
+        }
+        .bb-toast {
+          width: 100%; padding: 0.8rem 1.25rem; border-radius: 14px;
+          font-size: 0.97rem; font-weight: 500; text-align: center;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.22); pointer-events: auto;
+          opacity: 0; transform: translateY(12px);
+          transition: opacity 0.22s ease, transform 0.22s ease;
+          background: #2e3d5f; color: #fff;
+        }
+        .bb-toast.bb-toast-success { background: #2a6e48; }
+        .bb-toast.bb-toast-danger  { background: #b03030; }
+        .bb-toast.bb-toast-warning { background: #7a5800; }
+        .bb-toast.bb-toast-info    { background: #1a5a7a; }
+        .bb-toast.bb-toast-visible { opacity: 1; transform: translateY(0); }
         </style>
+        <script>
+        // Global toast — available on every page
+        function showToast(text, type) {
+          if (!text) return;
+          var container = document.getElementById('bb-toast-container');
+          if (!container) {
+            container = document.createElement('div');
+            container.id = 'bb-toast-container';
+            document.body.appendChild(container);
+          }
+          var toast = document.createElement('div');
+          var cls = ({success:1, danger:1, warning:1, info:1}[type]) ? type
+                    : (type === 'error') ? 'danger' : 'default';
+          toast.className = 'bb-toast bb-toast-' + cls;
+          toast.textContent = text;
+          container.appendChild(toast);
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () { toast.classList.add('bb-toast-visible'); });
+          });
+          setTimeout(function () {
+            toast.classList.remove('bb-toast-visible');
+            toast.addEventListener('transitionend', function () { toast.remove(); }, { once: true });
+          }, 3000);
+        }
+        // On full-page navigations, lift hidden Django message alerts into toasts
+        document.addEventListener('DOMContentLoaded', function () {
+          document.querySelectorAll('.alert-success, .alert-info, .alert-warning').forEach(function (alertEl) {
+            var type = alertEl.classList.contains('alert-success') ? 'success'
+                     : alertEl.classList.contains('alert-warning') ? 'warning' : 'info';
+            var clone = alertEl.cloneNode(true);
+            var btn = clone.querySelector('.btn-close');
+            if (btn) btn.remove();
+            showToast(clone.textContent.trim(), type);
+            alertEl.remove();
+          });
+        });
+        </script>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="Baby Buddy" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black" />
