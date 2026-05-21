@@ -657,6 +657,18 @@
 
 <script>
 (function () {
+  // ── Scroll position restore (Safari form-submit scroll fix) ───────────────
+  var savedY = sessionStorage.getItem('trackScrollY');
+  if (savedY !== null) {
+    sessionStorage.removeItem('trackScrollY');
+    window.scrollTo(0, parseInt(savedY, 10));
+  }
+  document.querySelectorAll('form').forEach(function (form) {
+    form.addEventListener('submit', function () {
+      sessionStorage.setItem('trackScrollY', window.scrollY);
+    });
+  });
+
   // ── Clocks ────────────────────────────────────────────────────────────────
   function pad(n) { return String(n).padStart(2, '0'); }
   function formatElapsed(s) {
