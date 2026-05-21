@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.exceptions import ValidationError
 from django.http import HttpResponseRedirect
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext as _
@@ -598,6 +598,50 @@ class PumpPendingDiscard(PermissionRequiredMixin, View):
         Timer.objects.filter(child=child, name__in=["Pump Left", "Pump Right"]).delete()
         PumpPending.objects.filter(child=child).delete()
         _broadcast_track(kwargs["slug"])
+        return HttpResponseRedirect(
+            reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})
+        )
+
+
+class QuickPumpSave(PermissionRequiredMixin, View):
+    """Show a streamlined pumping form seeded from a generic timer; save on POST."""
+
+    permission_required = ("core.add_pumping",)
+    template_name = "dashboard/pump_quick.html"
+
+    def get_child(self):
+        return get_object_or_404(Child, slug=self.kwargs["slug"])
+
+    def get(self, request, *args, **kwargs):
+        child = self.get_child()
+        timer = get_object_or_404(Timer, pk=kwargs["pk"], child=child)
+        return render(request, self.template_name, {"child": child, "timer": timer})
+
+    def post(self, request, *args, **kwargs):
+        child = self.get_child()
+        timer = get_object_or_404(Timer, pk=kwargs["pk"], child=child)
+        try:
+            amount = float(request.POST.get("amount") or 0)
+        except (ValueError, TypeError):
+            amount = 0
+        notes = request.POST.get("notes", "").strip()
+        end = timezone.now()
+        try:
+            entry = Pumping(
+                child=child,
+                start=timer.start,
+                end=end,
+                amount=amount,
+                notes=notes,
+            )
+            entry.full_clean()
+            entry.save()
+            timer.stop()
+            messages.success(request, _("Pumping entry saved."))
+            _broadcast_track(kwargs["slug"])
+        except ValidationError as e:
+            for msg in e.messages:
+                messages.error(request, msg)
         return HttpResponseRedirect(
             reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})
         )

@@ -160,7 +160,7 @@
   <p class="tu-section">{% trans "Pumping" %}</p>
   <div class="tu-btn-row">
     <button type="button" class="tu-btn" data-action="navigate"
-            data-url="{% url 'core:pumping-add' %}?timer={{ timer.pk }}&child={{ child.slug }}">
+            data-url="{% url 'dashboard:pump-quick' child.slug timer.pk %}">
       {% trans "Pumping" %}
     </button>
   </div>

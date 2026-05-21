@@ -8,7 +8,7 @@
                      width="30"
                      height="30"
                      class="d-inline-block align-top"
-                     {% if '/track/' not in request.path %}style="filter: grayscale(1); opacity: 0.4;"{% endif %}
+                     {% if 'dashboard:track' not in request.resolver_match.view_name %}style="filter: grayscale(1); opacity: 0.4;"{% endif %}
                      alt="">
                 <span class="d-none d-lg-inline-block">
                     <span class="text-primary">Baby</span> Buddy
@@ -23,7 +23,7 @@
             &nbsp;
         </div>
         <div>
-        <a class="{% if '/timeline' in request.path %}text-primary{% else %}text-body-secondary{% endif %}"
+        <a class="{% if request.resolver_match.view_name == 'core:timeline' %}text-primary{% else %}text-body-secondary{% endif %}"
            href="{% url 'core:timeline' %}"
            aria-expanded="false"><i class="icon-2x icon-timeline" aria-hidden="true"></i>
     </a>

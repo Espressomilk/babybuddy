@@ -79,6 +79,11 @@ urlpatterns = [
         name="timer-stop",
     ),
     path(
+        "children/<str:slug>/timer/<int:pk>/pump-quick/",
+        views.QuickPumpSave.as_view(),
+        name="pump-quick",
+    ),
+    path(
         "children/<str:slug>/pump-timer/<str:side>/toggle/",
         views.PumpTimerToggle.as_view(),
         name="pump-timer-toggle",

@@ -1,0 +1,222 @@
+{% extends 'babybuddy/page.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Pumping" %} - {{ child }}{% endblock %}
+
+{% block breadcrumbs %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'core:child-list' %}">{% trans "Children" %}</a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="{% url 'dashboard:track-child' child.slug %}">{{ child }}</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">{% trans "Pumping" %}</li>
+{% endblock %}
+
+{% block content %}
+<style>
+  .pq-wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 1rem 0 3rem;
+  }
+
+  .pq-section {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #888;
+    margin: 1.5rem 0 0.4rem;
+  }
+
+  /* ── Info rows (start time, duration) ── */
+  .pq-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.7rem 1rem;
+    border: 1.5px solid #ddd;
+    border-radius: 12px;
+    background: #f7f8fa;
+    font-size: 1.05rem;
+    color: #2d2d2d;
+  }
+  .pq-info-label {
+    font-size: 0.85rem;
+    color: #888;
+    font-weight: 600;
+  }
+  .pq-elapsed {
+    font-size: 1.3rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #2e3d5f;
+    letter-spacing: 0.03em;
+  }
+
+  /* ── Amount stepper ── */
+  .pq-amount-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .pq-stepper {
+    display: flex;
+    flex: 1;
+    align-items: stretch;
+    border: 1.5px solid #ddd;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .pq-stepper-btn {
+    width: 60px;
+    min-height: 60px;
+    border: none;
+    background: #eef0f4;
+    color: #2d2d2d;
+    font-size: 1.8rem;
+    font-weight: 300;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    user-select: none;
+    touch-action: manipulation;
+    transition: background 0.12s;
+  }
+  .pq-stepper-btn:hover  { background: #dde1ea; }
+  .pq-stepper-btn:active { background: #c8cedb; }
+  .pq-stepper input[type="number"] {
+    flex: 1;
+    border: none;
+    border-left: 1.5px solid #ddd;
+    border-right: 1.5px solid #ddd;
+    font-size: 1.3rem;
+    font-weight: 700;
+    text-align: center;
+    background: #fff;
+    color: #2d2d2d;
+    min-width: 0;
+    -moz-appearance: textfield;
+  }
+  .pq-stepper input[type="number"]::-webkit-inner-spin-button,
+  .pq-stepper input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .pq-stepper input[type="number"]:focus {
+    outline: none;
+  }
+  .pq-amount-unit {
+    font-size: 1rem;
+    font-weight: 600;
+    color: inherit;
+    min-width: 28px;
+  }
+
+  /* ── Notes ── */
+  .pq-notes textarea {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border: 1.5px solid #ddd;
+    border-radius: 12px;
+    font-size: 1rem;
+    color: #2d2d2d;
+    background: #fff;
+    box-sizing: border-box;
+    resize: vertical;
+    transition: border-color 0.15s;
+  }
+  .pq-notes textarea:focus {
+    outline: none;
+    border-color: #2e3d5f;
+  }
+
+  /* ── Save ── */
+  .pq-save {
+    width: 100%;
+    padding: 0.9rem;
+    border: none;
+    border-radius: 14px;
+    background: #2e3d5f;
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 2rem;
+    transition: background 0.15s;
+  }
+  .pq-save:hover { background: #1a2a45; }
+</style>
+
+<div class="pq-wrap">
+  <form method="post">
+    {% csrf_token %}
+
+    {# ── Start time ── #}
+    <p class="pq-section">{% trans "Start Time" %}</p>
+    <div class="pq-info">
+      <span class="pq-info-label">{% trans "Started" %}</span>
+      <span>{{ timer.start|date:"N j, Y, g:i a" }}</span>
+    </div>
+
+    {# ── Duration ── #}
+    <p class="pq-section">{% trans "Duration" %}</p>
+    <div class="pq-info">
+      <span class="pq-info-label">{% trans "Elapsed" %}</span>
+      <span class="pq-elapsed" id="pq-elapsed">—</span>
+    </div>
+
+    {# ── Amount ── #}
+    <p class="pq-section">{% trans "Amount" %}</p>
+    <div class="pq-amount-row">
+      <div class="pq-stepper">
+        <button type="button" class="pq-stepper-btn" data-delta="-5">−</button>
+        <input type="number" name="amount" id="pq-amount" value="0" min="0" step="1">
+        <button type="button" class="pq-stepper-btn" data-delta="5">+</button>
+      </div>
+      <span class="pq-amount-unit">ml</span>
+    </div>
+
+    {# ── Notes ── #}
+    <p class="pq-section">{% trans "Notes" %}</p>
+    <div class="pq-notes">
+      <textarea name="notes" id="pq-notes" rows="3" placeholder="{% trans "Optional notes…" %}"></textarea>
+    </div>
+
+    <button type="submit" class="pq-save">{% trans "Save" %}</button>
+  </form>
+</div>
+
+<script>
+(function () {
+  var start = new Date("{{ timer.start|date:'c' }}");
+  var el = document.getElementById('pq-elapsed');
+
+  function updateElapsed() {
+    var diff = Math.floor((Date.now() - start.getTime()) / 1000);
+    if (diff < 0) diff = 0;
+    var h = Math.floor(diff / 3600);
+    var m = Math.floor((diff % 3600) / 60);
+    var s = diff % 60;
+    el.textContent = h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  updateElapsed();
+  setInterval(updateElapsed, 1000);
+
+  var amountInput = document.getElementById('pq-amount');
+  document.querySelectorAll('.pq-stepper-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var delta = parseFloat(btn.dataset.delta);
+      var current = parseFloat(amountInput.value) || 0;
+      amountInput.value = Math.max(0, Math.round((current + delta) * 10) / 10);
+    });
+  });
+})();
+</script>
+{% endblock %}
