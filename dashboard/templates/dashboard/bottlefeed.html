@@ -57,9 +57,10 @@
   }
 
   /* ── Start time ── */
-  .bf-start input[type="text"],
-  .bf-start input[type="datetime-local"] {
+  .bf-start { overflow: hidden; }
+  .bf-start input {
     width: 100%;
+    max-width: 100%;
     padding: 0.7rem 1rem;
     border: 1.5px solid #ddd;
     border-radius: 12px;
@@ -67,6 +68,9 @@
     background: #fff;
     color: #2d2d2d;
     box-sizing: border-box;
+    /* prevent iOS datetime-local from ignoring width constraint */
+    -webkit-appearance: none;
+    appearance: none;
     transition: border-color 0.15s;
   }
   .bf-start input:focus {
