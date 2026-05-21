@@ -16,7 +16,7 @@
             </a>
             <div class="d-lg-none d-md-none d-flex me-auto p-0 ms-2">
                 <div>
-                <a class="{% if request.path == '/' %}text-primary{% else %}text-body-secondary{% endif %}"
+                <a class="{% if '/dashboard/' in request.path %}text-primary{% else %}text-body-secondary{% endif %}"
                    href="{% url 'dashboard:dashboard' %}"
                    aria-expanded="false"><i class="icon-2x icon-dashboard" aria-hidden="true"></i>
             </a>

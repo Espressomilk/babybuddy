@@ -151,6 +151,14 @@ class BreastfeedAdd(PermissionRequiredMixin, SuccessMessageMixin, CreateView):
         ctx["child"] = self.get_child()
         return ctx
 
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        timer_pk = self.request.GET.get("timer")
+        if timer_pk:
+            Timer.objects.filter(pk=timer_pk, child=self.get_child()).delete()
+            _broadcast_track(self.kwargs["slug"])
+        return response
+
     def get_success_url(self):
         return reverse("dashboard:track-child", kwargs={"slug": self.kwargs["slug"]})
 
@@ -642,6 +650,10 @@ class BottleFeedAdd(PermissionRequiredMixin, FormView):
     def form_valid(self, form):
         form.save()
         messages.success(self.request, _("Bottle feeding entry added!"))
+        timer_pk = self.request.GET.get("timer")
+        if timer_pk:
+            Timer.objects.filter(pk=timer_pk, child=self.get_child()).delete()
+            _broadcast_track(self.kwargs["slug"])
         return HttpResponseRedirect(self.get_success_url())
 
     def get_success_url(self):
