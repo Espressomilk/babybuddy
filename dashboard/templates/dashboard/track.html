@@ -302,7 +302,7 @@
           <div class="qa-timer-row qa-swipe-row">
             <i class="icon-timer qa-icon" style="font-size:1.3rem;opacity:0.7;" aria-hidden="true"></i>
             <span class="qa-timer-name">
-              {% if timer.name %}{{ timer.name }}{% else %}{% trans "Timer" %} #{{ forloop.counter }}{% endif %}
+              {% if timer.name %}{{ timer.name }}{% else %}{% trans "Timer" %} #{{ timer.pk }}{% endif %}
             </span>
             <span class="qa-timer-clock" data-start="{{ timer.start|date:'c' }}">0:00:00</span>
             <a href="{% url 'dashboard:timer-use' object.slug timer.pk %}" class="qa-timer-use">

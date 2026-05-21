@@ -30,68 +30,6 @@
     &nbsp;
 </div>
 </div>
-<div class="d-lg-none d-md-none d-flex ms-auto p-0 me-2">
-    {% quick_timer_nav %}
-    <div class="dropdown show">
-    <a class="text-success"
-       href="#"
-       role="button"
-       id="nav-quick-add-link"
-       data-bs-toggle="dropdown"
-       aria-haspopup="true"
-       aria-expanded="false"><i class="icon-2x icon-add" aria-hidden="true"></i>
-</a>
-<div class="dropdown-menu dropdown-menu-end"
-     aria-labelledby="nav-quick-add-link">
-    {% if perms.core.add_diaperchange %}
-        <a class="dropdown-item p-2" href="{% url 'core:diaperchange-add' %}">
-            <i class="icon-diaperchange" aria-hidden="true"></i>
-            {% trans "Diaper Change" %}
-        </a>
-    {% endif %}
-    {% if perms.core.add_feeding %}
-        <a class="dropdown-item p-2" href="{% url 'core:feeding-add' %}">
-            <i class="icon-feeding" aria-hidden="true"></i>
-            {% trans "Feeding" %}
-        </a>
-        <a class="dropdown-item p-2" href="{% url 'core:bottle-feeding-add' %}">
-            <i class="icon-feeding" aria-hidden="true"></i>
-            {% trans "Bottle Feeding" %}
-        </a>
-    {% endif %}
-    {% if perms.core.add_medication %}
-        <a class="dropdown-item p-2" href="{% url 'core:medication-add' %}">
-            <i class="icon-medication" aria-hidden="true"></i>
-            {% trans "Medication" %}
-        </a>
-    {% endif %}
-    {% if perms.core.add_pumping %}
-        <a class="dropdown-item p-2" href="{% url 'core:pumping-add' %}">
-            <i class="icon-pumping" aria-hidden="true"></i>
-            {% trans "Pumping" %}
-        </a>
-    {% endif %}
-    {% if perms.core.add_note %}
-        <a class="dropdown-item p-2" href="{% url 'core:note-add' %}">
-            <i class="icon-note" aria-hidden="true"></i>
-            {% trans "Note" %}
-        </a>
-    {% endif %}
-    {% if perms.core.add_sleep %}
-        <a class="dropdown-item p-2" href="{% url 'core:sleep-add' %}">
-            <i class="icon-sleep" aria-hidden="true"></i>
-            {% trans "Sleep" %}
-        </a>
-    {% endif %}
-    {% if  perms.core.add_tummytime %}
-        <a class="dropdown-item p-2" href="{% url 'core:tummytime-add' %}">
-            <i class="icon-tummytime" aria-hidden="true"></i>
-            {% trans "Tummy Time" %}
-        </a>
-    {% endif %}
-</div>
-</div>
-</div>
 <button class="navbar-toggler"
         type="button"
         data-bs-toggle="collapse"
