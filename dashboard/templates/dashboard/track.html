@@ -771,10 +771,27 @@
     });
   }
 
+  // ── WebSocket real-time sync ──────────────────────────────────────────────
+  var ws = null, wsReconnectTimer = null;
+  function connectWS() {
+    var scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    ws = new WebSocket(scheme + '://' + window.location.host + '/ws/track/{{ object.slug }}/');
+    ws.onmessage = function (e) {
+      var data = JSON.parse(e.data);
+      if (data.type === 'refresh') refreshContent(window.scrollY);
+    };
+    ws.onclose = function () {
+      if (wsReconnectTimer) clearTimeout(wsReconnectTimer);
+      wsReconnectTimer = setTimeout(connectWS, 5000);
+    };
+    ws.onerror = function () { ws.close(); };
+  }
+
   // ── Boot ──────────────────────────────────────────────────────────────────
   initClocks();
   bindForms();
   initSwipeToDiscard();
+  connectWS();
 })();
 </script>
 {% endblock %}

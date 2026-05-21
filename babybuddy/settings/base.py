@@ -33,6 +33,8 @@ DEBUG = bool(strtobool(os.environ.get("DEBUG") or "False"))
 # https://docs.djangoproject.com/en/5.0/ref/applications/
 
 INSTALLED_APPS = [
+    "daphne",
+    "channels",
     "api",
     "babybuddy.apps.BabyBuddyConfig",
     "core.apps.CoreConfig",
@@ -142,10 +144,14 @@ CACHES = {
 }
 
 
-# WGSI
-# https://docs.djangoproject.com/en/5.0/howto/deployment/wsgi/
+# ASGI / WebSockets (Django Channels)
+ASGI_APPLICATION = "babybuddy.asgi.application"
 
-WSGI_APPLICATION = "babybuddy.wsgi.application"
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    }
+}
 
 
 # Authentication

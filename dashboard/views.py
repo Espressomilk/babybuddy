@@ -19,6 +19,19 @@ from .forms import BottleFeedForm, BreastfeedForm, DiaperChangeQuickForm, PumpCo
 from .models import PumpPending
 
 
+def _broadcast_track(child_slug):
+    """Push a refresh signal to all WebSocket clients watching this child's track page."""
+    try:
+        from asgiref.sync import async_to_sync
+        from channels.layers import get_channel_layer
+        async_to_sync(get_channel_layer().group_send)(
+            f"track_{child_slug}",
+            {"type": "state.changed"},
+        )
+    except Exception:
+        pass
+
+
 class Dashboard(LoginRequiredMixin, TemplateView):
     template_name = "dashboard/dashboard.html"
 
@@ -157,6 +170,7 @@ class SleepTimerStart(PermissionRequiredMixin, View):
         # Remove any existing sleep/nap timer before starting a fresh one
         Timer.objects.filter(child=child, name__in=self.SLEEP_TIMER_NAMES).delete()
         Timer.objects.create(child=child, user=request.user, name=name)
+        _broadcast_track(kwargs["slug"])
         return HttpResponseRedirect(
             reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})
         )
@@ -186,6 +200,7 @@ class SleepTimerSave(PermissionRequiredMixin, View):
         except ValidationError as e:
             for msg in e.messages:
                 messages.error(request, msg)
+        _broadcast_track(kwargs["slug"])
         return HttpResponseRedirect(
             reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})
         )
@@ -226,6 +241,7 @@ class SleepTimerNote(PermissionRequiredMixin, FormView):
             entry.save()
             timer.stop()
             messages.success(self.request, _("Sleep entry saved."))
+            _broadcast_track(self.kwargs["slug"])
             return HttpResponseRedirect(
                 reverse("dashboard:track-child", kwargs={"slug": self.kwargs["slug"]})
             )
@@ -248,6 +264,7 @@ class TummyTimerStart(PermissionRequiredMixin, View):
         child = get_object_or_404(Child, slug=kwargs["slug"])
         Timer.objects.filter(child=child, name="Tummy Time").delete()
         Timer.objects.create(child=child, user=request.user, name="Tummy Time")
+        _broadcast_track(kwargs["slug"])
         return HttpResponseRedirect(
             reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})
         )
@@ -276,6 +293,7 @@ class TummyTimerSave(PermissionRequiredMixin, View):
         except ValidationError as e:
             for msg in e.messages:
                 messages.error(request, msg)
+        _broadcast_track(kwargs["slug"])
         return HttpResponseRedirect(
             reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})
         )
@@ -315,6 +333,7 @@ class TummyTimerNote(PermissionRequiredMixin, FormView):
             entry.save()
             timer.stop()
             messages.success(self.request, _("Tummy time entry saved."))
+            _broadcast_track(self.kwargs["slug"])
             return HttpResponseRedirect(
                 reverse("dashboard:track-child", kwargs={"slug": self.kwargs["slug"]})
             )
@@ -386,6 +405,7 @@ class TimerUseSave(LoginRequiredMixin, View):
                 return HttpResponseRedirect(use_url)
 
             timer.stop()
+            _broadcast_track(kwargs["slug"])
             return HttpResponseRedirect(
                 reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})
             )
@@ -406,6 +426,7 @@ class TimerStop(PermissionRequiredMixin, View):
         child = get_object_or_404(Child, slug=kwargs["slug"])
         timer = get_object_or_404(Timer, pk=kwargs["pk"], child=child)
         timer.stop()
+        _broadcast_track(kwargs["slug"])
         return HttpResponseRedirect(
             reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})
         )
@@ -447,6 +468,7 @@ class PumpTimerToggle(PermissionRequiredMixin, View):
             else:
                 Timer.objects.create(child=child, user=request.user, name=name)
 
+        _broadcast_track(kwargs["slug"])
         return HttpResponseRedirect(
             reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})
         )
@@ -526,6 +548,7 @@ class PumpCommit(PermissionRequiredMixin, FormView):
             entry.save()
             pending.delete()
             messages.success(self.request, _("Pumping entry saved."))
+            _broadcast_track(self.kwargs["slug"])
             return HttpResponseRedirect(
                 reverse("dashboard:track-child", kwargs={"slug": self.kwargs["slug"]})
             )
@@ -550,6 +573,7 @@ class PumpSideDiscard(PermissionRequiredMixin, View):
         name = "Pump Left" if side == "left" else "Pump Right"
         Timer.objects.filter(child=child, name=name).delete()
         PumpPending.objects.filter(child=child, side=side).delete()
+        _broadcast_track(kwargs["slug"])
         return HttpResponseRedirect(
             reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})
         )
@@ -565,6 +589,7 @@ class PumpPendingDiscard(PermissionRequiredMixin, View):
         child = get_object_or_404(Child, slug=kwargs["slug"])
         Timer.objects.filter(child=child, name__in=["Pump Left", "Pump Right"]).delete()
         PumpPending.objects.filter(child=child).delete()
+        _broadcast_track(kwargs["slug"])
         return HttpResponseRedirect(
             reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})
         )

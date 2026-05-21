@@ -20,4 +20,4 @@ RUN python manage.py compilemessages
 
 EXPOSE 8000
 
-CMD ["bash", "-c", "python manage.py migrate && gunicorn babybuddy.wsgi:application -c etc/gunicorn.py --timeout 30 --log-file -"]
+CMD ["bash", "-c", "python manage.py migrate && daphne -b 0.0.0.0 -p 8000 babybuddy.asgi:application"]
