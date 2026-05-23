@@ -175,7 +175,7 @@ msgstr "意大利语"
 
 #: babybuddy/settings/base.py:208
 msgid "Korean"
-msgstr ""
+msgstr "韩语"
 
 #: babybuddy/settings/base.py:209
 msgid "Japanese"
@@ -199,7 +199,7 @@ msgstr "俄语"
 
 #: babybuddy/settings/base.py:214
 msgid "Serbian"
-msgstr ""
+msgstr "塞尔维亚语"
 
 #: babybuddy/settings/base.py:215
 msgid "Spanish"
@@ -1113,11 +1113,11 @@ msgstr "名称与宝宝名称不匹配。"
 
 #: core/forms.py:315
 msgid "Time Until Next Dosage"
-msgstr ""
+msgstr "距下次服药时间"
 
 #: core/forms.py:319
 msgid "Optional: Hours until next dose can be given"
-msgstr ""
+msgstr "可选：到下次可以服药的小时数"
 
 #: core/models.py:31
 msgid "Date can not be in the future."
@@ -1136,10 +1136,8 @@ msgid "Another entry intersects the specified time period."
 msgstr "另一个条目与指定的时间段相交。"
 
 #: core/models.py:83
-#, fuzzy
-#| msgid "Pumping entry"
 msgid "Conflicting entry"
-msgstr "挤奶记录"
+msgstr "冲突条目"
 
 #: core/models.py:98
 msgid "Date/time can not be in the future."
@@ -1358,62 +1356,56 @@ msgstr "里程碑"
 
 #: core/models.py:781 core/templates/core/medication_list.html:28
 msgid "Medication Name"
-msgstr ""
+msgstr "药物名称"
 
 #: core/models.py:782
 msgid "Name of the medication administered"
-msgstr ""
+msgstr "给药名称"
 
 #: core/models.py:788 core/templates/core/medication_list.html:29
 #: core/timeline.py:227
 msgid "Dosage"
-msgstr ""
+msgstr "剂量"
 
 #: core/models.py:789
 msgid "Amount of medication given"
-msgstr ""
+msgstr "给药剂量"
 
 #: core/models.py:794
 msgid "MG"
-msgstr ""
+msgstr "毫克"
 
 #: core/models.py:795
 msgid "ML"
-msgstr ""
+msgstr "毫升"
 
 #: core/models.py:796
 msgid "Tablets"
-msgstr ""
+msgstr "片剂"
 
 #: core/models.py:797
 msgid "Drops"
-msgstr ""
+msgstr "滴剂"
 
 #: core/models.py:802
 msgid "Dosage Unit"
-msgstr ""
+msgstr "剂量单位"
 
 #: core/models.py:808
-#, fuzzy
-#| msgid "Timer actions"
 msgid "Time Taken"
-msgstr "计时器操作"
+msgstr "服药时间"
 
 #: core/models.py:814 core/templates/core/medication_list.html:30
-#, fuzzy
-#| msgid "Diaper Intervals"
 msgid "Next Dose Interval"
-msgstr "换尿布间隔"
+msgstr "下次服药间隔"
 
 #: core/models.py:815
 msgid "Time until next dose can be given"
-msgstr ""
+msgstr "到下次可以服药的时间"
 
 #: core/models.py:825
-#, fuzzy
-#| msgid "Actions"
 msgid "Medications"
-msgstr "操作"
+msgstr "用药记录"
 
 #: core/templates/core/bmi_confirm_delete.html:4
 msgid "Delete a BMI Entry"
@@ -1590,36 +1582,26 @@ msgid "No height entries found."
 msgstr "未找到身高记录。"
 
 #: core/templates/core/medication_confirm_delete.html:4
-#, fuzzy
-#| msgid "Delete a Sleep Entry"
 msgid "Delete a Medication Entry"
-msgstr "删除一条睡眠记录"
+msgstr "删除一条用药记录"
 
 #: core/templates/core/medication_form.html:7
 #: core/templates/core/medication_form.html:17
 #: core/templates/core/medication_form.html:26
-#, fuzzy
-#| msgid "Add a Sleep Entry"
 msgid "Add a Medication Entry"
-msgstr "新增一条睡眠记录"
+msgstr "新增一条用药记录"
 
 #: core/templates/core/medication_list.html:14
-#, fuzzy
-#| msgid "Add Feeding"
 msgid "Add Medication"
-msgstr "新增喂食记录"
+msgstr "新增用药记录"
 
 #: core/templates/core/medication_list.html:67
-#, fuzzy
-#| msgid "Feeding intervals"
 msgid "No interval set"
-msgstr "喂食间隔"
+msgstr "未设置间隔"
 
 #: core/templates/core/medication_list.html:81
-#, fuzzy
-#| msgid "No bmi entries found."
 msgid "No medication entries found."
-msgstr "未找到BMI记录。"
+msgstr "未找到用药记录。"
 
 #: core/templates/core/note_confirm_delete.html:4
 msgid "Delete a Note"
@@ -2036,16 +2018,14 @@ msgid "%(child)s had a %(type)s diaper change."
 msgstr "%(child)s 有一条 %(type)s 换尿裤记录."
 
 #: core/timeline.py:240
-#, fuzzy, python-format
-#| msgid "%(child)s started feeding."
+#, python-format
 msgid "%(child)s took %(medication)s."
-msgstr "%(child)s 开始喂食。"
+msgstr "%(child)s 服用了%(medication)s。"
 
 #: core/timeline.py:256
-#, fuzzy, python-format
-#| msgid "%(child)s started feeding."
+#, python-format
 msgid "%(child)s's %(medication)s dose wore off."
-msgstr "%(child)s 开始喂食。"
+msgstr "%(child)s 的%(medication)s药效已结束。"
 
 #: core/timeline.py:301
 #, python-format
@@ -2176,37 +2156,31 @@ msgid_plural "%(counter)s feedings"
 msgstr[0] "%(counter)s 次喂食"
 
 #: dashboard/templates/cards/medication_last.html:4
-#, fuzzy
-#| msgid "Last Feeding"
 msgid "Last Medication"
-msgstr "上一次喂食"
+msgstr "上次用药"
 
 #: dashboard/templates/cards/medication_last.html:27
 msgid "Next dose ready"
-msgstr ""
+msgstr "可以服下一剂了"
 
 #: dashboard/templates/cards/medication_last.html:30
 #, python-format
 msgid "Next dose at %(next_time)s"
-msgstr ""
+msgstr "下次服药时间：%(next_time)s"
 
 #: dashboard/templates/cards/pumping_last.html:4
 msgid "Last Pumping"
 msgstr "挤奶"
 
 #: dashboard/templates/cards/pumping_recent.html:4
-#, fuzzy
-#| msgid "Recent Feedings"
 msgid "Recent Pumpings"
-msgstr "近期喂食"
+msgstr "近期挤奶"
 
 #: dashboard/templates/cards/pumping_recent.html:23
-#, fuzzy, python-format
-#| msgid "%(counter)s feeding"
-#| msgid_plural "%(counter)s feedings"
+#, python-format
 msgid "%(counter)s pumping"
 msgid_plural "%(counter)s pumpings"
-msgstr[0] "%(counter)s 次喂食"
+msgstr[0] "%(counter)s 次挤奶"
 
 #: dashboard/templates/cards/sleep_last.html:4
 msgid "Last Sleep"
@@ -2464,34 +2438,24 @@ msgid "P97"
 msgstr ""
 
 #: reports/graphs/medication_frequency.py:30
-#, fuzzy
-#| msgid "Feeding frequency"
 msgid "Frequency"
-msgstr "喂食频率"
+msgstr "频率"
 
 #: reports/graphs/medication_frequency.py:38
-#, fuzzy
-#| msgid "Feeding frequency"
 msgid "Medication frequency"
-msgstr "喂食频率"
+msgstr "用药频率"
 
 #: reports/graphs/medication_frequency.py:44
-#, fuzzy
-#| msgid "Number of feedings"
 msgid "Number of medications"
-msgstr "喂食次数"
+msgstr "用药次数"
 
 #: reports/graphs/medication_intervals.py:46
-#, fuzzy
-#| msgid "Feeding intervals"
 msgid "Medication intervals"
-msgstr "喂食间隔"
+msgstr "用药间隔"
 
 #: reports/graphs/medication_intervals.py:52
-#, fuzzy
-#| msgid "Feeding interval (hours)"
 msgid "Medication interval (hours)"
-msgstr "喂食间隔（小时）"
+msgstr "用药间隔（小时）"
 
 #: reports/graphs/pumping_amounts.py:59
 msgid "Total Pumping Amount"
@@ -2562,18 +2526,14 @@ msgstr "喂食间隔"
 #: reports/templates/reports/medication_frequency.html:4
 #: reports/templates/reports/medication_frequency.html:9
 #: reports/templates/reports/report_list.html:42
-#, fuzzy
-#| msgid "Feeding frequency"
 msgid "Medication Frequency"
-msgstr "喂食频率"
+msgstr "用药频率"
 
 #: reports/templates/reports/medication_intervals.html:4
 #: reports/templates/reports/medication_intervals.html:9
 #: reports/templates/reports/report_list.html:44
-#, fuzzy
-#| msgid "Feeding Intervals"
 msgid "Medication Intervals"
-msgstr "喂食间隔"
+msgstr "用药间隔"
 
 #: reports/templates/reports/report_base.html:13
 msgid "There is not enough data to generate this report."
@@ -2614,6 +2574,189 @@ msgstr "世界卫生组织男孩体重百分位数 （公斤）"
 #: reports/templates/reports/report_list.html:60
 msgid "WHO Weight Percentiles for Girls in kg"
 msgstr "世界卫生组织女孩体重百分位数 （公斤）"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Use"
+msgstr "使用"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Start Quick Timer"
+msgstr "快速开始计时"
+
+#: dashboard/templates/dashboard/track.html
+#: dashboard/templates/dashboard/diaper.html
+msgid "Mixed"
+msgstr "混合"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Add note & Save"
+msgstr "添加备注并保存"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Stop"
+msgstr "停止"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Resume"
+msgstr "继续"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Review & Save"
+msgstr "查看并保存"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Add milestone & Save"
+msgstr "添加里程碑并保存"
+
+#: dashboard/templates/dashboard/track.html
+#: dashboard/templates/dashboard/health_hub_quick.html
+msgid "Health"
+msgstr "健康"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Temp"
+msgstr "体温"
+
+#: dashboard/templates/dashboard/track.html
+#: dashboard/templates/dashboard/health_hub_quick.html
+#: dashboard/templates/dashboard/health_vaccine_quick.html
+msgid "Vaccine"
+msgstr "疫苗"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Add timer"
+msgstr "添加计时器"
+
+#: dashboard/templates/dashboard/timer_use.html
+msgid "Use Timer"
+msgstr "使用计时器"
+
+#: dashboard/templates/dashboard/timer_use.html
+msgid "Confirm"
+msgstr "确认"
+
+#: dashboard/templates/dashboard/timer_use.html
+msgid "Discard Timer"
+msgstr "丢弃计时器"
+
+#: dashboard/templates/dashboard/pump_commit.html
+msgid "Save Pumping"
+msgstr "保存挤奶记录"
+
+#: dashboard/templates/dashboard/pump_commit.html
+msgid "Discard Session"
+msgstr "丢弃本次记录"
+
+#: dashboard/templates/dashboard/health_med_quick.html
+#: dashboard/templates/dashboard/health_temp_quick.html
+msgid "Now"
+msgstr "现在"
+
+#: dashboard/templates/dashboard/health_med_quick.html
+msgid "Unit"
+msgstr "单位"
+
+#: dashboard/templates/dashboard/health_med_quick.html
+#: dashboard/templates/dashboard/health_vaccine_quick.html
+#: dashboard/templates/dashboard/health_temp_quick.html
+msgid "Optional notes…"
+msgstr "可选备注…"
+
+#: dashboard/templates/dashboard/health_vaccine_quick.html
+msgid "Vaccine Name"
+msgstr "疫苗名称"
+
+#: dashboard/templates/dashboard/health_med_quick.html
+msgid "optional"
+msgstr "可选"
+
+#: dashboard/templates/dashboard/health_med_quick.html
+msgid "e.g. Tylenol, Ibuprofen…"
+msgstr "例如：泰诺、布洛芬…"
+
+#: dashboard/templates/dashboard/health_vaccine_quick.html
+msgid "e.g. MMR, DTaP, Flu…"
+msgstr "例如：MMR、DTaP、流感疫苗…"
+
+#: dashboard/templates/dashboard/health_hub_quick.html
+msgid "Health Events"
+msgstr "健康事件"
+
+#: dashboard/templates/dashboard/sleep_note.html
+msgid "Save Sleep"
+msgstr "保存睡眠记录"
+
+#: dashboard/templates/dashboard/tummytime_note.html
+msgid "Save Tummy Time"
+msgstr "保存趴玩时间记录"
+
+#: dashboard/views.py
+msgid "Sleep entry saved."
+msgstr "睡眠记录已保存。"
+
+#: dashboard/views.py
+msgid "Tummy time entry saved."
+msgstr "趴玩时间记录已保存。"
+
+#: dashboard/views.py
+msgid "Permission denied."
+msgstr "权限被拒绝。"
+
+#: dashboard/views.py
+msgid "Unknown activity type."
+msgstr "未知活动类型。"
+
+#: dashboard/views.py
+msgid "Pumping entry saved."
+msgstr "挤奶记录已保存。"
+
+#: dashboard/views.py
+msgid "Please select a side."
+msgstr "请选择左侧或右侧。"
+
+#: dashboard/views.py
+msgid "Breastfeeding entry saved."
+msgstr "母乳喂养记录已保存。"
+
+#: dashboard/views.py
+msgid "Diaper change added!"
+msgstr "换尿布记录已添加！"
+
+#: dashboard/views.py
+msgid "Temperature recorded."
+msgstr "体温已记录。"
+
+#: dashboard/views.py
+msgid "BMI recorded."
+msgstr "BMI已记录。"
+
+#: dashboard/views.py
+msgid "Head circumference recorded."
+msgstr "头围已记录。"
+
+#: dashboard/views.py
+msgid "Height recorded."
+msgstr "身高已记录。"
+
+#: dashboard/views.py
+msgid "Weight recorded."
+msgstr "体重已记录。"
+
+#: dashboard/views.py
+msgid "Vaccine name is required."
+msgstr "疫苗名称是必填项。"
+
+#: dashboard/views.py
+msgid "Vaccine recorded."
+msgstr "疫苗已记录。"
+
+#: dashboard/views.py
+msgid "Medication name is required."
+msgstr "药物名称是必填项。"
+
+#: dashboard/views.py
+msgid "Medication recorded."
+msgstr "药物已记录。"
 
 #, python-format
 #~ msgid "Amount: %(amount).0f"
