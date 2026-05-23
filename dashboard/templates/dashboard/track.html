@@ -411,7 +411,7 @@
         {% endif %}
         <div class="qa-swipe-row" style="display:flex;flex-direction:column;gap:0.5rem;background:#fff;">
           <div style="display:flex;align-items:center;gap:0.5rem;">
-            <span class="qa-timer-name" style="font-size:0.95rem;">{{ sleep_timer.name }}</span>
+            <span class="qa-timer-name" style="font-size:0.95rem;">{% if sleep_timer.name == "Sleep" %}{% trans "Sleep" %}{% elif sleep_timer.name == "Nap" %}{% trans "Nap" %}{% else %}{{ sleep_timer.name }}{% endif %}</span>
             <span class="qa-timer-clock" data-start="{{ sleep_timer.start|date:'c' }}"
                   style="flex:1;text-align:right;">0:00:00</span>
           </div>

@@ -120,7 +120,7 @@
     {# ── Timer summary ── #}
     <p class="sn-section">{% trans "Timer" %}</p>
     <div class="sn-summary">
-      <span class="sn-type-badge">{{ timer.name }}</span>
+      <span class="sn-type-badge">{% if timer.name == "Sleep" %}{% trans "Sleep" %}{% elif timer.name == "Nap" %}{% trans "Nap" %}{% else %}{{ timer.name }}{% endif %}</span>
       <span class="sn-elapsed" data-start="{{ timer.start|date:'c' }}">0:00:00</span>
     </div>
 
