@@ -139,8 +139,12 @@
     buildCol('ampm');
 
     cancelBtn.addEventListener('click', close);
-    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
     doneBtn.addEventListener('click', commit);
+    // Block touch-dragging anywhere except inside a scroll wheel, so the page
+    // underneath never moves. The wheels handle their own vertical scroll.
+    overlay.addEventListener('touchmove', function (e) {
+      if (!e.target.closest('.tr-col')) e.preventDefault();
+    }, { passive: false });
   }
 
   function fillCol(key, values, selectedIdx) {
@@ -218,14 +222,38 @@
 
     overlay.style.display = 'flex';
     requestAnimationFrame(function () { overlay.classList.add('tr-open'); });
-    document.body.style.overflow = 'hidden';
+    lockScroll();
   }
 
   function close() {
     if (!overlay) return;
     overlay.classList.remove('tr-open');
-    document.body.style.overflow = '';
+    unlockScroll();
     setTimeout(function () { overlay.style.display = 'none'; }, 200);
+  }
+
+  // ── Background scroll lock (position:fixed keeps the page from moving even
+  //    when the browser ignores overscroll-behavior on touch) ──
+  var savedScrollY = 0;
+  function lockScroll() {
+    savedScrollY = window.scrollY || window.pageYOffset || 0;
+    var b = document.body.style;
+    b.position = 'fixed';
+    b.top = (-savedScrollY) + 'px';
+    b.left = '0';
+    b.right = '0';
+    b.width = '100%';
+    b.overflow = 'hidden';
+  }
+  function unlockScroll() {
+    var b = document.body.style;
+    b.position = '';
+    b.top = '';
+    b.left = '';
+    b.right = '';
+    b.width = '';
+    b.overflow = '';
+    window.scrollTo(0, savedScrollY);
   }
 
   function commit() {
