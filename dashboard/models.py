@@ -13,3 +13,15 @@ class PumpPending(models.Model):
 
     class Meta:
         ordering = ["start"]
+
+
+class FeedPending(models.Model):
+    """Stopped-but-uncommitted feed timer sessions, shared across devices via DB."""
+
+    child = models.ForeignKey(Child, on_delete=models.CASCADE)
+    side = models.CharField(max_length=10)  # "left", "right", or "bottle"
+    start = models.DateTimeField()
+    end = models.DateTimeField()
+
+    class Meta:
+        ordering = ["start"]

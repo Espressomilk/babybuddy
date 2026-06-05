@@ -89,5 +89,51 @@
     {% endif %}
   </div>
 
+  <p class="hh-section">{% trans "History" %}</p>
+  <div class="hh-grid">
+    {% if perms.core.view_temperature %}
+    <a href="{% url 'core:temperature-list' %}?child={{ child.id }}" class="hh-item">
+      <span class="hh-label">{% trans "Temperature" %}</span>
+      <span class="hh-arrow">›</span>
+    </a>
+    {% endif %}
+    {% if perms.core.view_vaccine %}
+    <a href="{% url 'core:vaccine-list' %}?child={{ child.id }}" class="hh-item">
+      <span class="hh-label">{% trans "Vaccine" %}</span>
+      <span class="hh-arrow">›</span>
+    </a>
+    {% endif %}
+    {% if perms.core.view_medication %}
+    <a href="{% url 'core:medication-list' %}?child={{ child.id }}" class="hh-item">
+      <span class="hh-label">{% trans "Medication" %}</span>
+      <span class="hh-arrow">›</span>
+    </a>
+    {% endif %}
+    {% if perms.core.view_weight %}
+    <a href="{% url 'core:weight-list' %}?child={{ child.id }}" class="hh-item">
+      <span class="hh-label">{% trans "Weight" %}</span>
+      <span class="hh-arrow">›</span>
+    </a>
+    {% endif %}
+    {% if perms.core.view_height %}
+    <a href="{% url 'core:height-list' %}?child={{ child.id }}" class="hh-item">
+      <span class="hh-label">{% trans "Height" %}</span>
+      <span class="hh-arrow">›</span>
+    </a>
+    {% endif %}
+    {% if perms.core.view_headcircumference %}
+    <a href="{% url 'core:head-circumference-list' %}?child={{ child.id }}" class="hh-item">
+      <span class="hh-label">{% trans "Head Circumference" %}</span>
+      <span class="hh-arrow">›</span>
+    </a>
+    {% endif %}
+    {% if perms.core.view_bmi %}
+    <a href="{% url 'core:bmi-list' %}?child={{ child.id }}" class="hh-item">
+      <span class="hh-label">{% trans "BMI" %}</span>
+      <span class="hh-arrow">›</span>
+    </a>
+    {% endif %}
+  </div>
+
 </div>
 {% endblock %}

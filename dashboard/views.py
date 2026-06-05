@@ -15,8 +15,8 @@ from django.views.generic.edit import CreateView, FormView
 from babybuddy.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from core.models import BMI, Child, Feeding, HeadCircumference, Height, Medication, Pumping, Sleep, Temperature, Timer, TummyTime, Vaccine, Weight
 
-from .forms import BottleFeedForm, BreastfeedForm, DiaperChangeQuickForm, PumpCommitForm, SleepNoteForm, TummyTimeMilestoneForm
-from .models import PumpPending
+from .forms import BottleFeedForm, BreastfeedForm, DiaperChangeQuickForm, FeedCommitForm, PumpCommitForm, SleepNoteForm, TummyTimeMilestoneForm
+from .models import FeedPending, PumpPending
 
 
 def _broadcast_track(child_slug):
@@ -78,11 +78,17 @@ class ChildTrack(PermissionRequiredMixin, DetailView):
 
     SLEEP_TIMER_NAMES = ["Sleep", "Nap"]
     PUMP_TIMER_NAMES = ["Pump Left", "Pump Right"]
+    FEED_TIMER_NAMES = ["Feed Left", "Feed Right", "Feed Bottle"]
     TUMMY_TIMER_NAME = "Tummy Time"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        excluded = self.SLEEP_TIMER_NAMES + self.PUMP_TIMER_NAMES + [self.TUMMY_TIMER_NAME]
+        excluded = (
+            self.SLEEP_TIMER_NAMES
+            + self.PUMP_TIMER_NAMES
+            + self.FEED_TIMER_NAMES
+            + [self.TUMMY_TIMER_NAME]
+        )
         ctx["active_timers"] = (
             Timer.objects.filter(child=self.object)
             .exclude(name__in=excluded)
@@ -119,6 +125,36 @@ class ChildTrack(PermissionRequiredMixin, DetailView):
         ctx["pump_right_pending_duration"] = _dur(right_done) if right_done.exists() else None
         ctx["pump_left_pending_seconds"] = _secs(left_done)
         ctx["pump_right_pending_seconds"] = _secs(right_done)
+
+        # ── Feed (breast left/right + bottle) timers & pending ──
+        ctx["feed_left_timer"] = Timer.objects.filter(
+            child=self.object, name="Feed Left"
+        ).first()
+        ctx["feed_right_timer"] = Timer.objects.filter(
+            child=self.object, name="Feed Right"
+        ).first()
+        ctx["feed_bottle_timer"] = Timer.objects.filter(
+            child=self.object, name="Feed Bottle"
+        ).first()
+        feed_left_done = FeedPending.objects.filter(child=self.object, side="left")
+        feed_right_done = FeedPending.objects.filter(child=self.object, side="right")
+        feed_bottle_done = FeedPending.objects.filter(child=self.object, side="bottle")
+        ctx["pending_feed"] = (
+            FeedPending.objects.filter(child=self.object).exists() or None
+        )
+        ctx["feed_left_pending_duration"] = (
+            _dur(feed_left_done) if feed_left_done.exists() else None
+        )
+        ctx["feed_right_pending_duration"] = (
+            _dur(feed_right_done) if feed_right_done.exists() else None
+        )
+        ctx["feed_bottle_pending_duration"] = (
+            _dur(feed_bottle_done) if feed_bottle_done.exists() else None
+        )
+        ctx["feed_left_pending_seconds"] = _secs(feed_left_done)
+        ctx["feed_right_pending_seconds"] = _secs(feed_right_done)
+        ctx["feed_bottle_pending_seconds"] = _secs(feed_bottle_done)
+
         ctx["tummy_timer"] = Timer.objects.filter(
             child=self.object, name=self.TUMMY_TIMER_NAME
         ).first()
@@ -623,6 +659,195 @@ class PumpPendingDiscard(PermissionRequiredMixin, View):
         )
 
 
+FEED_TIMER_BY_SIDE = {
+    "left": "Feed Left",
+    "right": "Feed Right",
+    "bottle": "Feed Bottle",
+}
+
+
+class FeedTimerToggle(PermissionRequiredMixin, View):
+    """Start or stop a feed timer for the left breast, right breast, or bottle."""
+
+    permission_required = ("core.add_timer",)
+    http_method_names = ["post"]
+
+    def post(self, request, *args, **kwargs):
+        child = get_object_or_404(Child, slug=kwargs["slug"])
+        side = kwargs["side"]  # "left", "right", "bottle"
+        name = FEED_TIMER_BY_SIDE.get(side)
+        if not name:
+            return HttpResponseRedirect(
+                reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})
+            )
+        now = timezone.now()
+        timer = Timer.objects.filter(child=child, name=name).first()
+        if timer:
+            FeedPending.objects.create(
+                child=child, side=side, start=timer.start, end=now
+            )
+            timer.stop()
+        else:
+            Timer.objects.create(child=child, user=request.user, name=name)
+        _broadcast_track(kwargs["slug"])
+        return HttpResponseRedirect(
+            reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})
+        )
+
+
+class FeedCommit(PermissionRequiredMixin, FormView):
+    """Stop any running feed timers, then let the user review and save feedings."""
+
+    permission_required = ("core.add_feeding",)
+    form_class = FeedCommitForm
+    template_name = "dashboard/feed_commit.html"
+
+    def get_child(self):
+        return get_object_or_404(Child, slug=self.kwargs["slug"])
+
+    def _stop_running_timers(self, child):
+        """Stop any running feed timers and persist them as FeedPending rows."""
+        now = timezone.now()
+        for side, name in FEED_TIMER_BY_SIDE.items():
+            timer = Timer.objects.filter(child=child, name=name).first()
+            if timer:
+                FeedPending.objects.create(
+                    child=child, side=side, start=timer.start, end=now
+                )
+                timer.stop()
+
+    def dispatch(self, request, *args, **kwargs):
+        child = self.get_child()
+        self._stop_running_timers(child)
+        if not FeedPending.objects.filter(child=child).exists():
+            return HttpResponseRedirect(
+                reverse("dashboard:track-child", kwargs={"slug": self.kwargs["slug"]})
+            )
+        return super().dispatch(request, *args, **kwargs)
+
+    def _duration_str(self, qs):
+        total = sum(max(0, int((p.end - p.start).total_seconds())) for p in qs)
+        h, rem = divmod(total, 3600)
+        m, s = divmod(rem, 60)
+        return f"{h}:{m:02d}:{s:02d}"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        child = self.get_child()
+        left = FeedPending.objects.filter(child=child, side="left")
+        right = FeedPending.objects.filter(child=child, side="right")
+        bottle = FeedPending.objects.filter(child=child, side="bottle")
+        ctx["child"] = child
+        ctx["has_left"] = left.exists()
+        ctx["has_right"] = right.exists()
+        ctx["has_bottle"] = bottle.exists()
+        ctx["has_breast"] = left.exists() or right.exists()
+        ctx["left_duration"] = self._duration_str(left) if left.exists() else None
+        ctx["right_duration"] = self._duration_str(right) if right.exists() else None
+        ctx["bottle_duration"] = self._duration_str(bottle) if bottle.exists() else None
+        return ctx
+
+    def form_valid(self, form):
+        child = self.get_child()
+        pending = FeedPending.objects.filter(child=child)
+        left = pending.filter(side="left")
+        right = pending.filter(side="right")
+        bottle = pending.filter(side="bottle")
+
+        notes = form.cleaned_data.get("notes", "")
+        created = []
+
+        try:
+            # ── Breastfeeding entry (left and/or right combined) ──
+            breast = list(left) + list(right)
+            if breast:
+                if left.exists() and right.exists():
+                    method = "both breasts"
+                elif left.exists():
+                    method = "left breast"
+                else:
+                    method = "right breast"
+                entry = Feeding(
+                    child=child,
+                    start=min(p.start for p in breast),
+                    end=max(p.end for p in breast),
+                    type="breast milk",
+                    method=method,
+                    notes=notes,
+                )
+                entry.full_clean()
+                created.append(entry)
+
+            # ── Bottle feeding entry ──
+            if bottle.exists():
+                bottle_type = form.cleaned_data.get("bottle_type") or "breast milk"
+                bottle_amount = form.cleaned_data.get("bottle_amount") or None
+                entry = Feeding(
+                    child=child,
+                    start=min(p.start for p in bottle),
+                    end=max(p.end for p in bottle),
+                    type=bottle_type,
+                    method="bottle",
+                    amount=bottle_amount,
+                    notes=notes,
+                )
+                entry.full_clean()
+                created.append(entry)
+
+            for entry in created:
+                entry.save()
+            pending.delete()
+            messages.success(self.request, _("Feeding entry saved."))
+            _broadcast_track(self.kwargs["slug"])
+            return HttpResponseRedirect(
+                reverse("dashboard:track-child", kwargs={"slug": self.kwargs["slug"]})
+            )
+        except ValidationError as e:
+            for msg in e.messages:
+                form.add_error(None, msg)
+            return self.form_invalid(form)
+
+    def get_success_url(self):
+        return reverse("dashboard:track-child", kwargs={"slug": self.kwargs["slug"]})
+
+
+class FeedSideDiscard(PermissionRequiredMixin, View):
+    """Delete a single feed timer/side without saving (full reset for that side)."""
+
+    permission_required = ("core.delete_timer",)
+    http_method_names = ["post"]
+
+    def post(self, request, *args, **kwargs):
+        child = get_object_or_404(Child, slug=kwargs["slug"])
+        side = kwargs["side"]  # "left", "right", "bottle"
+        name = FEED_TIMER_BY_SIDE.get(side)
+        if name:
+            Timer.objects.filter(child=child, name=name).delete()
+            FeedPending.objects.filter(child=child, side=side).delete()
+            _broadcast_track(kwargs["slug"])
+        return HttpResponseRedirect(
+            reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})
+        )
+
+
+class FeedPendingDiscard(PermissionRequiredMixin, View):
+    """Discard all pending feed data and stop any running feed timers."""
+
+    permission_required = ("core.add_feeding",)
+    http_method_names = ["post"]
+
+    def post(self, request, *args, **kwargs):
+        child = get_object_or_404(Child, slug=kwargs["slug"])
+        Timer.objects.filter(
+            child=child, name__in=list(FEED_TIMER_BY_SIDE.values())
+        ).delete()
+        FeedPending.objects.filter(child=child).delete()
+        _broadcast_track(kwargs["slug"])
+        return HttpResponseRedirect(
+            reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})
+        )
+
+
 class QuickPumpSave(PermissionRequiredMixin, View):
     """Show a streamlined pumping form seeded from a generic timer; save on POST."""
 
@@ -749,7 +974,16 @@ class BottleFeedAdd(PermissionRequiredMixin, FormView):
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        kwargs["child"] = self.get_child()
+        child = self.get_child()
+        kwargs["child"] = child
+        # When launched from a (quick) timer, seed the start time from the
+        # timer's start so the feeding is recorded at the time it began,
+        # not the moment the form happened to be opened.
+        timer_pk = self.request.GET.get("timer")
+        if timer_pk:
+            timer = Timer.objects.filter(pk=timer_pk, child=child).first()
+            if timer:
+                kwargs["start"] = timezone.localtime(timer.start)
         return kwargs
 
     def get_context_data(self, **kwargs):

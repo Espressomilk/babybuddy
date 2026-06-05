@@ -65,11 +65,11 @@ class BottleFeedForm(forms.Form):
         ),
     )
 
-    def __init__(self, *args, child=None, **kwargs):
+    def __init__(self, *args, child=None, start=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.child = child
         if not self.is_bound:
-            self.initial["start"] = timezone.localtime()
+            self.initial["start"] = start or timezone.localtime()
 
     def clean(self):
         cleaned_data = super().clean()
@@ -226,6 +226,46 @@ class PumpCommitForm(forms.Form):
                 "min": "0",
                 "placeholder": "0",
                 "id": "id_amount_right",
+            }
+        ),
+    )
+    notes = forms.CharField(
+        required=False,
+        label=_("Notes"),
+        widget=forms.Textarea(
+            attrs={
+                "rows": 3,
+                "id": "id_notes",
+                "placeholder": "",
+            }
+        ),
+    )
+
+
+class FeedCommitForm(forms.Form):
+    BREAST_MILK = "breast milk"
+    FORMULA = "formula"
+
+    bottle_type = forms.ChoiceField(
+        choices=[
+            (BREAST_MILK, _("Breast Milk")),
+            (FORMULA, _("Formula")),
+        ],
+        initial=BREAST_MILK,
+        required=False,
+        label=_("Bottle type"),
+        widget=forms.HiddenInput(attrs={"id": "id_bottle_type"}),
+    )
+    bottle_amount = forms.FloatField(
+        min_value=0,
+        required=False,
+        label=_("Bottle amount"),
+        widget=forms.NumberInput(
+            attrs={
+                "step": "any",
+                "min": "0",
+                "placeholder": "0",
+                "id": "id_bottle_amount",
             }
         ),
     )

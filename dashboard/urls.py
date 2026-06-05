@@ -109,6 +109,26 @@ urlpatterns = [
         name="pump-discard",
     ),
     path(
+        "children/<str:slug>/feed-timer/<str:side>/toggle/",
+        views.FeedTimerToggle.as_view(),
+        name="feed-timer-toggle",
+    ),
+    path(
+        "children/<str:slug>/feed-timer/<str:side>/discard/",
+        views.FeedSideDiscard.as_view(),
+        name="feed-side-discard",
+    ),
+    path(
+        "children/<str:slug>/feed/commit/",
+        views.FeedCommit.as_view(),
+        name="feed-commit",
+    ),
+    path(
+        "children/<str:slug>/feed/discard/",
+        views.FeedPendingDiscard.as_view(),
+        name="feed-discard",
+    ),
+    path(
         "children/<str:slug>/health/temperature/",
         views.HealthTempQuick.as_view(),
         name="health-temp-quick",

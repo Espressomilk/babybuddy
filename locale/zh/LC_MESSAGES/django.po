@@ -2711,6 +2711,26 @@ msgid "Pumping entry saved."
 msgstr "挤奶记录已保存。"
 
 #: dashboard/views.py
+msgid "Feeding entry saved."
+msgstr "喂养记录已保存。"
+
+#: dashboard/templates/dashboard/feed_commit.html
+msgid "Save Feeding"
+msgstr "保存喂养记录"
+
+#: dashboard/templates/dashboard/feed_commit.html
+msgid "Bottle type"
+msgstr "奶瓶类型"
+
+#: dashboard/templates/dashboard/feed_commit.html
+msgid "Bottle amount"
+msgstr "奶瓶喂奶量"
+
+#: dashboard/templates/dashboard/health_hub_quick.html
+msgid "History"
+msgstr "历史记录"
+
+#: dashboard/views.py
 msgid "Please select a side."
 msgstr "请选择左侧或右侧。"
 

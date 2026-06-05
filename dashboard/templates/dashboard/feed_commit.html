@@ -1,0 +1,198 @@
+{% extends 'babybuddy/page.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Save Feeding" %} - {{ child }}{% endblock %}
+
+{% block breadcrumbs %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'core:child-list' %}">{% trans "Children" %}</a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="{% url 'dashboard:track-child' child.slug %}">{{ child }}</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">{% trans "Save Feeding" %}</li>
+{% endblock %}
+
+{% block content %}
+<style>
+  .fc-wrap { max-width: 480px; margin: 0 auto; padding: 1rem 0 3rem; }
+  .fc-section {
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #888; margin: 1.5rem 0 0.5rem;
+  }
+  .fc-session-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.75rem 1.1rem; background: #f0f4fb;
+    border-radius: 12px; margin-bottom: 0.5rem;
+  }
+  .fc-side-label { font-size: 1rem; font-weight: 700; color: #2d2d2d; }
+  .fc-duration {
+    font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums;
+    letter-spacing: 0.03em; color: #2e3d5f;
+  }
+  .fc-unit-row { display: flex; gap: 0.5rem; margin-bottom: 0.6rem; }
+  .fc-unit-btn {
+    flex: 1; padding: 0.55rem; border-radius: 10px;
+    border: 2px solid #ddd; background: #fff; color: #555;
+    font-size: 0.95rem; font-weight: 600; text-align: center;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .fc-unit-btn.active { background: #2e3d5f; border-color: #2e3d5f; color: #fff; }
+  .fc-amount-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.3rem 0; }
+  .fc-amount-label { width: 3.5rem; font-size: 0.9rem; font-weight: 600; color: #555; flex-shrink: 0; }
+  .fc-stepper {
+    display: flex; align-items: stretch; flex: 1;
+    border: 1.5px solid #ddd; border-radius: 12px; overflow: hidden; background: #fff;
+  }
+  .fc-stepper-btn {
+    width: 52px; min-height: 52px; border: none; background: #eef0f4;
+    color: #2d2d2d; font-size: 1.6rem; font-weight: 300; line-height: 1;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; user-select: none; touch-action: manipulation; transition: background 0.12s;
+  }
+  .fc-stepper-btn:hover { background: #dde1ea; }
+  .fc-stepper-btn:active { background: #c8cedb; }
+  .fc-stepper input[type="number"] {
+    flex: 1; min-width: 0; border: none;
+    border-left: 1.5px solid #ddd; border-right: 1.5px solid #ddd;
+    font-size: 1.15rem; font-weight: 600; text-align: center;
+    background: #fff; color: #2d2d2d; -moz-appearance: textfield;
+  }
+  .fc-stepper input[type="number"]::-webkit-inner-spin-button,
+  .fc-stepper input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  .fc-stepper input[type="number"]:focus { outline: none; }
+  .fc-amount-unit { font-size: 0.95rem; font-weight: 600; color: #555; min-width: 20px; }
+  .fc-notes textarea {
+    width: 100%; padding: 0.7rem 1rem; border: 1.5px solid #ddd; border-radius: 12px;
+    font-size: 1rem; color: #2d2d2d; background: #fff; box-sizing: border-box;
+    resize: vertical; transition: border-color 0.15s;
+  }
+  .fc-notes textarea:focus { outline: none; border-color: #2e3d5f; }
+  .fc-actions { display: flex; gap: 0.6rem; margin-top: 2rem; }
+  .fc-save {
+    flex: 2; padding: 0.85rem; border: none; border-radius: 14px;
+    background: #2e3d5f; color: #fff; font-size: 1.05rem; font-weight: 700;
+    cursor: pointer; transition: background 0.15s; touch-action: manipulation;
+  }
+  .fc-save:hover { background: #1a2a45; }
+  .fc-cancel {
+    flex: 1; padding: 0.85rem; border: 2px solid #aaa; border-radius: 14px;
+    background: transparent; color: #666; font-size: 1rem; font-weight: 600;
+    text-align: center; text-decoration: none; transition: border-color 0.15s, color 0.15s;
+  }
+  .fc-cancel:hover { border-color: #555; color: #333; }
+  .fc-discard {
+    width: 100%; margin-top: 0.75rem; padding: 0.7rem;
+    border: 2px solid #c0392b; border-radius: 12px; background: transparent;
+    color: #c0392b; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+    transition: background 0.15s, color 0.15s; touch-action: manipulation;
+  }
+  .fc-discard:hover { background: #c0392b; color: #fff; }
+  .fc-errors {
+    background: #fdecea; border: 1.5px solid #c0392b; border-radius: 10px;
+    padding: 0.75rem 1rem; color: #c0392b; font-size: 0.9rem; margin-bottom: 1rem;
+  }
+</style>
+
+<div class="fc-wrap">
+
+  {% if form.non_field_errors %}
+  <div class="fc-errors">
+    {% for error in form.non_field_errors %}
+      <div>{{ error }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" id="fc-form">
+    {% csrf_token %}
+
+    {# ── Session summary ── #}
+    <p class="fc-section">{% trans "Duration" %}</p>
+    {% if has_left %}
+    <div class="fc-session-row">
+      <span class="fc-side-label">{% trans "Left" %}</span>
+      <span class="fc-duration">{{ left_duration }}</span>
+    </div>
+    {% endif %}
+    {% if has_right %}
+    <div class="fc-session-row">
+      <span class="fc-side-label">{% trans "Right" %}</span>
+      <span class="fc-duration">{{ right_duration }}</span>
+    </div>
+    {% endif %}
+    {% if has_bottle %}
+    <div class="fc-session-row">
+      <span class="fc-side-label">{% trans "Bottle" %}</span>
+      <span class="fc-duration">{{ bottle_duration }}</span>
+    </div>
+    {% endif %}
+
+    {% if has_bottle %}
+    {# ── Bottle type & amount ── #}
+    <p class="fc-section">{% trans "Bottle type" %}</p>
+    {{ form.bottle_type }}
+    <div class="fc-unit-row">
+      <div class="fc-unit-btn active" data-type="breast milk">{% trans "Breast Milk" %}</div>
+      <div class="fc-unit-btn" data-type="formula">{% trans "Formula" %}</div>
+    </div>
+
+    <p class="fc-section">{% trans "Amount" %}</p>
+    <div class="fc-amount-row">
+      <span class="fc-amount-label">{% trans "Bottle" %}</span>
+      <div class="fc-stepper">
+        <button type="button" class="fc-stepper-btn" data-target="id_bottle_amount" data-delta="-5">−</button>
+        {{ form.bottle_amount }}
+        <button type="button" class="fc-stepper-btn" data-target="id_bottle_amount" data-delta="5">+</button>
+      </div>
+      <span class="fc-amount-unit">ml</span>
+    </div>
+    {% endif %}
+
+    {# ── Notes ── #}
+    <p class="fc-section">{% trans "Notes" %}</p>
+    <div class="fc-notes">
+      {{ form.notes }}
+    </div>
+
+    {# ── Actions ── #}
+    <div class="fc-actions">
+      <button type="submit" class="fc-save">{% trans "Save" %}</button>
+      <a href="{% url 'dashboard:track-child' child.slug %}" class="fc-cancel">
+        {% trans "Cancel" %}
+      </a>
+    </div>
+  </form>
+
+  {# Discard is separate — outside the save form #}
+  <form method="post" action="{% url 'dashboard:feed-discard' child.slug %}">
+    {% csrf_token %}
+    <button type="submit" class="fc-discard">{% trans "Discard Session" %}</button>
+  </form>
+
+</div>
+
+<script>
+(function () {
+  document.querySelectorAll('.fc-stepper-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var input = document.getElementById(btn.dataset.target);
+      if (!input) return;
+      var delta = parseFloat(btn.dataset.delta);
+      var current = parseFloat(input.value) || 0;
+      var min = parseFloat(input.min) || 0;
+      input.value = Math.max(min, Math.round((current + delta) * 10) / 10);
+    });
+  });
+
+  var typeInput = document.getElementById('id_bottle_type');
+  document.querySelectorAll('.fc-unit-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.fc-unit-btn').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      if (typeInput) typeInput.value = btn.dataset.type;
+    });
+  });
+})();
+</script>
+{% endblock %}
