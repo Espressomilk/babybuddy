@@ -383,9 +383,9 @@
               {% csrf_token %}
               <button type="submit"
                       class="qa-pump-btn{% if feed_bottle_timer %} qa-pump-active{% endif %}">
-                {% if feed_bottle_timer %}⏹ {% trans "Stop" %}
-                {% elif feed_bottle_pending_duration %}↺ {% trans "Resume" %}
-                {% else %}▶ {% trans "Start" %}{% endif %}
+                {% if feed_bottle_timer %}⏸ {% trans "Pause timer" %}
+                {% elif feed_bottle_pending_duration %}↺ {% trans "Resume timer" %}
+                {% else %}▶ {% trans "Start timer" %}{% endif %}
               </button>
             </form>
             {% endif %}
@@ -405,12 +405,22 @@
         </span>
         {% endif %}
 
-        {# Quick Log — log a completed feeding without a timer #}
+        {# Quick Log — log a completed feeding without a timer.
+           Disabled while a bottle timer is running or pending (unsaved), to
+           avoid creating an overlapping entry before the session is saved. #}
         {% if perms.core.add_feeding %}
+        {% if feed_bottle_timer or feed_bottle_pending_duration %}
+        <span class="qa-btn"
+              style="text-align:center;border-color:#ccc;color:#bbb;cursor:default;pointer-events:none;"
+              title="{% trans "Save or discard the current timer first" %}">
+          {% trans "Quick Log" %}
+        </span>
+        {% else %}
         <a href="{% url 'dashboard:feed-quick' object.slug %}"
            class="qa-btn" style="text-align:center;">
           {% trans "Quick Log" %}
         </a>
+        {% endif %}
         {% endif %}
 
       </div>
@@ -570,9 +580,9 @@
               {% csrf_token %}
               <button type="submit"
                       class="qa-pump-btn{% if feed_left_timer %} qa-pump-active{% endif %}">
-                {% if feed_left_timer %}⏹ {% trans "Stop" %}
-                {% elif feed_left_pending_duration %}↺ {% trans "Resume" %}
-                {% else %}▶ {% trans "Start" %}{% endif %}
+                {% if feed_left_timer %}⏸ {% trans "Pause timer" %}
+                {% elif feed_left_pending_duration %}↺ {% trans "Resume timer" %}
+                {% else %}▶ {% trans "Start timer" %}{% endif %}
               </button>
             </form>
             {% endif %}
@@ -609,9 +619,9 @@
               {% csrf_token %}
               <button type="submit"
                       class="qa-pump-btn{% if feed_right_timer %} qa-pump-active{% endif %}">
-                {% if feed_right_timer %}⏹ {% trans "Stop" %}
-                {% elif feed_right_pending_duration %}↺ {% trans "Resume" %}
-                {% else %}▶ {% trans "Start" %}{% endif %}
+                {% if feed_right_timer %}⏸ {% trans "Pause timer" %}
+                {% elif feed_right_pending_duration %}↺ {% trans "Resume timer" %}
+                {% else %}▶ {% trans "Start timer" %}{% endif %}
               </button>
             </form>
             {% endif %}
@@ -665,9 +675,9 @@
               {% csrf_token %}
               <button type="submit"
                       class="qa-pump-btn{% if pump_left_timer %} qa-pump-active{% endif %}">
-                {% if pump_left_timer %}⏹ {% trans "Stop" %}
-                {% elif pump_left_pending_duration %}↺ {% trans "Resume" %}
-                {% else %}▶ {% trans "Start" %}{% endif %}
+                {% if pump_left_timer %}⏸ {% trans "Pause timer" %}
+                {% elif pump_left_pending_duration %}↺ {% trans "Resume timer" %}
+                {% else %}▶ {% trans "Start timer" %}{% endif %}
               </button>
             </form>
             {% endif %}
@@ -704,9 +714,9 @@
               {% csrf_token %}
               <button type="submit"
                       class="qa-pump-btn{% if pump_right_timer %} qa-pump-active{% endif %}">
-                {% if pump_right_timer %}⏹ {% trans "Stop" %}
-                {% elif pump_right_pending_duration %}↺ {% trans "Resume" %}
-                {% else %}▶ {% trans "Start" %}{% endif %}
+                {% if pump_right_timer %}⏸ {% trans "Pause timer" %}
+                {% elif pump_right_pending_duration %}↺ {% trans "Resume timer" %}
+                {% else %}▶ {% trans "Start timer" %}{% endif %}
               </button>
             </form>
             {% endif %}

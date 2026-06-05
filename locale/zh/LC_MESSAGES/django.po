@@ -3105,6 +3105,22 @@ msgstr "母乳喂养与挤奶"
 msgid "Quick Log"
 msgstr "快速记录"
 
+#: dashboard/templates/dashboard/track.html
+msgid "Start timer"
+msgstr "开始计时"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Pause timer"
+msgstr "暂停计时"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Resume timer"
+msgstr "恢复计时"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Save or discard the current timer first"
+msgstr "请先保存或丢弃当前的计时器"
+
 #: dashboard/templates/dashboard/feed_quick.html
 msgid "Save Bottle Feeding"
 msgstr "保存奶瓶喂养"
