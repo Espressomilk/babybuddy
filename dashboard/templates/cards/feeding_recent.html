@@ -4,37 +4,64 @@
     <a href="{% url "core:feeding-list" %}">{% trans "Recent Feedings" %}</a>
 {% endblock %}
 {% block title %}
-    {% if not empty %}
-        <div class="row text-center g-2">
-            {% for method in methods %}
-                <div class="col-4">
-                    <div class="small text-body-secondary">{{ method.label }}</div>
-                    <div class="last-feeding-method">
-                        {% if method.metric == "duration" %}
-                            {% if method.total %}
-                                {{ method.total|duration_string:"m" }}
-                            {% else %}
-                                {% trans "None" %}
-                            {% endif %}
-                        {% else %}
-                            {% if method.count > 0 %}
-                                {{ method.total|floatformat }}&nbsp;ml
-                            {% else %}
-                                {% trans "None" %}
-                            {% endif %}
-                        {% endif %}
+    {% if feedings|length > 0 %}
+        <div id="feeding-days-carousel"
+             class="carousel slide"
+             data-bs-interval="false">
+            <div class="carousel-inner">
+                {% for feeding in feedings %}
+                    <div class="carousel-item{% if forloop.counter == 1 %} active{% endif %}">
+                        <div class="row text-center g-2">
+                            {% for method in feeding.methods %}
+                                <div class="col-4">
+                                    <div class="small text-body-secondary">{{ method.label }}</div>
+                                    <div class="last-feeding-method">
+                                        {% if method.metric == "duration" %}
+                                            {% if method.total %}
+                                                {{ method.total|duration_string:"m" }}
+                                            {% else %}
+                                                {% trans "None" %}
+                                            {% endif %}
+                                        {% else %}
+                                            {% if method.count > 0 %}
+                                                {{ method.total|floatformat }}&nbsp;ml
+                                            {% else %}
+                                                {% trans "None" %}
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+                                    <div class="small">
+                                        {% if method.count > 0 %}
+                                            {% blocktrans trimmed count counter=method.count %}
+                                                {{ counter }} feeding
+                                            {% plural %}
+                                                {{ counter }} feedings
+                                            {% endblocktrans %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <div class="text-center small text-body-secondary">{{ feeding.date.date|dayssince }}</div>
                     </div>
-                    <div class="small">
-                        {% if method.count > 0 %}
-                            {% blocktrans trimmed count counter=method.count %}
-                                {{ counter }} feeding
-                            {% plural %}
-                                {{ counter }} feedings
-                            {% endblocktrans %}
-                        {% endif %}
-                    </div>
-                </div>
-            {% endfor %}
+                {% endfor %}
+            </div>
+            {% if feedings|length > 1 %}
+                <a class="carousel-control-prev"
+                   href="#feeding-days-carousel"
+                   role="button"
+                   data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">{% trans "Previous" %}</span>
+                </a>
+                <a class="carousel-control-next"
+                   href="#feeding-days-carousel"
+                   role="button"
+                   data-bs-slide="next">
+                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">{% trans "Next" %}</span>
+                </a>
+            {% endif %}
         </div>
     {% else %}
         {% trans "None" %}
