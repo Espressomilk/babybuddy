@@ -245,27 +245,62 @@ class PumpCommitForm(forms.Form):
 class FeedCommitForm(forms.Form):
     BREAST_MILK = "breast milk"
     FORMULA = "formula"
+    BOTH = "both"
 
+    breast_start = forms.DateTimeField(
+        required=False,
+        label=_("Start time"),
+        widget=DateTimeInput(attrs={"step": 60, "id": "id_breast_start"}),
+    )
+    breast_end = forms.DateTimeField(
+        required=False,
+        label=_("End time"),
+        widget=DateTimeInput(attrs={"step": 60, "id": "id_breast_end"}),
+    )
+    bottle_start = forms.DateTimeField(
+        required=False,
+        label=_("Start time"),
+        widget=DateTimeInput(attrs={"step": 60, "id": "id_bottle_start"}),
+    )
+    bottle_end = forms.DateTimeField(
+        required=False,
+        label=_("End time"),
+        widget=DateTimeInput(attrs={"step": 60, "id": "id_bottle_end"}),
+    )
     bottle_type = forms.ChoiceField(
         choices=[
             (BREAST_MILK, _("Breast Milk")),
             (FORMULA, _("Formula")),
+            (BOTH, _("Both")),
         ],
         initial=BREAST_MILK,
         required=False,
         label=_("Bottle type"),
         widget=forms.HiddenInput(attrs={"id": "id_bottle_type"}),
     )
-    bottle_amount = forms.FloatField(
+    bottle_amount_breast_milk = forms.FloatField(
         min_value=0,
         required=False,
-        label=_("Bottle amount"),
+        label=_("Breast milk amount"),
         widget=forms.NumberInput(
             attrs={
                 "step": "any",
                 "min": "0",
                 "placeholder": "0",
-                "id": "id_bottle_amount",
+                "id": "id_bottle_amount_breast_milk",
+            }
+        ),
+    )
+    bottle_amount_formula = forms.FloatField(
+        min_value=0,
+        required=False,
+        label=_("Formula amount"),
+        widget=forms.NumberInput(
+            attrs={
+                "step": "any",
+                "min": "0",
+                "placeholder": "0",
+                "id": "id_bottle_amount_formula",
             }
         ),
     )
@@ -280,6 +315,202 @@ class FeedCommitForm(forms.Form):
             }
         ),
     )
+
+    def __init__(
+        self,
+        *args,
+        has_breast=False,
+        has_bottle=False,
+        breast_start=None,
+        breast_end=None,
+        bottle_start=None,
+        bottle_end=None,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.has_breast = has_breast
+        self.has_bottle = has_bottle
+        if has_breast:
+            self.fields["breast_start"].required = True
+            self.fields["breast_end"].required = True
+        if has_bottle:
+            self.fields["bottle_start"].required = True
+            self.fields["bottle_end"].required = True
+        if not self.is_bound:
+            if breast_start:
+                self.initial["breast_start"] = breast_start
+            if breast_end:
+                self.initial["breast_end"] = breast_end
+            if bottle_start:
+                self.initial["bottle_start"] = bottle_start
+            if bottle_end:
+                self.initial["bottle_end"] = bottle_end
+
+    def _make_aware(self, value):
+        if value and timezone.is_naive(value):
+            return timezone.make_aware(value, timezone.get_current_timezone())
+        return value
+
+    def clean_breast_start(self):
+        return self._make_aware(self.cleaned_data.get("breast_start"))
+
+    def clean_breast_end(self):
+        return self._make_aware(self.cleaned_data.get("breast_end"))
+
+    def clean_bottle_start(self):
+        return self._make_aware(self.cleaned_data.get("bottle_start"))
+
+    def clean_bottle_end(self):
+        return self._make_aware(self.cleaned_data.get("bottle_end"))
+
+    def clean(self):
+        cleaned_data = super().clean()
+        bottle_type = cleaned_data.get("bottle_type") or self.BREAST_MILK
+        amount_bm = cleaned_data.get("bottle_amount_breast_milk")
+        amount_f = cleaned_data.get("bottle_amount_formula")
+
+        if bottle_type == self.BOTH and not amount_bm and not amount_f:
+            self.add_error(
+                "bottle_amount_breast_milk", _("Please enter an amount.")
+            )
+
+        return cleaned_data
+
+
+class FeedQuickForm(forms.Form):
+    """Manually log a completed bottle feeding without running a timer.
+
+    The end time defaults to the moment the form is opened (adjustable); the
+    user must enter the start time. Bottle feeding only (breast milk / formula
+    / both) -- breastfeeding is logged from the Breast Feed & Pump card.
+    """
+
+    BREAST_MILK = "breast milk"
+    FORMULA = "formula"
+    BOTH = "both"
+
+    bottle_type = forms.ChoiceField(
+        choices=[
+            (BREAST_MILK, _("Breast Milk")),
+            (FORMULA, _("Formula")),
+            (BOTH, _("Both")),
+        ],
+        initial=BREAST_MILK,
+        required=False,
+        label=_("Bottle type"),
+        widget=forms.HiddenInput(attrs={"id": "id_bottle_type"}),
+    )
+    start = forms.DateTimeField(
+        label=_("Start time"),
+        widget=DateTimeInput(attrs={"step": 60, "id": "id_start"}),
+    )
+    end = forms.DateTimeField(
+        label=_("End time"),
+        widget=DateTimeInput(attrs={"step": 60, "id": "id_end"}),
+    )
+    bottle_amount_breast_milk = forms.FloatField(
+        min_value=0,
+        required=False,
+        label=_("Breast milk amount"),
+        widget=forms.NumberInput(
+            attrs={
+                "step": "any",
+                "min": "0",
+                "placeholder": "0",
+                "id": "id_bottle_amount_breast_milk",
+            }
+        ),
+    )
+    bottle_amount_formula = forms.FloatField(
+        min_value=0,
+        required=False,
+        label=_("Formula amount"),
+        widget=forms.NumberInput(
+            attrs={
+                "step": "any",
+                "min": "0",
+                "placeholder": "0",
+                "id": "id_bottle_amount_formula",
+            }
+        ),
+    )
+    notes = forms.CharField(
+        required=False,
+        label=_("Notes"),
+        widget=forms.Textarea(
+            attrs={
+                "rows": 3,
+                "id": "id_notes",
+                "placeholder": "",
+            }
+        ),
+    )
+
+    def __init__(self, *args, child=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.child = child
+        if not self.is_bound:
+            # Default both start and end to "now" so the start date already
+            # matches the end date; the user can roll the time as needed.
+            now = timezone.localtime().replace(second=0, microsecond=0, tzinfo=None)
+            self.initial["end"] = now
+            self.initial["start"] = now
+
+    def _make_aware(self, value):
+        if value and timezone.is_naive(value):
+            return timezone.make_aware(value, timezone.get_current_timezone())
+        return value
+
+    def clean_start(self):
+        return self._make_aware(self.cleaned_data.get("start"))
+
+    def clean_end(self):
+        return self._make_aware(self.cleaned_data.get("end"))
+
+    def clean(self):
+        cleaned_data = super().clean()
+        bottle_type = cleaned_data.get("bottle_type") or self.BREAST_MILK
+        amount_bm = cleaned_data.get("bottle_amount_breast_milk")
+        amount_f = cleaned_data.get("bottle_amount_formula")
+
+        if bottle_type == self.BOTH and not amount_bm and not amount_f:
+            self.add_error("bottle_amount_breast_milk", _("Please enter an amount."))
+
+        return cleaned_data
+
+    def build_entries(self):
+        """Return a list of unsaved bottle Feeding instances for the data."""
+        from core.models import Feeding
+
+        start = self.cleaned_data["start"]
+        end = self.cleaned_data["end"]
+        notes = self.cleaned_data.get("notes", "")
+        bottle_type = self.cleaned_data.get("bottle_type") or self.BREAST_MILK
+        amount_bm = self.cleaned_data.get("bottle_amount_breast_milk") or None
+        amount_f = self.cleaned_data.get("bottle_amount_formula") or None
+
+        if bottle_type == self.BOTH:
+            specs = [("breast milk", amount_bm), ("formula", amount_f)]
+        elif bottle_type == self.FORMULA:
+            specs = [("formula", amount_f or amount_bm)]
+        else:
+            specs = [("breast milk", amount_bm or amount_f)]
+
+        entries = []
+        for entry_type, entry_amount in specs:
+            entries.append(
+                Feeding(
+                    child=self.child,
+                    start=start,
+                    end=end,
+                    type=entry_type,
+                    method="bottle",
+                    amount=entry_amount,
+                    notes=notes,
+                )
+            )
+
+        return entries
 
 
 class BreastfeedForm(forms.ModelForm):

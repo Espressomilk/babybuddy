@@ -74,6 +74,15 @@
     color: #555;
   }
 
+  .qa-subhead {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: #999;
+    margin: 0.35rem 0 0.05rem;
+  }
+
   .qa-timer      { --qa-color: #C8D8F0; }
   .qa-feed       { --qa-color: #E9C46A; }
   .qa-diaper     { --qa-color: #C9C0AD; }
@@ -344,84 +353,6 @@
       {% if perms.core.add_timer or perms.core.add_feeding %}
       <div style="flex:1;display:flex;flex-direction:column;gap:0.5rem;">
 
-        {# Left breast row #}
-        <div class="qa-swipe-wrap" style="border-radius:10px;">
-          {% if feed_left_timer or feed_left_pending_duration %}{% if perms.core.add_timer %}
-          <div class="qa-swipe-bg">
-            <form method="post"
-                  action="{% url 'dashboard:feed-side-discard' object.slug 'left' %}"
-                  style="margin:0;">
-              {% csrf_token %}
-              <button type="submit" class="qa-swipe-discard-btn">{% trans "Discard" %}</button>
-            </form>
-          </div>
-          {% endif %}{% endif %}
-          <div class="qa-swipe-row" style="display:flex;align-items:center;gap:0.5rem;background:#fff;border-radius:10px;">
-            <span style="width:3rem;font-size:0.88rem;font-weight:600;color:#2d2d2d;flex-shrink:0;">{% trans "Left" %}</span>
-            <span style="flex:1;font-size:1rem;font-weight:700;font-variant-numeric:tabular-nums;color:#2e3d5f;min-width:0;">
-              {% if feed_left_timer %}
-                <span class="qa-timer-clock"
-                      data-start="{{ feed_left_timer.start|date:'c' }}"
-                      data-offset="{{ feed_left_pending_seconds }}">0:00:00</span>
-              {% elif feed_left_pending_duration %}
-                ✓ {{ feed_left_pending_duration }}
-              {% endif %}
-            </span>
-            {% if perms.core.add_timer %}
-            <form method="post"
-                  action="{% url 'dashboard:feed-timer-toggle' object.slug 'left' %}"
-                  style="margin:0;">
-              {% csrf_token %}
-              <button type="submit"
-                      class="qa-pump-btn{% if feed_left_timer %} qa-pump-active{% endif %}">
-                {% if feed_left_timer %}⏹ {% trans "Stop" %}
-                {% elif feed_left_pending_duration %}↺ {% trans "Resume" %}
-                {% else %}▶ {% trans "Start" %}{% endif %}
-              </button>
-            </form>
-            {% endif %}
-          </div>
-        </div>
-
-        {# Right breast row #}
-        <div class="qa-swipe-wrap" style="border-radius:10px;">
-          {% if feed_right_timer or feed_right_pending_duration %}{% if perms.core.add_timer %}
-          <div class="qa-swipe-bg">
-            <form method="post"
-                  action="{% url 'dashboard:feed-side-discard' object.slug 'right' %}"
-                  style="margin:0;">
-              {% csrf_token %}
-              <button type="submit" class="qa-swipe-discard-btn">{% trans "Discard" %}</button>
-            </form>
-          </div>
-          {% endif %}{% endif %}
-          <div class="qa-swipe-row" style="display:flex;align-items:center;gap:0.5rem;background:#fff;border-radius:10px;">
-            <span style="width:3rem;font-size:0.88rem;font-weight:600;color:#2d2d2d;flex-shrink:0;">{% trans "Right" %}</span>
-            <span style="flex:1;font-size:1rem;font-weight:700;font-variant-numeric:tabular-nums;color:#2e3d5f;min-width:0;">
-              {% if feed_right_timer %}
-                <span class="qa-timer-clock"
-                      data-start="{{ feed_right_timer.start|date:'c' }}"
-                      data-offset="{{ feed_right_pending_seconds }}">0:00:00</span>
-              {% elif feed_right_pending_duration %}
-                ✓ {{ feed_right_pending_duration }}
-              {% endif %}
-            </span>
-            {% if perms.core.add_timer %}
-            <form method="post"
-                  action="{% url 'dashboard:feed-timer-toggle' object.slug 'right' %}"
-                  style="margin:0;">
-              {% csrf_token %}
-              <button type="submit"
-                      class="qa-pump-btn{% if feed_right_timer %} qa-pump-active{% endif %}">
-                {% if feed_right_timer %}⏹ {% trans "Stop" %}
-                {% elif feed_right_pending_duration %}↺ {% trans "Resume" %}
-                {% else %}▶ {% trans "Start" %}{% endif %}
-              </button>
-            </form>
-            {% endif %}
-          </div>
-        </div>
-
         {# Bottle row #}
         <div class="qa-swipe-wrap" style="border-radius:10px;">
           {% if feed_bottle_timer or feed_bottle_pending_duration %}{% if perms.core.add_timer %}
@@ -462,7 +393,7 @@
         </div>
 
         {# Review & Save — always visible; disabled when nothing to save #}
-        {% if feed_left_timer or feed_right_timer or feed_bottle_timer or pending_feed %}
+        {% if feed_bottle_timer or feed_bottle_pending_duration %}
         <a href="{% url 'dashboard:feed-commit' object.slug %}"
            class="qa-btn" style="text-align:center;">
           {% trans "Review & Save" %}
@@ -472,6 +403,14 @@
               style="text-align:center;border-color:#ccc;color:#bbb;cursor:default;pointer-events:none;">
           {% trans "Review & Save" %}
         </span>
+        {% endif %}
+
+        {# Quick Log — log a completed feeding without a timer #}
+        {% if perms.core.add_feeding %}
+        <a href="{% url 'dashboard:feed-quick' object.slug %}"
+           class="qa-btn" style="text-align:center;">
+          {% trans "Quick Log" %}
+        </a>
         {% endif %}
 
       </div>
@@ -583,10 +522,10 @@
     </div>
   </div>
 
-  {# Pump #}
+  {# Breast Feed & Pump #}
   <div class="qa-card qa-pump" id="pump-card">
     <div class="qa-header">
-      <span class="qa-label">{% trans "Pump" %}</span>
+      <span class="qa-label">{% trans "Breast Feed & Pump" %}</span>
       {% if perms.core.add_pumping %}
         <a href="{% url 'core:pumping-add' %}?child={{ object.slug }}"
            class="qa-plus" title="{% trans "Add pumping" %}">+</a>
@@ -596,6 +535,105 @@
       <img src="{% static 'babybuddy/logo/pump_icon.png' %}" class="qa-card-icon" alt="" aria-hidden="true">
       {% if perms.core.add_timer or perms.core.add_pumping %}
       <div style="flex:1;display:flex;flex-direction:column;gap:0.5rem;">
+
+        {# ── Breastfeed ── #}
+        {% if perms.core.add_timer or perms.core.add_feeding %}
+        <div class="qa-subhead">{% trans "Breastfeed" %}</div>
+
+        {# Left breast row #}
+        <div class="qa-swipe-wrap" style="border-radius:10px;">
+          {% if feed_left_timer or feed_left_pending_duration %}{% if perms.core.add_timer %}
+          <div class="qa-swipe-bg">
+            <form method="post"
+                  action="{% url 'dashboard:feed-side-discard' object.slug 'left' %}"
+                  style="margin:0;">
+              {% csrf_token %}
+              <button type="submit" class="qa-swipe-discard-btn">{% trans "Discard" %}</button>
+            </form>
+          </div>
+          {% endif %}{% endif %}
+          <div class="qa-swipe-row" style="display:flex;align-items:center;gap:0.5rem;background:#fff;border-radius:10px;">
+            <span style="width:3rem;font-size:0.88rem;font-weight:600;color:#2d2d2d;flex-shrink:0;">{% trans "Left" %}</span>
+            <span style="flex:1;font-size:1rem;font-weight:700;font-variant-numeric:tabular-nums;color:#2e3d5f;min-width:0;">
+              {% if feed_left_timer %}
+                <span class="qa-timer-clock"
+                      data-start="{{ feed_left_timer.start|date:'c' }}"
+                      data-offset="{{ feed_left_pending_seconds }}">0:00:00</span>
+              {% elif feed_left_pending_duration %}
+                ✓ {{ feed_left_pending_duration }}
+              {% endif %}
+            </span>
+            {% if perms.core.add_timer %}
+            <form method="post"
+                  action="{% url 'dashboard:feed-timer-toggle' object.slug 'left' %}"
+                  style="margin:0;">
+              {% csrf_token %}
+              <button type="submit"
+                      class="qa-pump-btn{% if feed_left_timer %} qa-pump-active{% endif %}">
+                {% if feed_left_timer %}⏹ {% trans "Stop" %}
+                {% elif feed_left_pending_duration %}↺ {% trans "Resume" %}
+                {% else %}▶ {% trans "Start" %}{% endif %}
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+
+        {# Right breast row #}
+        <div class="qa-swipe-wrap" style="border-radius:10px;">
+          {% if feed_right_timer or feed_right_pending_duration %}{% if perms.core.add_timer %}
+          <div class="qa-swipe-bg">
+            <form method="post"
+                  action="{% url 'dashboard:feed-side-discard' object.slug 'right' %}"
+                  style="margin:0;">
+              {% csrf_token %}
+              <button type="submit" class="qa-swipe-discard-btn">{% trans "Discard" %}</button>
+            </form>
+          </div>
+          {% endif %}{% endif %}
+          <div class="qa-swipe-row" style="display:flex;align-items:center;gap:0.5rem;background:#fff;border-radius:10px;">
+            <span style="width:3rem;font-size:0.88rem;font-weight:600;color:#2d2d2d;flex-shrink:0;">{% trans "Right" %}</span>
+            <span style="flex:1;font-size:1rem;font-weight:700;font-variant-numeric:tabular-nums;color:#2e3d5f;min-width:0;">
+              {% if feed_right_timer %}
+                <span class="qa-timer-clock"
+                      data-start="{{ feed_right_timer.start|date:'c' }}"
+                      data-offset="{{ feed_right_pending_seconds }}">0:00:00</span>
+              {% elif feed_right_pending_duration %}
+                ✓ {{ feed_right_pending_duration }}
+              {% endif %}
+            </span>
+            {% if perms.core.add_timer %}
+            <form method="post"
+                  action="{% url 'dashboard:feed-timer-toggle' object.slug 'right' %}"
+                  style="margin:0;">
+              {% csrf_token %}
+              <button type="submit"
+                      class="qa-pump-btn{% if feed_right_timer %} qa-pump-active{% endif %}">
+                {% if feed_right_timer %}⏹ {% trans "Stop" %}
+                {% elif feed_right_pending_duration %}↺ {% trans "Resume" %}
+                {% else %}▶ {% trans "Start" %}{% endif %}
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+
+        {# Breastfeed Review & Save #}
+        {% if feed_left_timer or feed_right_timer or feed_left_pending_duration or feed_right_pending_duration %}
+        <a href="{% url 'dashboard:feed-commit' object.slug %}"
+           class="qa-btn" style="text-align:center;">
+          {% trans "Review & Save" %}
+        </a>
+        {% else %}
+        <span class="qa-btn"
+              style="text-align:center;border-color:#ccc;color:#bbb;cursor:default;pointer-events:none;">
+          {% trans "Review & Save" %}
+        </span>
+        {% endif %}
+        {% endif %}
+
+        {# ── Pump ── #}
+        <div class="qa-subhead">{% trans "Pump" %}</div>
 
         {# Left row #}
         <div class="qa-swipe-wrap" style="border-radius:10px;">

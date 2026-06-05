@@ -3098,6 +3098,90 @@ msgid "Pump"
 msgstr "挤奶"
 
 #: dashboard/templates/dashboard/track.html
+msgid "Breast Feed & Pump"
+msgstr "母乳喂养与挤奶"
+
+#: dashboard/templates/dashboard/track.html
+msgid "Quick Log"
+msgstr "快速记录"
+
+#: dashboard/templates/dashboard/feed_quick.html
+msgid "Save Bottle Feeding"
+msgstr "保存奶瓶喂养"
+
+#: dashboard/templatetags/cards.py
+msgid "Triple feeding"
+msgstr "三联喂养"
+
+#: dashboard/templatetags/cards.py
+msgid "Breast feed"
+msgstr "亲喂"
+
+#: dashboard/templatetags/cards.py
+msgid "Bottle (breast milk)"
+msgstr "奶瓶（母乳）"
+
+#: dashboard/templatetags/cards.py
+msgid "Bottle (formula)"
+msgstr "奶瓶（配方奶）"
+
+#: dashboard/templates/dashboard/_time_roller.html
+msgid "Select date & time"
+msgstr "选择日期和时间"
+
+#: dashboard/templates/dashboard/_time_roller.html
+msgid "Done"
+msgstr "完成"
+
+#: dashboard/templates/dashboard/_time_roller.html
+msgid "Jan"
+msgstr "1月"
+
+#: dashboard/templates/dashboard/_time_roller.html
+msgid "Feb"
+msgstr "2月"
+
+#: dashboard/templates/dashboard/_time_roller.html
+msgid "Mar"
+msgstr "3月"
+
+#: dashboard/templates/dashboard/_time_roller.html
+msgid "Apr"
+msgstr "4月"
+
+#: dashboard/templates/dashboard/_time_roller.html
+msgid "May"
+msgstr "5月"
+
+#: dashboard/templates/dashboard/_time_roller.html
+msgid "Jun"
+msgstr "6月"
+
+#: dashboard/templates/dashboard/_time_roller.html
+msgid "Jul"
+msgstr "7月"
+
+#: dashboard/templates/dashboard/_time_roller.html
+msgid "Aug"
+msgstr "8月"
+
+#: dashboard/templates/dashboard/_time_roller.html
+msgid "Sep"
+msgstr "9月"
+
+#: dashboard/templates/dashboard/_time_roller.html
+msgid "Oct"
+msgstr "10月"
+
+#: dashboard/templates/dashboard/_time_roller.html
+msgid "Nov"
+msgstr "11月"
+
+#: dashboard/templates/dashboard/_time_roller.html
+msgid "Dec"
+msgstr "12月"
+
+#: dashboard/templates/dashboard/track.html
 msgid "Diaper"
 msgstr "换尿布"
 
@@ -3229,6 +3313,14 @@ msgstr "奶瓶喂食记录已添加！"
 #: dashboard/forms.py
 msgid "Please enter an amount."
 msgstr "请输入喂量。"
+
+#: dashboard/forms.py
+msgid "Breast milk amount"
+msgstr "母乳喂奶量"
+
+#: dashboard/forms.py
+msgid "Formula amount"
+msgstr "配方奶喂奶量"
 
 #~ msgid "%(count)s active timer"
 #~ msgid_plural "%(count)s active timers"

@@ -119,6 +119,11 @@ urlpatterns = [
         name="feed-side-discard",
     ),
     path(
+        "children/<str:slug>/feed/quick/",
+        views.FeedQuickAdd.as_view(),
+        name="feed-quick",
+    ),
+    path(
         "children/<str:slug>/feed/commit/",
         views.FeedCommit.as_view(),
         name="feed-commit",

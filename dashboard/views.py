@@ -15,7 +15,7 @@ from django.views.generic.edit import CreateView, FormView
 from babybuddy.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from core.models import BMI, Child, Feeding, HeadCircumference, Height, Medication, Pumping, Sleep, Temperature, Timer, TummyTime, Vaccine, Weight
 
-from .forms import BottleFeedForm, BreastfeedForm, DiaperChangeQuickForm, FeedCommitForm, PumpCommitForm, SleepNoteForm, TummyTimeMilestoneForm
+from .forms import BottleFeedForm, BreastfeedForm, DiaperChangeQuickForm, FeedCommitForm, FeedQuickForm, PumpCommitForm, SleepNoteForm, TummyTimeMilestoneForm
 from .models import FeedPending, PumpPending
 
 
@@ -725,11 +725,39 @@ class FeedCommit(PermissionRequiredMixin, FormView):
             )
         return super().dispatch(request, *args, **kwargs)
 
-    def _duration_str(self, qs):
-        total = sum(max(0, int((p.end - p.start).total_seconds())) for p in qs)
-        h, rem = divmod(total, 3600)
-        m, s = divmod(rem, 60)
-        return f"{h}:{m:02d}:{s:02d}"
+    def _bounds(self, qs):
+        """Return (start, end) for a queryset as naive local datetimes (minute
+        precision) suitable for prefilling datetime-local inputs."""
+        items = list(qs)
+        if not items:
+            return None, None
+        start = timezone.localtime(min(p.start for p in items)).replace(
+            second=0, microsecond=0, tzinfo=None
+        )
+        end = timezone.localtime(max(p.end for p in items)).replace(
+            second=0, microsecond=0, tzinfo=None
+        )
+        return start, end
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        child = self.get_child()
+        pending = FeedPending.objects.filter(child=child)
+        breast = pending.filter(side__in=["left", "right"])
+        bottle = pending.filter(side="bottle")
+        breast_start, breast_end = self._bounds(breast)
+        bottle_start, bottle_end = self._bounds(bottle)
+        kwargs.update(
+            {
+                "has_breast": breast.exists(),
+                "has_bottle": bottle.exists(),
+                "breast_start": breast_start,
+                "breast_end": breast_end,
+                "bottle_start": bottle_start,
+                "bottle_end": bottle_end,
+            }
+        )
+        return kwargs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -742,9 +770,6 @@ class FeedCommit(PermissionRequiredMixin, FormView):
         ctx["has_right"] = right.exists()
         ctx["has_bottle"] = bottle.exists()
         ctx["has_breast"] = left.exists() or right.exists()
-        ctx["left_duration"] = self._duration_str(left) if left.exists() else None
-        ctx["right_duration"] = self._duration_str(right) if right.exists() else None
-        ctx["bottle_duration"] = self._duration_str(bottle) if bottle.exists() else None
         return ctx
 
     def form_valid(self, form):
@@ -769,8 +794,8 @@ class FeedCommit(PermissionRequiredMixin, FormView):
                     method = "right breast"
                 entry = Feeding(
                     child=child,
-                    start=min(p.start for p in breast),
-                    end=max(p.end for p in breast),
+                    start=form.cleaned_data.get("breast_start"),
+                    end=form.cleaned_data.get("breast_end"),
                     type="breast milk",
                     method=method,
                     notes=notes,
@@ -778,21 +803,37 @@ class FeedCommit(PermissionRequiredMixin, FormView):
                 entry.full_clean()
                 created.append(entry)
 
-            # ── Bottle feeding entry ──
+            # ── Bottle feeding entry/entries ──
             if bottle.exists():
                 bottle_type = form.cleaned_data.get("bottle_type") or "breast milk"
-                bottle_amount = form.cleaned_data.get("bottle_amount") or None
-                entry = Feeding(
-                    child=child,
-                    start=min(p.start for p in bottle),
-                    end=max(p.end for p in bottle),
-                    type=bottle_type,
-                    method="bottle",
-                    amount=bottle_amount,
-                    notes=notes,
-                )
-                entry.full_clean()
-                created.append(entry)
+                bottle_start = form.cleaned_data.get("bottle_start")
+                bottle_end = form.cleaned_data.get("bottle_end")
+                amount_bm = form.cleaned_data.get("bottle_amount_breast_milk") or None
+                amount_f = form.cleaned_data.get("bottle_amount_formula") or None
+
+                if bottle_type == "both":
+                    # Two separate entries: breast milk + formula.
+                    bottle_entries = [
+                        ("breast milk", amount_bm),
+                        ("formula", amount_f),
+                    ]
+                elif bottle_type == "formula":
+                    bottle_entries = [("formula", amount_f or amount_bm)]
+                else:
+                    bottle_entries = [("breast milk", amount_bm or amount_f)]
+
+                for entry_type, entry_amount in bottle_entries:
+                    entry = Feeding(
+                        child=child,
+                        start=bottle_start,
+                        end=bottle_end,
+                        type=entry_type,
+                        method="bottle",
+                        amount=entry_amount,
+                        notes=notes,
+                    )
+                    entry.full_clean()
+                    created.append(entry)
 
             for entry in created:
                 entry.save()
@@ -846,6 +887,50 @@ class FeedPendingDiscard(PermissionRequiredMixin, View):
         return HttpResponseRedirect(
             reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})
         )
+
+
+class FeedQuickAdd(PermissionRequiredMixin, FormView):
+    """Manually log a completed bottle feeding without running a timer.
+
+    The end time is prefilled with the current time (adjustable); the user
+    enters the start time. Bottle feeding only (breast milk / formula / both) --
+    breastfeeding is logged from the Breast Feed & Pump card.
+    """
+
+    permission_required = ("core.add_feeding",)
+    form_class = FeedQuickForm
+    template_name = "dashboard/feed_quick.html"
+
+    def get_child(self):
+        return get_object_or_404(Child, slug=self.kwargs["slug"])
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["child"] = self.get_child()
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["child"] = self.get_child()
+        return ctx
+
+    def form_valid(self, form):
+        try:
+            entries = form.build_entries()
+            for entry in entries:
+                entry.full_clean()
+            for entry in entries:
+                entry.save()
+            messages.success(self.request, _("Feeding entry saved."))
+            _broadcast_track(self.kwargs["slug"])
+            return HttpResponseRedirect(self.get_success_url())
+        except ValidationError as e:
+            for msg in e.messages:
+                form.add_error(None, msg)
+            return self.form_invalid(form)
+
+    def get_success_url(self):
+        return reverse("dashboard:track-child", kwargs={"slug": self.kwargs["slug"]})
 
 
 class QuickPumpSave(PermissionRequiredMixin, View):

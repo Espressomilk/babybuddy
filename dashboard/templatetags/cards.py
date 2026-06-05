@@ -225,21 +225,44 @@ def card_feeding_recent(context, child, end_date=None):
 @register.inclusion_tag("cards/feeding_last.html", takes_context=True)
 def card_feeding_last(context, child):
     """
-    Information about the most recent feeding.
+    Information about the most recent feeding, broken down by the three methods
+    used for "triple feeding": breast feed, bottle (breast milk) and bottle
+    (formula).
     :param child: an instance of the Child model.
-    :returns: a dictionary with the most recent Feeding instance.
+    :returns: a dictionary with the most recent Feeding instances per method.
     """
-    instance = (
-        models.Feeding.objects.filter(child=child)
-        .filter(**_filter_data_age(context))
+    feedings = models.Feeding.objects.filter(child=child).filter(
+        **_filter_data_age(context)
+    )
+
+    last_breast = (
+        feedings.filter(
+            method__in=("left breast", "right breast", "both breasts")
+        )
         .order_by("-end")
         .first()
     )
+    last_bottle_breast_milk = (
+        feedings.filter(method="bottle", type="breast milk").order_by("-end").first()
+    )
+    last_bottle_formula = (
+        feedings.filter(method="bottle", type="formula").order_by("-end").first()
+    )
+
+    triple = [
+        {"label": _("Breast feed"), "feeding": last_breast},
+        {"label": _("Bottle (breast milk)"), "feeding": last_bottle_breast_milk},
+        {"label": _("Bottle (formula)"), "feeding": last_bottle_formula},
+    ]
+
+    # Retained for backwards compatibility (overall most recent feeding).
+    instance = feedings.order_by("-end").first()
     empty = not instance
 
     return {
         "type": "feeding",
         "feeding": instance,
+        "triple": triple,
         "empty": empty,
         "hide_empty": _hide_empty(context),
     }

@@ -1,0 +1,280 @@
+{% load i18n %}
+{# Reusable iOS-style roller (wheel) date-time picker.
+
+   Auto-enhances every <input type="datetime-local"> on the page: the native
+   input is hidden and replaced by a tappable display field. Tapping it opens a
+   bottom sheet with scroll-snapping wheels for month / day / year / hour /
+   minute / AM-PM. Values are written back in the datetime-local format
+   (YYYY-MM-DDTHH:MM) so normal form submission is unchanged. #}
+<style>
+  .tr-display {
+    width: 100%; text-align: left; padding: 0.7rem 1rem;
+    border: 1.5px solid #ddd; border-radius: 12px;
+    font-size: 1.05rem; background: #fff; color: #2d2d2d;
+    box-sizing: border-box; cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .tr-display:hover { border-color: #2e3d5f; }
+  .tr-display.tr-empty { color: #999; }
+
+  .tr-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    display: flex; align-items: flex-end; justify-content: center;
+    z-index: 1080; opacity: 0; transition: opacity 0.18s;
+  }
+  .tr-overlay.tr-open { opacity: 1; }
+  .tr-sheet {
+    background: #fff; width: 100%; max-width: 480px;
+    border-radius: 18px 18px 0 0; padding: 0.4rem 1rem 1.3rem;
+    transform: translateY(100%); transition: transform 0.22s ease;
+    box-shadow: 0 -8px 30px rgba(0,0,0,0.18);
+  }
+  .tr-overlay.tr-open .tr-sheet { transform: translateY(0); }
+  .tr-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.5rem 0.2rem 0.7rem;
+  }
+  .tr-title { font-size: 1rem; font-weight: 700; color: #2d2d2d; }
+  .tr-btn {
+    border: none; background: transparent; font-size: 1rem; font-weight: 600;
+    cursor: pointer; padding: 0.3rem 0.5rem; border-radius: 8px;
+  }
+  .tr-cancel { color: #888; }
+  .tr-done { color: #2e3d5f; font-weight: 700; }
+  .tr-cols {
+    display: flex; gap: 0.25rem; position: relative; height: 200px;
+    overflow: hidden; touch-action: pan-y;
+  }
+  .tr-center {
+    position: absolute; left: 0; right: 0; top: 80px; height: 40px;
+    border-top: 1.5px solid #ccd3e0; border-bottom: 1.5px solid #ccd3e0;
+    background: rgba(46,61,95,0.04); pointer-events: none; border-radius: 8px;
+  }
+  .tr-col {
+    flex: 1; min-width: 0; overflow-y: scroll; scroll-snap-type: y mandatory;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .tr-col::-webkit-scrollbar { display: none; }
+  .tr-col.tr-wide { flex: 1.5; }
+  .tr-item {
+    height: 40px; line-height: 40px; scroll-snap-align: center;
+    text-align: center; font-size: 1.1rem; color: #2d2d2d;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .tr-pad { height: 80px; }
+</style>
+
+<script>
+(function () {
+  var ITEM_H = 40;
+  var MONTHS = [
+    "{% trans 'Jan' %}", "{% trans 'Feb' %}", "{% trans 'Mar' %}",
+    "{% trans 'Apr' %}", "{% trans 'May' %}", "{% trans 'Jun' %}",
+    "{% trans 'Jul' %}", "{% trans 'Aug' %}", "{% trans 'Sep' %}",
+    "{% trans 'Oct' %}", "{% trans 'Nov' %}", "{% trans 'Dec' %}"
+  ];
+  var AMPM = ["AM", "PM"];
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function parseLocal(v) {
+    var m = (v || '').match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    if (!m) return null;
+    return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], 0);
+  }
+  function fmtInput(d) {
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+      'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  function fmtDisplay(d) {
+    var h = d.getHours();
+    var ap = h < 12 ? AMPM[0] : AMPM[1];
+    var h12 = h % 12; if (h12 === 0) h12 = 12;
+    return MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear() +
+      '  ' + h12 + ':' + pad(d.getMinutes()) + ' ' + ap;
+  }
+  function daysInMonth(year, month) { return new Date(year, month + 1, 0).getDate(); }
+
+  // ── Shared overlay (one instance reused by every field) ──
+  var overlay, sheet, colsWrap, doneBtn, cancelBtn, activeInput, activeDisplay;
+  var cols = {}; // key -> {el, values}
+
+  function buildCol(key, wide) {
+    var el = document.createElement('div');
+    el.className = 'tr-col' + (wide ? ' tr-wide' : '');
+    el.dataset.key = key;
+    colsWrap.appendChild(el);
+    cols[key] = { el: el, values: [] };
+    return el;
+  }
+
+  function ensureOverlay() {
+    if (overlay) return;
+    overlay = document.createElement('div');
+    overlay.className = 'tr-overlay';
+    overlay.innerHTML =
+      '<div class="tr-sheet">' +
+        '<div class="tr-head">' +
+          '<button type="button" class="tr-btn tr-cancel">{% trans "Cancel" %}</button>' +
+          '<span class="tr-title">{% trans "Select date & time" %}</span>' +
+          '<button type="button" class="tr-btn tr-done">{% trans "Done" %}</button>' +
+        '</div>' +
+        '<div class="tr-cols"><div class="tr-center"></div></div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    sheet = overlay.querySelector('.tr-sheet');
+    colsWrap = overlay.querySelector('.tr-cols');
+    doneBtn = overlay.querySelector('.tr-done');
+    cancelBtn = overlay.querySelector('.tr-cancel');
+
+    buildCol('month', true);
+    buildCol('day');
+    buildCol('year', true);
+    buildCol('hour');
+    buildCol('minute');
+    buildCol('ampm');
+
+    cancelBtn.addEventListener('click', close);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+    doneBtn.addEventListener('click', commit);
+  }
+
+  function fillCol(key, values, selectedIdx) {
+    var c = cols[key];
+    c.values = values;
+    var html = '<div class="tr-pad"></div>';
+    for (var i = 0; i < values.length; i++) {
+      html += '<div class="tr-item">' + values[i].label + '</div>';
+    }
+    html += '<div class="tr-pad"></div>';
+    c.el.innerHTML = html;
+    // Defer scroll positioning until the sheet is laid out.
+    requestAnimationFrame(function () {
+      c.el.scrollTop = selectedIdx * ITEM_H;
+    });
+  }
+
+  function selectedIndex(key) {
+    var c = cols[key];
+    return Math.max(0, Math.min(c.values.length - 1, Math.round(c.el.scrollTop / ITEM_H)));
+  }
+  function selectedValue(key) {
+    var c = cols[key];
+    return c.values[selectedIndex(key)].value;
+  }
+
+  function open(input, display) {
+    ensureOverlay();
+    activeInput = input;
+    activeDisplay = display;
+    var d = parseLocal(input.value) || new Date();
+    d.setSeconds(0, 0);
+
+    var nowY = new Date().getFullYear();
+    var minY = Math.min(nowY - 1, d.getFullYear());
+    var maxY = Math.max(nowY + 1, d.getFullYear());
+
+    var months = MONTHS.map(function (m, i) { return { label: m, value: i }; });
+    var years = [];
+    for (var y = minY; y <= maxY; y++) years.push({ label: String(y), value: y });
+    var dim = daysInMonth(d.getFullYear(), d.getMonth());
+    var days = [];
+    for (var dd = 1; dd <= dim; dd++) days.push({ label: String(dd), value: dd });
+    var hours = [];
+    for (var h = 1; h <= 12; h++) hours.push({ label: String(h), value: h });
+    var minutes = [];
+    for (var mi = 0; mi < 60; mi++) minutes.push({ label: pad(mi), value: mi });
+    var ampm = [{ label: AMPM[0], value: 0 }, { label: AMPM[1], value: 1 }];
+
+    var hr = d.getHours();
+    var apIdx = hr < 12 ? 0 : 1;
+    var h12 = hr % 12; if (h12 === 0) h12 = 12;
+
+    fillCol('month', months, d.getMonth());
+    fillCol('day', days, d.getDate() - 1);
+    fillCol('year', years, years.findIndex(function (o) { return o.value === d.getFullYear(); }));
+    fillCol('hour', hours, h12 - 1);
+    fillCol('minute', minutes, d.getMinutes());
+    fillCol('ampm', ampm, apIdx);
+
+    // Rebuild the day column if the user changes month/year.
+    var refreshDays = function () {
+      var yr = selectedValue('year');
+      var mo = selectedValue('month');
+      var dimNew = daysInMonth(yr, mo);
+      if (cols.day.values.length !== dimNew) {
+        var cur = Math.min(selectedIndex('day'), dimNew - 1);
+        var ds = [];
+        for (var k = 1; k <= dimNew; k++) ds.push({ label: String(k), value: k });
+        fillCol('day', ds, cur);
+      }
+    };
+    cols.month.el.onscroll = debounce(refreshDays, 120);
+    cols.year.el.onscroll = debounce(refreshDays, 120);
+
+    overlay.style.display = 'flex';
+    requestAnimationFrame(function () { overlay.classList.add('tr-open'); });
+    document.body.style.overflow = 'hidden';
+  }
+
+  function close() {
+    if (!overlay) return;
+    overlay.classList.remove('tr-open');
+    document.body.style.overflow = '';
+    setTimeout(function () { overlay.style.display = 'none'; }, 200);
+  }
+
+  function commit() {
+    var year = selectedValue('year');
+    var month = selectedValue('month');
+    var dim = daysInMonth(year, month);
+    var day = Math.min(selectedValue('day'), dim);
+    var h12 = selectedValue('hour');
+    var minute = selectedValue('minute');
+    var ap = selectedValue('ampm');
+    var hour = (h12 % 12) + (ap === 1 ? 12 : 0);
+    var d = new Date(year, month, day, hour, minute, 0);
+    activeInput.value = fmtInput(d);
+    activeInput.dispatchEvent(new Event('change', { bubbles: true }));
+    updateDisplay(activeInput, activeDisplay);
+    close();
+  }
+
+  function debounce(fn, ms) {
+    var t;
+    return function () { clearTimeout(t); t = setTimeout(fn, ms); };
+  }
+
+  function updateDisplay(input, display) {
+    var d = parseLocal(input.value);
+    if (d) {
+      display.textContent = fmtDisplay(d);
+      display.classList.remove('tr-empty');
+    } else {
+      display.textContent = '{% trans "Select date & time" %}';
+      display.classList.add('tr-empty');
+    }
+  }
+
+  function enhance(input) {
+    if (input.dataset.trEnhanced) return;
+    input.dataset.trEnhanced = '1';
+    var display = document.createElement('button');
+    display.type = 'button';
+    display.className = 'tr-display';
+    input.style.display = 'none';
+    input.parentNode.insertBefore(display, input);
+    updateDisplay(input, display);
+    display.addEventListener('click', function () { open(input, display); });
+  }
+
+  function init() {
+    document.querySelectorAll('input[type="datetime-local"]').forEach(enhance);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>

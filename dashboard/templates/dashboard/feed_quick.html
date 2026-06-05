@@ -1,7 +1,7 @@
 {% extends 'babybuddy/page.html' %}
 {% load i18n %}
 
-{% block title %}{% trans "Save Feeding" %} - {{ child }}{% endblock %}
+{% block title %}{% trans "Save Bottle Feeding" %} - {{ child }}{% endblock %}
 
 {% block breadcrumbs %}
     <li class="breadcrumb-item">
@@ -10,7 +10,7 @@
     <li class="breadcrumb-item">
         <a href="{% url 'dashboard:track-child' child.slug %}">{{ child }}</a>
     </li>
-    <li class="breadcrumb-item active" aria-current="page">{% trans "Save Feeding" %}</li>
+    <li class="breadcrumb-item active" aria-current="page">{% trans "Save Bottle Feeding" %}</li>
 {% endblock %}
 
 {% block content %}
@@ -19,16 +19,6 @@
   .fc-section {
     font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
     text-transform: uppercase; color: #888; margin: 1.5rem 0 0.5rem;
-  }
-  .fc-session-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0.75rem 1.1rem; background: #f0f4fb;
-    border-radius: 12px; margin-bottom: 0.5rem;
-  }
-  .fc-side-label { font-size: 1rem; font-weight: 700; color: #2d2d2d; }
-  .fc-duration {
-    font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums;
-    letter-spacing: 0.03em; color: #2e3d5f;
   }
   /* ── Modern time control ── */
   .ft-label {
@@ -93,13 +83,6 @@
     text-align: center; text-decoration: none; transition: border-color 0.15s, color 0.15s;
   }
   .fc-cancel:hover { border-color: #555; color: #333; }
-  .fc-discard {
-    width: 100%; margin-top: 0.75rem; padding: 0.7rem;
-    border: 2px solid #c0392b; border-radius: 12px; background: transparent;
-    color: #c0392b; font-size: 0.95rem; font-weight: 600; cursor: pointer;
-    transition: background 0.15s, color 0.15s; touch-action: manipulation;
-  }
-  .fc-discard:hover { background: #c0392b; color: #fff; }
   .fc-errors {
     background: #fdecea; border: 1.5px solid #c0392b; border-radius: 10px;
     padding: 0.75rem 1rem; color: #c0392b; font-size: 0.9rem; margin-bottom: 1rem;
@@ -119,33 +102,17 @@
   <form method="post" id="fc-form">
     {% csrf_token %}
 
-    {# ── Breastfeeding time ── #}
-    {% if has_breast %}
-    <p class="fc-section">{% trans "Breastfeeding" %}</p>
-    <p class="ft-label">{% trans "Start time" %}</p>
-    <div class="ft-field">
-      {{ form.breast_start }}
-      {% if form.breast_start.errors %}<div class="fc-errors" style="margin-top:0.4rem;">{{ form.breast_start.errors|striptags }}</div>{% endif %}
-    </div>
-    <p class="ft-label">{% trans "End time" %}</p>
-    <div class="ft-field">
-      {{ form.breast_end }}
-      {% if form.breast_end.errors %}<div class="fc-errors" style="margin-top:0.4rem;">{{ form.breast_end.errors|striptags }}</div>{% endif %}
-    </div>
-    {% endif %}
-
-    {% if has_bottle %}
     {# ── Bottle time ── #}
     <p class="fc-section">{% trans "Bottle" %}</p>
     <p class="ft-label">{% trans "Start time" %}</p>
     <div class="ft-field">
-      {{ form.bottle_start }}
-      {% if form.bottle_start.errors %}<div class="fc-errors" style="margin-top:0.4rem;">{{ form.bottle_start.errors|striptags }}</div>{% endif %}
+      {{ form.start }}
+      {% if form.start.errors %}<div class="fc-errors" style="margin-top:0.4rem;">{{ form.start.errors|striptags }}</div>{% endif %}
     </div>
     <p class="ft-label">{% trans "End time" %}</p>
     <div class="ft-field">
-      {{ form.bottle_end }}
-      {% if form.bottle_end.errors %}<div class="fc-errors" style="margin-top:0.4rem;">{{ form.bottle_end.errors|striptags }}</div>{% endif %}
+      {{ form.end }}
+      {% if form.end.errors %}<div class="fc-errors" style="margin-top:0.4rem;">{{ form.end.errors|striptags }}</div>{% endif %}
     </div>
 
     {# ── Bottle type & amount ── #}
@@ -176,7 +143,6 @@
       </div>
       <span class="fc-amount-unit">ml</span>
     </div>
-    {% endif %}
 
     {# ── Notes ── #}
     <p class="fc-section">{% trans "Notes" %}</p>
@@ -191,12 +157,6 @@
         {% trans "Cancel" %}
       </a>
     </div>
-  </form>
-
-  {# Discard is separate — outside the save form #}
-  <form method="post" action="{% url 'dashboard:feed-discard' child.slug %}">
-    {% csrf_token %}
-    <button type="submit" class="fc-discard">{% trans "Discard Session" %}</button>
   </form>
 
 </div>

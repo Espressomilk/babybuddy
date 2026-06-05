@@ -4,20 +4,28 @@
     <a href="{% url "core:feeding-list" %}">{% trans "Last Feeding" %}</a>
 {% endblock %}
 {% block title %}
-    {% if feeding %}
-        <div>
-            {% blocktrans trimmed with time_ago=feeding.start|deltasince|duration_string:'m' %}
-                {{ time_ago }} ago
-            {% endblocktrans %}
-        </div>
-        <small>{{ feeding.start|time }}</small>
-    {% else %}
-        {% trans "None" %}
-    {% endif %}
+    {% trans "Triple feeding" %}
 {% endblock %}
 {% block content %}
-    {% if feeding %}
-        {{ feeding.get_type_display }}, {{ feeding.get_method_display }}
-        {% if feeding.amount %}({{ feeding.amount }}){% endif %}
-    {% endif %}
+    <div class="last-feeding-triple">
+        {% for item in triple %}
+            <div class="d-flex justify-content-between align-items-baseline{% if not forloop.last %} mb-2{% endif %}">
+                <span class="text-body-secondary small">{{ item.label }}</span>
+                <span class="text-end">
+                    {% if item.feeding %}
+                        <strong>
+                            {% blocktrans trimmed with time_ago=item.feeding.start|deltasince|duration_string:'m' %}
+                                {{ time_ago }} ago
+                            {% endblocktrans %}
+                        </strong>
+                        <span class="d-block small text-body-secondary">
+                            {{ item.feeding.start|time }}{% if item.feeding.amount %} &middot; {{ item.feeding.amount }}{% endif %}
+                        </span>
+                    {% else %}
+                        <span class="text-body-secondary">{% trans "None" %}</span>
+                    {% endif %}
+                </span>
+            </div>
+        {% endfor %}
+    </div>
 {% endblock %}
