@@ -180,10 +180,14 @@ def card_breastfeeding(context, child, date=None):
 @register.inclusion_tag("cards/feeding_recent.html", takes_context=True)
 def card_feeding_recent(context, child, end_date=None):
     """
-    Filters Feeding instances to get total amount for a specific date and for 7 days before
+    Summarizes the past 7 days of Feeding instances, broken down by the three
+    "triple feeding" methods:
+      - Breast feed: total duration and count.
+      - Bottle (breast milk): total amount and count.
+      - Bottle (formula): total amount and count.
     :param child: an instance of the Child model.
     :param end_date: a Date object for the day to filter.
-    :returns: a dict with count and total amount for the Feeding instances.
+    :returns: a dict with per-method totals and counts.
     """
     if not end_date:
         end_date = timezone.localtime()
@@ -199,23 +203,40 @@ def card_feeding_recent(context, child, end_date=None):
         start__range=[start_date, end_date]
     )
 
-    # prepare the result list for the last 7 days
-    dates = [end_date - timezone.timedelta(days=i) for i in range(8)]
-    results = [{"date": d, "total": 0, "count": 0} for d in dates]
+    breast = {
+        "label": _("Breast feed"),
+        "metric": "duration",
+        "total": timezone.timedelta(),
+        "count": 0,
+    }
+    bottle_breast_milk = {
+        "label": _("Bottle (breast milk)"),
+        "metric": "amount",
+        "total": 0,
+        "count": 0,
+    }
+    bottle_formula = {
+        "label": _("Bottle (formula)"),
+        "metric": "amount",
+        "total": 0,
+        "count": 0,
+    }
 
-    # do one pass over the data and add it to the appropriate day
     for instance in instances:
-        # convert to local tz and push feed_date to end so we're comparing apples to apples for the date
-        feed_date = timezone.localtime(instance.end).replace(
-            hour=23, minute=59, second=59, microsecond=9999
-        )
-        idx = (end_date - feed_date).days
-        result = results[idx]
-        result["total"] += instance.amount if instance.amount is not None else 0
-        result["count"] += 1
+        if instance.method in ("left breast", "right breast", "both breasts"):
+            breast["total"] += instance.duration
+            breast["count"] += 1
+        elif instance.method == "bottle" and instance.type == "breast milk":
+            bottle_breast_milk["total"] += instance.amount or 0
+            bottle_breast_milk["count"] += 1
+        elif instance.method == "bottle" and instance.type == "formula":
+            bottle_formula["total"] += instance.amount or 0
+            bottle_formula["count"] += 1
+
+    methods = [breast, bottle_breast_milk, bottle_formula]
 
     return {
-        "feedings": results,
+        "methods": methods,
         "type": "feeding",
         "empty": len(instances) == 0,
         "hide_empty": _hide_empty(context),
