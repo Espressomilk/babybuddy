@@ -4,9 +4,13 @@
 
    Auto-enhances every <input type="datetime-local"> on the page: the native
    input is hidden and replaced by a tappable display field. Tapping it opens a
-   bottom sheet with scroll-snapping wheels for month / day / year / hour /
-   minute / AM-PM. Values are written back in the datetime-local format
-   (YYYY-MM-DDTHH:MM) so normal form submission is unchanged.
+   bottom sheet with wheels for month / day / year / hour / minute. Values are
+   written back in the datetime-local format (YYYY-MM-DDTHH:MM) so normal form
+   submission is unchanged.
+
+   The wheels are driven entirely by JS (transform-based), not native scrolling,
+   so dragging can never chain to the page underneath and the sheet only
+   dismisses via the Cancel / Done buttons.
 {% endcomment %}
 <style>
   .tr-display {
@@ -26,11 +30,15 @@
     overscroll-behavior: contain; touch-action: none;
   }
   .tr-overlay.tr-open { opacity: 1; }
+  /* Disable all native touch gestures anywhere inside the picker so iOS Safari
+     never starts scrolling/pull-to-refresh from the element first touched. */
+  .tr-overlay, .tr-overlay * { touch-action: none; }
   .tr-sheet {
     background: #fff; width: 100%; max-width: 480px;
     border-radius: 18px 18px 0 0; padding: 0.4rem 1rem 1.3rem;
     transform: translateY(100%); transition: transform 0.22s ease;
     box-shadow: 0 -8px 30px rgba(0,0,0,0.18);
+    touch-action: none;
   }
   .tr-overlay.tr-open .tr-sheet { transform: translateY(0); }
   .tr-head {
@@ -46,7 +54,8 @@
   .tr-done { color: #2e3d5f; font-weight: 700; }
   .tr-cols {
     display: flex; gap: 0.25rem; position: relative; height: 200px;
-    overflow: hidden; touch-action: pan-y;
+    overflow: hidden; touch-action: none; user-select: none;
+    -webkit-user-select: none;
   }
   .tr-center {
     position: absolute; left: 0; right: 0; top: 80px; height: 40px;
@@ -54,23 +63,24 @@
     background: rgba(46,61,95,0.04); pointer-events: none; border-radius: 8px;
   }
   .tr-col {
-    flex: 1; min-width: 0; overflow-y: scroll; scroll-snap-type: y mandatory;
-    -webkit-overflow-scrolling: touch; scrollbar-width: none;
-    overscroll-behavior: contain; touch-action: pan-y;
+    flex: 1; min-width: 0; height: 200px; position: relative;
+    overflow: hidden; touch-action: none; cursor: grab;
   }
-  .tr-col::-webkit-scrollbar { display: none; }
+  .tr-col:active { cursor: grabbing; }
   .tr-col.tr-wide { flex: 1.5; }
+  .tr-list { will-change: transform; }
   .tr-item {
-    height: 40px; line-height: 40px; scroll-snap-align: center;
+    height: 40px; line-height: 40px;
     text-align: center; font-size: 1.1rem; color: #2d2d2d;
     font-variant-numeric: tabular-nums; white-space: nowrap;
   }
-  .tr-pad { height: 80px; }
 </style>
 
 <script>
 (function () {
   var ITEM_H = 40;
+  var CENTER = 2 * ITEM_H; // top of the centered item slot (80px)
+  var SNAP = 'transform 0.22s cubic-bezier(0.23, 1, 0.32, 1)';
   var MONTHS = [
     "{% trans 'Jan' %}", "{% trans 'Feb' %}", "{% trans 'Mar' %}",
     "{% trans 'Apr' %}", "{% trans 'May' %}", "{% trans 'Jun' %}",
@@ -97,15 +107,110 @@
 
   // ── Shared overlay (one instance reused by every field) ──
   var overlay, sheet, colsWrap, doneBtn, cancelBtn, activeInput, activeDisplay;
-  var cols = {}; // key -> {el, values}
+  var cols = {};         // key -> column state
+  var dragKey = null;    // column currently dragged with the mouse
+  var touchKey = null;   // column currently dragged with touch
+  var sheetOpen = false; // whether the picker is currently visible
 
   function buildCol(key, wide) {
     var el = document.createElement('div');
     el.className = 'tr-col' + (wide ? ' tr-wide' : '');
     el.dataset.key = key;
+    var list = document.createElement('div');
+    list.className = 'tr-list';
+    el.appendChild(list);
     colsWrap.appendChild(el);
-    cols[key] = { el: el, values: [] };
+    cols[key] = {
+      el: el, list: list, values: [], index: 0, offset: CENTER,
+      onChange: null
+    };
+    bindCol(key);
     return el;
+  }
+
+  // ── Wheel motion ──
+  function applyTransform(c) {
+    c.list.style.transform = 'translateY(' + c.offset + 'px)';
+  }
+  function setTransition(c, on) {
+    c.list.style.transition = on ? SNAP : 'none';
+  }
+  function bounds(c) {
+    return { max: CENTER, min: CENTER - (c.values.length - 1) * ITEM_H };
+  }
+  function clampRubber(c, off) {
+    var b = bounds(c);
+    if (off > b.max) return b.max + (off - b.max) * 0.3;
+    if (off < b.min) return b.min + (off - b.min) * 0.3;
+    return off;
+  }
+  function setIndex(key, idx, animate) {
+    var c = cols[key];
+    idx = Math.max(0, Math.min(c.values.length - 1, idx));
+    c.index = idx;
+    c.offset = CENTER - idx * ITEM_H;
+    setTransition(c, animate);
+    applyTransform(c);
+  }
+  function indexFromOffset(c, off) {
+    return Math.round((CENTER - off) / ITEM_H);
+  }
+
+  function onStart(key, y) {
+    var c = cols[key];
+    c.dragging = true;
+    c.startY = y;
+    c.startOffset = c.offset;
+    c.lastY = y;
+    c.lastT = Date.now();
+    c.velocity = 0;
+    setTransition(c, false);
+  }
+  function onMove(key, y) {
+    var c = cols[key];
+    if (!c.dragging) return;
+    c.offset = clampRubber(c, c.startOffset + (y - c.startY));
+    applyTransform(c);
+    var now = Date.now();
+    var dt = now - c.lastT;
+    if (dt > 0) c.velocity = (y - c.lastY) / dt; // px per ms
+    c.lastY = y;
+    c.lastT = now;
+  }
+  function onEnd(key) {
+    var c = cols[key];
+    if (!c.dragging) return;
+    c.dragging = false;
+    var projected = c.offset + c.velocity * 140; // light inertia
+    setIndex(key, indexFromOffset(c, projected), true);
+    if (c.onChange) c.onChange();
+  }
+  function onWheel(key, dy) {
+    var c = cols[key];
+    c.offset = clampRubber(c, c.offset - dy);
+    setTransition(c, false);
+    applyTransform(c);
+    clearTimeout(c.wheelT);
+    c.wheelT = setTimeout(function () {
+      setIndex(key, indexFromOffset(c, c.offset), true);
+      if (c.onChange) c.onChange();
+    }, 80);
+  }
+
+  function bindCol(key) {
+    var el = cols[key].el;
+    // Touch start/move/end are handled at the overlay level (see ensureOverlay)
+    // so that touches landing on the GAPS or EDGES between columns are caught
+    // too. Here we only bind mouse/wheel for desktop.
+    el.addEventListener('mousedown', function (e) {
+      dragKey = key;
+      onStart(key, e.clientY);
+      e.preventDefault();
+    });
+    el.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      onWheel(key, e.deltaY);
+    }, { passive: false });
   }
 
   function ensureOverlay() {
@@ -135,35 +240,67 @@
 
     cancelBtn.addEventListener('click', close);
     doneBtn.addEventListener('click', commit);
-    // Block touch-dragging anywhere except inside a scroll wheel, so the page
-    // underneath never moves. The wheels handle their own vertical scroll.
-    overlay.addEventListener('touchmove', function (e) {
-      if (!e.target.closest('.tr-col')) e.preventDefault();
+
+    // Disarm page-scrolling at the very first contact, ANYWHERE in the picker
+    // (columns, the gaps between them, the sheet padding, the backdrop). iOS
+    // decides whether a gesture may scroll/pull-to-refresh at touchstart based
+    // on whether preventDefault() is called then, so binding it only on the
+    // columns let edge/gap touches slip through. We skip the action buttons so
+    // they remain tappable.
+    overlay.addEventListener('touchstart', function (e) {
+      // Don't hijack taps on the action buttons.
+      if (e.target.closest('.tr-btn')) { touchKey = null; return; }
+      var colEl = e.target.closest('.tr-col');
+      if (colEl) {
+        touchKey = colEl.dataset.key;
+        onStart(touchKey, e.touches[0].clientY);
+      } else {
+        touchKey = null;
+      }
+      if (e.cancelable) e.preventDefault();
     }, { passive: false });
+
+    // While the sheet is open, swallow EVERY touchmove on the document. The
+    // wheels are transform-driven (they don't need native touch scrolling), so
+    // this is safe and is the only reliable way to stop iOS Safari from
+    // scrolling the page underneath or triggering pull-to-refresh.
+    // Capture phase + non-passive guarantees we run before anything else and
+    // that preventDefault() actually wins the gesture.
+    document.addEventListener('touchmove', function (e) {
+      if (!sheetOpen) return;
+      if (touchKey && e.touches.length) onMove(touchKey, e.touches[0].clientY);
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false, capture: true });
+    var endTouch = function () {
+      if (touchKey) { onEnd(touchKey); touchKey = null; }
+    };
+    document.addEventListener('touchend', endTouch);
+    document.addEventListener('touchcancel', endTouch);
+
+    // Mouse drag continues even if the cursor leaves the column.
+    document.addEventListener('mousemove', function (e) {
+      if (dragKey) onMove(dragKey, e.clientY);
+    });
+    document.addEventListener('mouseup', function () {
+      if (dragKey) { onEnd(dragKey); dragKey = null; }
+    });
   }
 
   function fillCol(key, values, selectedIdx) {
     var c = cols[key];
     c.values = values;
-    var html = '<div class="tr-pad"></div>';
+    var html = '';
     for (var i = 0; i < values.length; i++) {
       html += '<div class="tr-item">' + values[i].label + '</div>';
     }
-    html += '<div class="tr-pad"></div>';
-    c.el.innerHTML = html;
-    // Defer scroll positioning until the sheet is laid out.
-    requestAnimationFrame(function () {
-      c.el.scrollTop = selectedIdx * ITEM_H;
-    });
+    c.list.innerHTML = html;
+    setIndex(key, selectedIdx, false);
   }
 
-  function selectedIndex(key) {
-    var c = cols[key];
-    return Math.max(0, Math.min(c.values.length - 1, Math.round(c.el.scrollTop / ITEM_H)));
-  }
+  function selectedIndex(key) { return cols[key].index; }
   function selectedValue(key) {
     var c = cols[key];
-    return c.values[selectedIndex(key)].value;
+    return c.values[c.index].value;
   }
 
   function open(input, display) {
@@ -206,43 +343,68 @@
         fillCol('day', ds, cur);
       }
     };
-    cols.month.el.onscroll = debounce(refreshDays, 120);
-    cols.year.el.onscroll = debounce(refreshDays, 120);
+    cols.month.onChange = refreshDays;
+    cols.year.onChange = refreshDays;
+    cols.day.onChange = null;
+    cols.hour.onChange = null;
+    cols.minute.onChange = null;
 
     overlay.style.display = 'flex';
     requestAnimationFrame(function () { overlay.classList.add('tr-open'); });
+    sheetOpen = true;
     lockScroll();
   }
 
   function close() {
     if (!overlay) return;
+    sheetOpen = false;
+    touchKey = null;
+    dragKey = null;
     overlay.classList.remove('tr-open');
     unlockScroll();
     setTimeout(function () { overlay.style.display = 'none'; }, 200);
   }
 
-  // ── Background scroll lock (position:fixed keeps the page from moving even
-  //    when the browser ignores overscroll-behavior on touch) ──
+  // ── Background scroll lock (defense in depth; the wheels themselves never
+  //    scroll the page since they are transform-driven) ──
   var savedScrollY = 0;
   function lockScroll() {
+    // NOTE: deliberately NOT using `position: fixed` on the body. Pinning the
+    // body forces the document to scroll-position 0 — the exact zone that
+    // triggers iOS pull-to-refresh — and pushes the pull gesture to a
+    // compositor layer that preventDefault() can no longer reach. Leaving the
+    // page at its real scroll position lets the touchmove preventDefault (the
+    // documented working technique) actually suppress the pull.
     savedScrollY = window.scrollY || window.pageYOffset || 0;
     var b = document.body.style;
-    b.position = 'fixed';
-    b.top = (-savedScrollY) + 'px';
-    b.left = '0';
-    b.right = '0';
-    b.width = '100%';
-    b.overflow = 'hidden';
+    b.overscrollBehavior = 'none';
+    b.touchAction = 'none';
+    var h = document.documentElement.style;
+    h.overscrollBehavior = 'none';
+    h.touchAction = 'none';
+    // The real culprit: BabyBuddy initializes the pulltorefreshjs library on
+    // <body> (base.html: BabyBuddy.PullToRefresh.init()), which runs its OWN
+    // touch handlers and calls window.location.reload() on a downward pull.
+    // preventDefault() can't stop another library's listeners, so we tear it
+    // down entirely while the picker is open and rebuild it on close.
+    try {
+      if (window.PullToRefresh && window.PullToRefresh.destroyAll) {
+        window.PullToRefresh.destroyAll();
+      }
+    } catch (e) {}
   }
   function unlockScroll() {
     var b = document.body.style;
-    b.position = '';
-    b.top = '';
-    b.left = '';
-    b.right = '';
-    b.width = '';
-    b.overflow = '';
-    window.scrollTo(0, savedScrollY);
+    b.overscrollBehavior = '';
+    b.touchAction = '';
+    var h = document.documentElement.style;
+    h.overscrollBehavior = '';
+    h.touchAction = '';
+    try {
+      if (window.BabyBuddy && window.BabyBuddy.PullToRefresh) {
+        window.BabyBuddy.PullToRefresh.init();
+      }
+    } catch (e) {}
   }
 
   function commit() {
@@ -257,11 +419,6 @@
     activeInput.dispatchEvent(new Event('change', { bubbles: true }));
     updateDisplay(activeInput, activeDisplay);
     close();
-  }
-
-  function debounce(fn, ms) {
-    var t;
-    return function () { clearTimeout(t); t = setTimeout(fn, ms); };
   }
 
   function updateDisplay(input, display) {

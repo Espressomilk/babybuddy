@@ -145,9 +145,17 @@
             pressedEl = null;
             if (tapMoved || !el) return;
             e.preventDefault(); /* cancel iOS synthetic mouse/click events */
-            var bsToggle = el.getAttribute('data-bs-toggle');
+            /* Bootstrap interactive controls (modals, dropdowns, carousel
+               prev/next, dismiss, etc.) are driven by JS click handlers. They
+               must fire a click, NOT navigate to their href — e.g. carousel
+               controls use href="#carousel-id", which would otherwise scroll
+               the page to the carousel and never slide it. */
+            var bsCtrl = el.getAttribute('data-bs-toggle')
+              || el.getAttribute('data-bs-slide')
+              || el.getAttribute('data-bs-slide-to')
+              || el.getAttribute('data-bs-dismiss');
             var rawHref  = el.getAttribute('href');
-            if (bsToggle) {
+            if (bsCtrl) {
               el.click();
             } else if (el.tagName === 'A' && rawHref && rawHref !== '#' && rawHref.indexOf('javascript:') !== 0) {
               window.location.href = el.href;
