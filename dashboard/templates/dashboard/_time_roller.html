@@ -1,11 +1,13 @@
 {% load i18n %}
-{# Reusable iOS-style roller (wheel) date-time picker.
+{% comment %}
+   Reusable iOS-style roller (wheel) date-time picker.
 
    Auto-enhances every <input type="datetime-local"> on the page: the native
    input is hidden and replaced by a tappable display field. Tapping it opens a
    bottom sheet with scroll-snapping wheels for month / day / year / hour /
    minute / AM-PM. Values are written back in the datetime-local format
-   (YYYY-MM-DDTHH:MM) so normal form submission is unchanged. #}
+   (YYYY-MM-DDTHH:MM) so normal form submission is unchanged.
+{% endcomment %}
 <style>
   .tr-display {
     width: 100%; text-align: left; padding: 0.7rem 1rem;
@@ -21,6 +23,7 @@
     position: fixed; inset: 0; background: rgba(0,0,0,0.45);
     display: flex; align-items: flex-end; justify-content: center;
     z-index: 1080; opacity: 0; transition: opacity 0.18s;
+    overscroll-behavior: contain; touch-action: none;
   }
   .tr-overlay.tr-open { opacity: 1; }
   .tr-sheet {
@@ -53,6 +56,7 @@
   .tr-col {
     flex: 1; min-width: 0; overflow-y: scroll; scroll-snap-type: y mandatory;
     -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    overscroll-behavior: contain; touch-action: pan-y;
   }
   .tr-col::-webkit-scrollbar { display: none; }
   .tr-col.tr-wide { flex: 1.5; }
