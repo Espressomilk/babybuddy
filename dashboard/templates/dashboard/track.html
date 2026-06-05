@@ -405,9 +405,11 @@
         </span>
         {% endif %}
 
-        {# Quick Log — log a completed feeding without a timer.
-           Disabled while a bottle timer is running or pending (unsaved), to
-           avoid creating an overlapping entry before the session is saved. #}
+        {% comment %}
+          Quick Log — log a completed feeding without a timer. Disabled while a
+          bottle timer is running or pending (unsaved), to avoid creating an
+          overlapping entry before the session is saved.
+        {% endcomment %}
         {% if perms.core.add_feeding %}
         {% if feed_bottle_timer or feed_bottle_pending_duration %}
         <span class="qa-btn"

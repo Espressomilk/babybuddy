@@ -77,7 +77,6 @@
     "{% trans 'Jul' %}", "{% trans 'Aug' %}", "{% trans 'Sep' %}",
     "{% trans 'Oct' %}", "{% trans 'Nov' %}", "{% trans 'Dec' %}"
   ];
-  var AMPM = ["AM", "PM"];
 
   function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -91,11 +90,8 @@
       'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
   function fmtDisplay(d) {
-    var h = d.getHours();
-    var ap = h < 12 ? AMPM[0] : AMPM[1];
-    var h12 = h % 12; if (h12 === 0) h12 = 12;
     return MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear() +
-      '  ' + h12 + ':' + pad(d.getMinutes()) + ' ' + ap;
+      '  ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
   function daysInMonth(year, month) { return new Date(year, month + 1, 0).getDate(); }
 
@@ -136,7 +132,6 @@
     buildCol('year', true);
     buildCol('hour');
     buildCol('minute');
-    buildCol('ampm');
 
     cancelBtn.addEventListener('click', close);
     doneBtn.addEventListener('click', commit);
@@ -189,21 +184,15 @@
     var days = [];
     for (var dd = 1; dd <= dim; dd++) days.push({ label: String(dd), value: dd });
     var hours = [];
-    for (var h = 1; h <= 12; h++) hours.push({ label: String(h), value: h });
+    for (var h = 0; h <= 23; h++) hours.push({ label: pad(h), value: h });
     var minutes = [];
     for (var mi = 0; mi < 60; mi++) minutes.push({ label: pad(mi), value: mi });
-    var ampm = [{ label: AMPM[0], value: 0 }, { label: AMPM[1], value: 1 }];
-
-    var hr = d.getHours();
-    var apIdx = hr < 12 ? 0 : 1;
-    var h12 = hr % 12; if (h12 === 0) h12 = 12;
 
     fillCol('month', months, d.getMonth());
     fillCol('day', days, d.getDate() - 1);
     fillCol('year', years, years.findIndex(function (o) { return o.value === d.getFullYear(); }));
-    fillCol('hour', hours, h12 - 1);
+    fillCol('hour', hours, d.getHours());
     fillCol('minute', minutes, d.getMinutes());
-    fillCol('ampm', ampm, apIdx);
 
     // Rebuild the day column if the user changes month/year.
     var refreshDays = function () {
@@ -261,10 +250,8 @@
     var month = selectedValue('month');
     var dim = daysInMonth(year, month);
     var day = Math.min(selectedValue('day'), dim);
-    var h12 = selectedValue('hour');
+    var hour = selectedValue('hour');
     var minute = selectedValue('minute');
-    var ap = selectedValue('ampm');
-    var hour = (h12 % 12) + (ap === 1 ? 12 : 0);
     var d = new Date(year, month, day, hour, minute, 0);
     activeInput.value = fmtInput(d);
     activeInput.dispatchEvent(new Event('change', { bubbles: true }));
