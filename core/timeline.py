@@ -126,6 +126,18 @@ def _add_sleeps(min_date, max_date, events, child=None):
         events.append(end)
 
 
+def _feeding_method_label(instance):
+    """Return a human-readable label distinguishing the feeding method."""
+    if instance.method in ("left breast", "right breast", "both breasts"):
+        return _("Breast feed")
+    if instance.method == "bottle":
+        if instance.type == "breast milk":
+            return _("Bottle (breast milk)")
+        if instance.type == "formula":
+            return _("Bottle (formula)")
+    return instance.get_method_display()
+
+
 def _add_feedings(min_date, max_date, events, child=None):
     # Ensure first feeding has a previous.
     yesterday = min_date - timedelta(days=1)
@@ -138,6 +150,7 @@ def _add_feedings(min_date, max_date, events, child=None):
         instances = instances.filter(child=child)
     for instance in instances:
         details = []
+        details.append(_("Method") + ": " + _feeding_method_label(instance))
         if instance.notes:
             details.append(instance.notes)
         time_since_prev = None
