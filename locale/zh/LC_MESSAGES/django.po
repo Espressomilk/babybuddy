@@ -3352,3 +3352,43 @@ msgstr "配方奶喂奶量"
 
 #~ msgid "<b>Temperature</b>"
 #~ msgstr "<b>体温</b>"
+
+#: dashboard custom strings
+msgid "Save Breastfeeding"
+msgstr "保存母乳喂养"
+
+#: dashboard custom strings
+msgid "Left duration"
+msgstr "左侧时长"
+
+#: dashboard custom strings
+msgid "Right duration"
+msgstr "右侧时长"
+
+#: dashboard custom strings
+msgid "Left amount"
+msgstr "左侧数量"
+
+#: dashboard custom strings
+msgid "Right amount"
+msgstr "右侧数量"
+
+#: dashboard custom strings
+msgid "Calculated from end time and total duration."
+msgstr "根据结束时间和总时长自动计算。"
+
+#: dashboard custom strings
+msgid "Please enter a duration for at least one side."
+msgstr "请至少为一侧输入时长。"
+
+#: dashboard custom strings
+msgid "Select duration"
+msgstr "选择时长"
+
+#: dashboard custom strings
+msgid "Hours"
+msgstr "小时"
+
+#: dashboard custom strings
+msgid "Minutes"
+msgstr "分钟"

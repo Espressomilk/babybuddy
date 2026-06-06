@@ -642,6 +642,26 @@
           {% trans "Review & Save" %}
         </span>
         {% endif %}
+
+        {% comment %}
+          Quick Log — log a completed breastfeeding without a timer. Disabled
+          while a breast timer is running or pending (unsaved), to avoid creating
+          an overlapping entry before the session is saved.
+        {% endcomment %}
+        {% if perms.core.add_feeding %}
+        {% if feed_left_timer or feed_right_timer or feed_left_pending_duration or feed_right_pending_duration %}
+        <span class="qa-btn"
+              style="text-align:center;border-color:#ccc;color:#bbb;cursor:default;pointer-events:none;"
+              title="{% trans "Save or discard the current timer first" %}">
+          {% trans "Quick Log" %}
+        </span>
+        {% else %}
+        <a href="{% url 'dashboard:breastfeed-quick-add' object.slug %}"
+           class="qa-btn" style="text-align:center;">
+          {% trans "Quick Log" %}
+        </a>
+        {% endif %}
+        {% endif %}
         {% endif %}
 
         {# ── Pump ── #}
@@ -736,6 +756,26 @@
               style="text-align:center;border-color:#ccc;color:#bbb;cursor:default;pointer-events:none;">
           {% trans "Review & Save" %}
         </span>
+        {% endif %}
+
+        {% comment %}
+          Quick Log — log a completed pumping session without a timer. Disabled
+          while a pump timer is running or pending (unsaved), to avoid creating
+          an overlapping entry before the session is saved.
+        {% endcomment %}
+        {% if perms.core.add_pumping %}
+        {% if pump_left_timer or pump_right_timer or pending_pump %}
+        <span class="qa-btn"
+              style="text-align:center;border-color:#ccc;color:#bbb;cursor:default;pointer-events:none;"
+              title="{% trans "Save or discard the current timer first" %}">
+          {% trans "Quick Log" %}
+        </span>
+        {% else %}
+        <a href="{% url 'dashboard:pump-quick-add' object.slug %}"
+           class="qa-btn" style="text-align:center;">
+          {% trans "Quick Log" %}
+        </a>
+        {% endif %}
         {% endif %}
 
       </div>

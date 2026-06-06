@@ -203,6 +203,16 @@ class TummyTimeMilestoneForm(forms.Form):
 
 
 class PumpCommitForm(forms.Form):
+    start = forms.DateTimeField(
+        required=False,
+        label=_("Start time"),
+        widget=DateTimeInput(attrs={"step": 60, "id": "id_start"}),
+    )
+    end = forms.DateTimeField(
+        required=False,
+        label=_("End time"),
+        widget=DateTimeInput(attrs={"step": 60, "id": "id_end"}),
+    )
     amount_left = forms.FloatField(
         min_value=0,
         required=False,
@@ -240,6 +250,27 @@ class PumpCommitForm(forms.Form):
             }
         ),
     )
+
+    def __init__(self, *args, start=None, end=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["start"].required = True
+        self.fields["end"].required = True
+        if not self.is_bound:
+            if start:
+                self.initial["start"] = start
+            if end:
+                self.initial["end"] = end
+
+    def _make_aware(self, value):
+        if value and timezone.is_naive(value):
+            return timezone.make_aware(value, timezone.get_current_timezone())
+        return value
+
+    def clean_start(self):
+        return self._make_aware(self.cleaned_data.get("start"))
+
+    def clean_end(self):
+        return self._make_aware(self.cleaned_data.get("end"))
 
 
 class FeedCommitForm(forms.Form):
@@ -566,3 +597,228 @@ class BreastfeedForm(forms.ModelForm):
                 }
             ),
         }
+
+
+class BreastfeedQuickForm(forms.Form):
+    """Manually log a completed breastfeeding without running a timer.
+
+    The user enters a left-side duration and a right-side duration (each defaults
+    to 0, adjustable via the roller duration picker) plus an end time (defaults
+    to the moment the form is opened). The start time is computed automatically
+    as end - (left + right), and the breast method is inferred from which
+    durations are non-zero.
+    """
+
+    LEFT = "left breast"
+    RIGHT = "right breast"
+    BOTH = "both breasts"
+
+    left_minutes = forms.IntegerField(
+        min_value=0,
+        initial=0,
+        required=False,
+        label=_("Left duration"),
+        widget=forms.HiddenInput(
+            attrs={"id": "id_left_minutes", "data-duration-roller": "1"}
+        ),
+    )
+    right_minutes = forms.IntegerField(
+        min_value=0,
+        initial=0,
+        required=False,
+        label=_("Right duration"),
+        widget=forms.HiddenInput(
+            attrs={"id": "id_right_minutes", "data-duration-roller": "1"}
+        ),
+    )
+    end = forms.DateTimeField(
+        label=_("End time"),
+        widget=DateTimeInput(attrs={"step": 60, "id": "id_end"}),
+    )
+    notes = forms.CharField(
+        required=False,
+        label=_("Notes"),
+        widget=forms.Textarea(
+            attrs={
+                "rows": 3,
+                "id": "id_notes",
+                "placeholder": "",
+            }
+        ),
+    )
+
+    def __init__(self, *args, child=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.child = child
+        if not self.is_bound:
+            now = timezone.localtime().replace(second=0, microsecond=0, tzinfo=None)
+            self.initial["end"] = now
+            self.initial["left_minutes"] = 0
+            self.initial["right_minutes"] = 0
+
+    def _make_aware(self, value):
+        if value and timezone.is_naive(value):
+            return timezone.make_aware(value, timezone.get_current_timezone())
+        return value
+
+    def clean_end(self):
+        return self._make_aware(self.cleaned_data.get("end"))
+
+    def clean(self):
+        cleaned_data = super().clean()
+        left = cleaned_data.get("left_minutes") or 0
+        right = cleaned_data.get("right_minutes") or 0
+        if left <= 0 and right <= 0:
+            self.add_error(
+                "left_minutes",
+                _("Please enter a duration for at least one side."),
+            )
+        return cleaned_data
+
+    def build_entry(self):
+        """Return an unsaved breastfeeding Feeding instance for the data."""
+        from core.models import Feeding
+
+        left = self.cleaned_data.get("left_minutes") or 0
+        right = self.cleaned_data.get("right_minutes") or 0
+        total = left + right
+
+        if left > 0 and right > 0:
+            method = self.BOTH
+        elif right > 0:
+            method = self.RIGHT
+        else:
+            method = self.LEFT
+
+        end = self.cleaned_data["end"]
+        start = end - timedelta(minutes=total)
+
+        return Feeding(
+            child=self.child,
+            start=start,
+            end=end,
+            type="breast milk",
+            method=method,
+            notes=self.cleaned_data.get("notes", ""),
+        )
+
+
+class PumpQuickForm(forms.Form):
+    """Manually log a completed pumping session without running a timer.
+
+    The user enters a left-side duration and a right-side duration (each defaults
+    to 0, adjustable via the roller duration picker) plus an end time (defaults
+    to the moment the form is opened). The start time is computed automatically
+    as end - (left + right). Amounts are entered per side and combined into the
+    Pumping record's total amount.
+    """
+
+    left_minutes = forms.IntegerField(
+        min_value=0,
+        initial=0,
+        required=False,
+        label=_("Left duration"),
+        widget=forms.HiddenInput(
+            attrs={"id": "id_left_minutes", "data-duration-roller": "1"}
+        ),
+    )
+    right_minutes = forms.IntegerField(
+        min_value=0,
+        initial=0,
+        required=False,
+        label=_("Right duration"),
+        widget=forms.HiddenInput(
+            attrs={"id": "id_right_minutes", "data-duration-roller": "1"}
+        ),
+    )
+    end = forms.DateTimeField(
+        label=_("End time"),
+        widget=DateTimeInput(attrs={"step": 60, "id": "id_end"}),
+    )
+    amount_left = forms.FloatField(
+        min_value=0,
+        required=False,
+        label=_("Left amount"),
+        widget=forms.NumberInput(
+            attrs={
+                "step": "any",
+                "min": "0",
+                "placeholder": "0",
+                "id": "id_amount_left",
+            }
+        ),
+    )
+    amount_right = forms.FloatField(
+        min_value=0,
+        required=False,
+        label=_("Right amount"),
+        widget=forms.NumberInput(
+            attrs={
+                "step": "any",
+                "min": "0",
+                "placeholder": "0",
+                "id": "id_amount_right",
+            }
+        ),
+    )
+    notes = forms.CharField(
+        required=False,
+        label=_("Notes"),
+        widget=forms.Textarea(
+            attrs={
+                "rows": 3,
+                "id": "id_notes",
+                "placeholder": "",
+            }
+        ),
+    )
+
+    def __init__(self, *args, child=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.child = child
+        if not self.is_bound:
+            now = timezone.localtime().replace(second=0, microsecond=0, tzinfo=None)
+            self.initial["end"] = now
+            self.initial["left_minutes"] = 0
+            self.initial["right_minutes"] = 0
+
+    def _make_aware(self, value):
+        if value and timezone.is_naive(value):
+            return timezone.make_aware(value, timezone.get_current_timezone())
+        return value
+
+    def clean_end(self):
+        return self._make_aware(self.cleaned_data.get("end"))
+
+    def clean(self):
+        cleaned_data = super().clean()
+        left = cleaned_data.get("left_minutes") or 0
+        right = cleaned_data.get("right_minutes") or 0
+        if left <= 0 and right <= 0:
+            self.add_error(
+                "left_minutes",
+                _("Please enter a duration for at least one side."),
+            )
+        return cleaned_data
+
+    def build_entry(self):
+        """Return an unsaved Pumping instance for the data."""
+        from core.models import Pumping
+
+        left = self.cleaned_data.get("left_minutes") or 0
+        right = self.cleaned_data.get("right_minutes") or 0
+        total = left + right
+
+        amount_left = self.cleaned_data.get("amount_left") or 0
+        amount_right = self.cleaned_data.get("amount_right") or 0
+
+        end = self.cleaned_data["end"]
+        start = end - timedelta(minutes=total)
+
+        return Pumping(
+            child=self.child,
+            start=start,
+            end=end,
+            amount=amount_left + amount_right,
+            notes=self.cleaned_data.get("notes", ""),
+        )

@@ -1,0 +1,237 @@
+{% extends 'babybuddy/page.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Save Pumping" %} - {{ child }}{% endblock %}
+
+{% block breadcrumbs %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'core:child-list' %}">{% trans "Children" %}</a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="{% url 'dashboard:track-child' child.slug %}">{{ child }}</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">{% trans "Save Pumping" %}</li>
+{% endblock %}
+
+{% block content %}
+<style>
+  .fc-wrap { max-width: 480px; margin: 0 auto; padding: 1rem 0 3rem; }
+  .fc-section {
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #888; margin: 1.5rem 0 0.5rem;
+  }
+  /* ── Modern time / duration control ── */
+  .ft-label {
+    font-size: 0.8rem; font-weight: 600; color: #777; margin: 0.6rem 0 0.3rem;
+  }
+  .ft-field input {
+    width: 100%; max-width: 100%; padding: 0.7rem 1rem;
+    border: 1.5px solid #ddd; border-radius: 12px;
+    font-size: 1.05rem; background: #fff; color: #2d2d2d;
+    box-sizing: border-box; -webkit-appearance: none; appearance: none;
+    transition: border-color 0.15s;
+  }
+  .ft-field input:focus { outline: none; border-color: #2e3d5f; }
+  /* ── Computed start display ── */
+  .fc-start-display {
+    width: 100%; padding: 0.7rem 1rem; border: 1.5px dashed #cdd3e0;
+    border-radius: 12px; font-size: 1.05rem; background: #f6f8fc; color: #2e3d5f;
+    box-sizing: border-box; font-weight: 600;
+  }
+  .fc-start-hint { font-size: 0.78rem; color: #999; margin: 0.35rem 0 0; }
+  /* ── Amount steppers ── */
+  .fc-amount-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.3rem 0; }
+  .fc-amount-label { width: 3.5rem; font-size: 0.9rem; font-weight: 600; color: #555; flex-shrink: 0; }
+  .fc-stepper {
+    display: flex; align-items: stretch; flex: 1;
+    border: 1.5px solid #ddd; border-radius: 12px; overflow: hidden; background: #fff;
+  }
+  .fc-stepper-btn {
+    width: 52px; min-height: 52px; border: none; background: #eef0f4;
+    color: #2d2d2d; font-size: 1.6rem; font-weight: 300; line-height: 1;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; user-select: none; touch-action: manipulation; transition: background 0.12s;
+  }
+  .fc-stepper-btn:hover { background: #dde1ea; }
+  .fc-stepper-btn:active { background: #c8cedb; }
+  .fc-stepper input[type="number"] {
+    flex: 1; min-width: 0; border: none;
+    border-left: 1.5px solid #ddd; border-right: 1.5px solid #ddd;
+    font-size: 1.15rem; font-weight: 600; text-align: center;
+    background: #fff; color: #2d2d2d; -moz-appearance: textfield;
+  }
+  .fc-stepper input[type="number"]::-webkit-inner-spin-button,
+  .fc-stepper input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  .fc-stepper input[type="number"]:focus { outline: none; }
+  .fc-amount-unit { font-size: 0.95rem; font-weight: 600; color: #555; min-width: 20px; }
+  .fc-notes textarea {
+    width: 100%; padding: 0.7rem 1rem; border: 1.5px solid #ddd; border-radius: 12px;
+    font-size: 1rem; color: #2d2d2d; background: #fff; box-sizing: border-box;
+    resize: vertical; transition: border-color 0.15s;
+  }
+  .fc-notes textarea:focus { outline: none; border-color: #2e3d5f; }
+  .fc-actions { display: flex; gap: 0.6rem; margin-top: 2rem; }
+  .fc-save {
+    flex: 2; padding: 0.85rem; border: none; border-radius: 14px;
+    background: #2e3d5f; color: #fff; font-size: 1.05rem; font-weight: 700;
+    cursor: pointer; transition: background 0.15s; touch-action: manipulation;
+  }
+  .fc-save:hover { background: #1a2a45; }
+  .fc-cancel {
+    flex: 1; padding: 0.85rem; border: 2px solid #aaa; border-radius: 14px;
+    background: transparent; color: #666; font-size: 1rem; font-weight: 600;
+    text-align: center; text-decoration: none; transition: border-color 0.15s, color 0.15s;
+  }
+  .fc-cancel:hover { border-color: #555; color: #333; }
+  .fc-errors {
+    background: #fdecea; border: 1.5px solid #c0392b; border-radius: 10px;
+    padding: 0.75rem 1rem; color: #c0392b; font-size: 0.9rem; margin-bottom: 1rem;
+  }
+</style>
+
+<div class="fc-wrap">
+
+  {% if form.non_field_errors %}
+  <div class="fc-errors">
+    {% for error in form.non_field_errors %}
+      <div>{{ error }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" id="fc-form">
+    {% csrf_token %}
+
+    {# ── Duration ── #}
+    <p class="fc-section">{% trans "Duration" %}</p>
+    {% if form.left_minutes.errors %}
+    <div class="fc-errors">{{ form.left_minutes.errors|striptags }}</div>
+    {% endif %}
+    <p class="ft-label">{% trans "Left" %}</p>
+    <div class="ft-field">
+      {{ form.left_minutes }}
+    </div>
+    <p class="ft-label">{% trans "Right" %}</p>
+    <div class="ft-field">
+      {{ form.right_minutes }}
+    </div>
+
+    {# ── Time ── #}
+    <p class="fc-section">{% trans "Time" %}</p>
+    <p class="ft-label">{% trans "Start time" %}</p>
+    <div class="fc-start-display" id="fc-start-display">—</div>
+    <p class="fc-start-hint">{% trans "Calculated from end time and total duration." %}</p>
+    <p class="ft-label">{% trans "End time" %}</p>
+    <div class="ft-field">
+      {{ form.end }}
+      {% if form.end.errors %}<div class="fc-errors" style="margin-top:0.4rem;">{{ form.end.errors|striptags }}</div>{% endif %}
+    </div>
+
+    {# ── Amount ── #}
+    <p class="fc-section">{% trans "Amount" %}</p>
+    <div class="fc-amount-row">
+      <span class="fc-amount-label">{% trans "Left" %}</span>
+      <div class="fc-stepper">
+        <button type="button" class="fc-stepper-btn" data-target="id_amount_left" data-delta="-5">−</button>
+        {{ form.amount_left }}
+        <button type="button" class="fc-stepper-btn" data-target="id_amount_left" data-delta="5">+</button>
+      </div>
+      <span class="fc-amount-unit">ml</span>
+    </div>
+    <div class="fc-amount-row">
+      <span class="fc-amount-label">{% trans "Right" %}</span>
+      <div class="fc-stepper">
+        <button type="button" class="fc-stepper-btn" data-target="id_amount_right" data-delta="-5">−</button>
+        {{ form.amount_right }}
+        <button type="button" class="fc-stepper-btn" data-target="id_amount_right" data-delta="5">+</button>
+      </div>
+      <span class="fc-amount-unit">ml</span>
+    </div>
+
+    {# ── Notes ── #}
+    <p class="fc-section">{% trans "Notes" %}</p>
+    <div class="fc-notes">
+      {{ form.notes }}
+    </div>
+
+    {# ── Actions ── #}
+    <div class="fc-actions">
+      <button type="submit" class="fc-save">{% trans "Save" %}</button>
+      <a href="{% url 'dashboard:track-child' child.slug %}" class="fc-cancel">
+        {% trans "Cancel" %}
+      </a>
+    </div>
+  </form>
+
+</div>
+
+<script>
+(function () {
+  // ── Amount steppers ──
+  document.querySelectorAll('.fc-stepper-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var input = document.getElementById(btn.dataset.target);
+      if (!input) return;
+      var delta = parseFloat(btn.dataset.delta);
+      var current = parseFloat(input.value) || 0;
+      var min = parseFloat(input.min) || 0;
+      input.value = Math.max(min, Math.round((current + delta) * 10) / 10);
+    });
+  });
+
+  // ── Computed start time ──
+  var MONTHS = [
+    '{% trans "Jan" %}', '{% trans "Feb" %}', '{% trans "Mar" %}',
+    '{% trans "Apr" %}', '{% trans "May" %}', '{% trans "Jun" %}',
+    '{% trans "Jul" %}', '{% trans "Aug" %}', '{% trans "Sep" %}',
+    '{% trans "Oct" %}', '{% trans "Nov" %}', '{% trans "Dec" %}'
+  ];
+
+  var endInput = document.getElementById('id_end');
+  var leftInput = document.getElementById('id_left_minutes');
+  var rightInput = document.getElementById('id_right_minutes');
+  var display = document.getElementById('fc-start-display');
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function parseLocal(str) {
+    if (!str) return null;
+    var m = String(str).match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+    if (!m) return null;
+    return new Date(
+      parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10),
+      parseInt(m[4], 10), parseInt(m[5], 10), 0, 0
+    );
+  }
+
+  function fmtDisplay(d) {
+    return MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' +
+           d.getFullYear() + '  ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function recompute() {
+    var end = parseLocal(endInput && endInput.value);
+    if (!end) { display.textContent = '—'; return; }
+    var left = parseInt((leftInput && leftInput.value) || '0', 10) || 0;
+    var right = parseInt((rightInput && rightInput.value) || '0', 10) || 0;
+    var total = left + right;
+    var start = new Date(end.getTime() - total * 60000);
+    display.textContent = fmtDisplay(start);
+  }
+
+  if (endInput) endInput.addEventListener('change', recompute);
+  if (leftInput) leftInput.addEventListener('change', recompute);
+  if (rightInput) rightInput.addEventListener('change', recompute);
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', recompute);
+  } else {
+    recompute();
+  }
+  setTimeout(recompute, 60);
+})();
+</script>
+
+{% include 'dashboard/_duration_roller.html' %}
+{% include 'dashboard/_time_roller.html' %}
+{% endblock %}

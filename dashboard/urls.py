@@ -124,6 +124,16 @@ urlpatterns = [
         name="feed-quick",
     ),
     path(
+        "children/<str:slug>/breastfeed/quick/",
+        views.BreastfeedQuickAdd.as_view(),
+        name="breastfeed-quick-add",
+    ),
+    path(
+        "children/<str:slug>/pump/quick/",
+        views.PumpQuickAdd.as_view(),
+        name="pump-quick-add",
+    ),
+    path(
         "children/<str:slug>/feed/commit/",
         views.FeedCommit.as_view(),
         name="feed-commit",

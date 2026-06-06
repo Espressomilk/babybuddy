@@ -1,0 +1,312 @@
+{% load i18n %}
+{% comment %}
+   Reusable iOS-style roller (wheel) duration picker.
+
+   Auto-enhances every <input data-duration-roller> on the page (a hidden input
+   holding a duration in whole minutes). The native input is hidden and replaced
+   by a tappable display field. Tapping it opens a bottom sheet with wheels for
+   hours and minutes. The value is written back as total minutes so normal form
+   submission is unchanged.
+
+   The wheels are driven entirely by JS (transform-based), not native scrolling,
+   so dragging can never chain to the page underneath and the sheet only
+   dismisses via the Cancel / Done buttons. Mirrors _time_roller.html.
+{% endcomment %}
+<style>
+  .dr-display {
+    width: 100%; text-align: left; padding: 0.7rem 1rem;
+    border: 1.5px solid #ddd; border-radius: 12px;
+    font-size: 1.05rem; background: #fff; color: #2d2d2d;
+    box-sizing: border-box; cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .dr-display:hover { border-color: #2e3d5f; }
+
+  .dr-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    display: flex; align-items: flex-end; justify-content: center;
+    z-index: 1080; opacity: 0; transition: opacity 0.18s;
+    overscroll-behavior: contain; touch-action: none;
+  }
+  .dr-overlay.dr-open { opacity: 1; }
+  .dr-overlay, .dr-overlay * { touch-action: none; }
+  .dr-sheet {
+    background: #fff; width: 100%; max-width: 480px;
+    border-radius: 18px 18px 0 0; padding: 0.4rem 1rem 1.3rem;
+    transform: translateY(100%); transition: transform 0.22s ease;
+    box-shadow: 0 -8px 30px rgba(0,0,0,0.18);
+    touch-action: none;
+  }
+  .dr-overlay.dr-open .dr-sheet { transform: translateY(0); }
+  .dr-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.5rem 0.2rem 0.7rem;
+  }
+  .dr-title { font-size: 1rem; font-weight: 700; color: #2d2d2d; }
+  .dr-btn {
+    border: none; background: transparent; font-size: 1rem; font-weight: 600;
+    cursor: pointer; padding: 0.3rem 0.5rem; border-radius: 8px;
+  }
+  .dr-cancel { color: #888; }
+  .dr-done { color: #2e3d5f; font-weight: 700; }
+  .dr-colhead { display: flex; gap: 0.25rem; padding: 0 0 0.4rem; }
+  .dr-colhead span {
+    flex: 1; text-align: center; font-size: 0.74rem; font-weight: 700;
+    letter-spacing: 0.05em; text-transform: uppercase; color: #888;
+  }
+  .dr-cols {
+    display: flex; gap: 0.25rem; position: relative; height: 200px;
+    overflow: hidden; touch-action: none; user-select: none;
+    -webkit-user-select: none;
+  }
+  .dr-center {
+    position: absolute; left: 0; right: 0; top: 80px; height: 40px;
+    border-top: 1.5px solid #ccd3e0; border-bottom: 1.5px solid #ccd3e0;
+    background: rgba(46,61,95,0.04); pointer-events: none; border-radius: 8px;
+  }
+  .dr-col {
+    flex: 1; min-width: 0; height: 200px; position: relative;
+    overflow: hidden; touch-action: none; cursor: grab;
+  }
+  .dr-col:active { cursor: grabbing; }
+  .dr-list { will-change: transform; }
+  .dr-item {
+    height: 40px; line-height: 40px;
+    text-align: center; font-size: 1.1rem; color: #2d2d2d;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+</style>
+
+<script>
+(function () {
+  var ITEM_H = 40;
+  var CENTER = 2 * ITEM_H;
+  var SNAP = 'transform 0.22s cubic-bezier(0.23, 1, 0.32, 1)';
+  var MAX_HOURS = 12;
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function fmtDur(mins) {
+    mins = Math.max(0, mins | 0);
+    var h = Math.floor(mins / 60), m = mins % 60;
+    if (h > 0) return h + 'h ' + pad(m) + 'm';
+    return m + 'm';
+  }
+
+  var overlay, sheet, colsWrap, doneBtn, cancelBtn, activeInput, activeDisplay;
+  var cols = {};
+  var dragKey = null, touchKey = null, sheetOpen = false;
+
+  function applyTransform(c) { c.list.style.transform = 'translateY(' + c.offset + 'px)'; }
+  function setTransition(c, on) { c.list.style.transition = on ? SNAP : 'none'; }
+  function bounds(c) { return { max: CENTER, min: CENTER - (c.values.length - 1) * ITEM_H }; }
+  function clampRubber(c, off) {
+    var b = bounds(c);
+    if (off > b.max) return b.max + (off - b.max) * 0.3;
+    if (off < b.min) return b.min + (off - b.min) * 0.3;
+    return off;
+  }
+  function setIndex(key, idx, animate) {
+    var c = cols[key];
+    idx = Math.max(0, Math.min(c.values.length - 1, idx));
+    c.index = idx;
+    c.offset = CENTER - idx * ITEM_H;
+    setTransition(c, animate);
+    applyTransform(c);
+  }
+  function indexFromOffset(c, off) { return Math.round((CENTER - off) / ITEM_H); }
+
+  function onStart(key, y) {
+    var c = cols[key];
+    c.dragging = true; c.startY = y; c.startOffset = c.offset;
+    c.lastY = y; c.lastT = Date.now(); c.velocity = 0;
+    setTransition(c, false);
+  }
+  function onMove(key, y) {
+    var c = cols[key];
+    if (!c.dragging) return;
+    c.offset = clampRubber(c, c.startOffset + (y - c.startY));
+    applyTransform(c);
+    var now = Date.now(); var dt = now - c.lastT;
+    if (dt > 0) c.velocity = (y - c.lastY) / dt;
+    c.lastY = y; c.lastT = now;
+  }
+  function onEnd(key) {
+    var c = cols[key];
+    if (!c.dragging) return;
+    c.dragging = false;
+    var projected = c.offset + c.velocity * 140;
+    setIndex(key, indexFromOffset(c, projected), true);
+    if (c.onChange) c.onChange();
+  }
+  function onWheel(key, dy) {
+    var c = cols[key];
+    c.offset = clampRubber(c, c.offset - dy);
+    setTransition(c, false);
+    applyTransform(c);
+    clearTimeout(c.wheelT);
+    c.wheelT = setTimeout(function () {
+      setIndex(key, indexFromOffset(c, c.offset), true);
+      if (c.onChange) c.onChange();
+    }, 80);
+  }
+
+  function buildCol(key) {
+    var el = document.createElement('div');
+    el.className = 'dr-col';
+    el.dataset.key = key;
+    var list = document.createElement('div');
+    list.className = 'dr-list';
+    el.appendChild(list);
+    colsWrap.appendChild(el);
+    cols[key] = { el: el, list: list, values: [], index: 0, offset: CENTER, onChange: null };
+    bindCol(key);
+    return el;
+  }
+  function bindCol(key) {
+    var el = cols[key].el;
+    el.addEventListener('mousedown', function (e) {
+      dragKey = key; onStart(key, e.clientY); e.preventDefault();
+    });
+    el.addEventListener('wheel', function (e) {
+      e.preventDefault(); onWheel(key, e.deltaY);
+    }, { passive: false });
+  }
+
+  function ensureOverlay() {
+    if (overlay) return;
+    overlay = document.createElement('div');
+    overlay.className = 'dr-overlay';
+    overlay.innerHTML =
+      '<div class="dr-sheet">' +
+        '<div class="dr-head">' +
+          '<button type="button" class="dr-btn dr-cancel">{% trans "Cancel" %}</button>' +
+          '<span class="dr-title">{% trans "Select duration" %}</span>' +
+          '<button type="button" class="dr-btn dr-done">{% trans "Done" %}</button>' +
+        '</div>' +
+        '<div class="dr-colhead"><span>{% trans "Hours" %}</span><span>{% trans "Minutes" %}</span></div>' +
+        '<div class="dr-cols"><div class="dr-center"></div></div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    sheet = overlay.querySelector('.dr-sheet');
+    colsWrap = overlay.querySelector('.dr-cols');
+    doneBtn = overlay.querySelector('.dr-done');
+    cancelBtn = overlay.querySelector('.dr-cancel');
+
+    buildCol('hour');
+    buildCol('minute');
+
+    cancelBtn.addEventListener('click', close);
+    doneBtn.addEventListener('click', commit);
+
+    overlay.addEventListener('touchstart', function (e) {
+      if (e.target.closest('.dr-btn')) { touchKey = null; return; }
+      var colEl = e.target.closest('.dr-col');
+      if (colEl) { touchKey = colEl.dataset.key; onStart(touchKey, e.touches[0].clientY); }
+      else { touchKey = null; }
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false });
+
+    document.addEventListener('touchmove', function (e) {
+      if (!sheetOpen) return;
+      if (touchKey && e.touches.length) onMove(touchKey, e.touches[0].clientY);
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false, capture: true });
+    var endTouch = function () { if (touchKey) { onEnd(touchKey); touchKey = null; } };
+    document.addEventListener('touchend', endTouch);
+    document.addEventListener('touchcancel', endTouch);
+
+    document.addEventListener('mousemove', function (e) { if (dragKey) onMove(dragKey, e.clientY); });
+    document.addEventListener('mouseup', function () { if (dragKey) { onEnd(dragKey); dragKey = null; } });
+  }
+
+  function fillCol(key, values, selectedIdx) {
+    var c = cols[key];
+    c.values = values;
+    var html = '';
+    for (var i = 0; i < values.length; i++) html += '<div class="dr-item">' + values[i].label + '</div>';
+    c.list.innerHTML = html;
+    setIndex(key, selectedIdx, false);
+  }
+  function selectedValue(key) { var c = cols[key]; return c.values[c.index].value; }
+
+  function open(input, display) {
+    ensureOverlay();
+    activeInput = input; activeDisplay = display;
+    var mins = parseInt(input.value || '0', 10);
+    if (isNaN(mins) || mins < 0) mins = 0;
+    var h = Math.floor(mins / 60), m = mins % 60;
+    if (h > MAX_HOURS) h = MAX_HOURS;
+
+    var hours = [];
+    for (var i = 0; i <= MAX_HOURS; i++) hours.push({ label: String(i), value: i });
+    var minutes = [];
+    for (var j = 0; j < 60; j++) minutes.push({ label: pad(j), value: j });
+
+    fillCol('hour', hours, h);
+    fillCol('minute', minutes, m);
+    cols.hour.onChange = null;
+    cols.minute.onChange = null;
+
+    overlay.style.display = 'flex';
+    requestAnimationFrame(function () { overlay.classList.add('dr-open'); });
+    sheetOpen = true;
+    lockScroll();
+  }
+
+  function close() {
+    if (!overlay) return;
+    sheetOpen = false; touchKey = null; dragKey = null;
+    overlay.classList.remove('dr-open');
+    unlockScroll();
+    setTimeout(function () { overlay.style.display = 'none'; }, 200);
+  }
+
+  var savedScrollY = 0;
+  function lockScroll() {
+    savedScrollY = window.scrollY || window.pageYOffset || 0;
+    var b = document.body.style; b.overscrollBehavior = 'none'; b.touchAction = 'none';
+    var h = document.documentElement.style; h.overscrollBehavior = 'none'; h.touchAction = 'none';
+    try { if (window.PullToRefresh && window.PullToRefresh.destroyAll) { window.PullToRefresh.destroyAll(); } } catch (e) {}
+  }
+  function unlockScroll() {
+    var b = document.body.style; b.overscrollBehavior = ''; b.touchAction = '';
+    var h = document.documentElement.style; h.overscrollBehavior = ''; h.touchAction = '';
+    try { if (window.BabyBuddy && window.BabyBuddy.PullToRefresh) { window.BabyBuddy.PullToRefresh.init(); } } catch (e) {}
+  }
+
+  function commit() {
+    var mins = selectedValue('hour') * 60 + selectedValue('minute');
+    activeInput.value = mins;
+    activeInput.dispatchEvent(new Event('change', { bubbles: true }));
+    updateDisplay(activeInput, activeDisplay);
+    close();
+  }
+
+  function updateDisplay(input, display) {
+    var mins = parseInt(input.value || '0', 10);
+    if (isNaN(mins)) mins = 0;
+    display.textContent = fmtDur(mins);
+  }
+
+  function enhance(input) {
+    if (input.dataset.drEnhanced) return;
+    input.dataset.drEnhanced = '1';
+    var display = document.createElement('button');
+    display.type = 'button';
+    display.className = 'dr-display';
+    input.style.display = 'none';
+    input.parentNode.insertBefore(display, input);
+    updateDisplay(input, display);
+    display.addEventListener('click', function () { open(input, display); });
+  }
+
+  function init() {
+    document.querySelectorAll('input[data-duration-roller]').forEach(enhance);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>

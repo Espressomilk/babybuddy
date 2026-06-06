@@ -15,7 +15,7 @@ from django.views.generic.edit import CreateView, FormView
 from babybuddy.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from core.models import BMI, Child, Feeding, HeadCircumference, Height, Medication, Pumping, Sleep, Temperature, Timer, TummyTime, Vaccine, Weight
 
-from .forms import BottleFeedForm, BreastfeedForm, DiaperChangeQuickForm, FeedCommitForm, FeedQuickForm, PumpCommitForm, SleepNoteForm, TummyTimeMilestoneForm
+from .forms import BottleFeedForm, BreastfeedForm, BreastfeedQuickForm, DiaperChangeQuickForm, FeedCommitForm, FeedQuickForm, PumpCommitForm, PumpQuickForm, SleepNoteForm, TummyTimeMilestoneForm
 from .models import FeedPending, PumpPending
 
 
@@ -574,6 +574,28 @@ class PumpCommit(PermissionRequiredMixin, FormView):
         m, s = divmod(rem, 60)
         return f"{h}:{m:02d}:{s:02d}"
 
+    def _bounds(self, qs):
+        """Return (start, end) for a queryset as naive local datetimes (minute
+        precision) suitable for prefilling datetime-local inputs."""
+        items = list(qs)
+        if not items:
+            return None, None
+        start = timezone.localtime(min(p.start for p in items)).replace(
+            second=0, microsecond=0, tzinfo=None
+        )
+        end = timezone.localtime(max(p.end for p in items)).replace(
+            second=0, microsecond=0, tzinfo=None
+        )
+        return start, end
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        child = self.get_child()
+        pending = PumpPending.objects.filter(child=child)
+        start, end = self._bounds(pending)
+        kwargs.update({"start": start, "end": end})
+        return kwargs
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         child = self.get_child()
@@ -596,8 +618,8 @@ class PumpCommit(PermissionRequiredMixin, FormView):
         amount_right = form.cleaned_data.get("amount_right") or 0
         notes = form.cleaned_data.get("notes", "")
 
-        start = min(p.start for p in pending)
-        end = max(p.end for p in pending)
+        start = form.cleaned_data.get("start")
+        end = form.cleaned_data.get("end")
         amount = (amount_left if left.exists() else 0) + (amount_right if right.exists() else 0)
 
         try:
@@ -922,6 +944,88 @@ class FeedQuickAdd(PermissionRequiredMixin, FormView):
             for entry in entries:
                 entry.save()
             messages.success(self.request, _("Feeding entry saved."))
+            _broadcast_track(self.kwargs["slug"])
+            return HttpResponseRedirect(self.get_success_url())
+        except ValidationError as e:
+            for msg in e.messages:
+                form.add_error(None, msg)
+            return self.form_invalid(form)
+
+    def get_success_url(self):
+        return reverse("dashboard:track-child", kwargs={"slug": self.kwargs["slug"]})
+
+
+class BreastfeedQuickAdd(PermissionRequiredMixin, FormView):
+    """Manually log a completed breastfeeding without running a timer.
+
+    Mirrors FeedQuickAdd (the bottle Quick Log): start/end roller time inputs
+    prefilled to "now", plus a side selector.
+    """
+
+    permission_required = ("core.add_feeding",)
+    form_class = BreastfeedQuickForm
+    template_name = "dashboard/breastfeed_quick_add.html"
+
+    def get_child(self):
+        return get_object_or_404(Child, slug=self.kwargs["slug"])
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["child"] = self.get_child()
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["child"] = self.get_child()
+        return ctx
+
+    def form_valid(self, form):
+        try:
+            entry = form.build_entry()
+            entry.full_clean()
+            entry.save()
+            messages.success(self.request, _("Breastfeeding entry saved."))
+            _broadcast_track(self.kwargs["slug"])
+            return HttpResponseRedirect(self.get_success_url())
+        except ValidationError as e:
+            for msg in e.messages:
+                form.add_error(None, msg)
+            return self.form_invalid(form)
+
+    def get_success_url(self):
+        return reverse("dashboard:track-child", kwargs={"slug": self.kwargs["slug"]})
+
+
+class PumpQuickAdd(PermissionRequiredMixin, FormView):
+    """Manually log a completed pumping session without running a timer.
+
+    Mirrors FeedQuickAdd (the bottle Quick Log): start/end roller time inputs
+    prefilled to "now", plus an amount stepper.
+    """
+
+    permission_required = ("core.add_pumping",)
+    form_class = PumpQuickForm
+    template_name = "dashboard/pump_quick_add.html"
+
+    def get_child(self):
+        return get_object_or_404(Child, slug=self.kwargs["slug"])
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["child"] = self.get_child()
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["child"] = self.get_child()
+        return ctx
+
+    def form_valid(self, form):
+        try:
+            entry = form.build_entry()
+            entry.full_clean()
+            entry.save()
+            messages.success(self.request, _("Pumping entry saved."))
             _broadcast_track(self.kwargs["slug"])
             return HttpResponseRedirect(self.get_success_url())
         except ValidationError as e:

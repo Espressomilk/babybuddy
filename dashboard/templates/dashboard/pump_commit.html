@@ -30,6 +30,19 @@
     margin: 1.5rem 0 0.5rem;
   }
 
+  /* ── Modern time control ── */
+  .ft-label {
+    font-size: 0.8rem; font-weight: 600; color: #777; margin: 0.6rem 0 0.3rem;
+  }
+  .ft-field input {
+    width: 100%; max-width: 100%; padding: 0.7rem 1rem;
+    border: 1.5px solid #ddd; border-radius: 12px;
+    font-size: 1.05rem; background: #fff; color: #2d2d2d;
+    box-sizing: border-box; -webkit-appearance: none; appearance: none;
+    transition: border-color 0.15s;
+  }
+  .ft-field input:focus { outline: none; border-color: #2e3d5f; }
+
   /* ── Session summary rows ── */
   .pc-session-row {
     display: flex;
@@ -217,20 +230,18 @@
   <form method="post" id="pc-form">
     {% csrf_token %}
 
-    {# ── Session summary ── #}
-    <p class="pc-section">{% trans "Duration" %}</p>
-    {% if has_left %}
-    <div class="pc-session-row">
-      <span class="pc-side-label">{% trans "Left" %}</span>
-      <span class="pc-duration">{{ left_duration }}</span>
+    {# ── Time ── #}
+    <p class="pc-section">{% trans "Time" %}</p>
+    <p class="ft-label">{% trans "Start time" %}</p>
+    <div class="ft-field">
+      {{ form.start }}
+      {% if form.start.errors %}<div class="pc-errors" style="margin-top:0.4rem;">{{ form.start.errors|striptags }}</div>{% endif %}
     </div>
-    {% endif %}
-    {% if has_right %}
-    <div class="pc-session-row">
-      <span class="pc-side-label">{% trans "Right" %}</span>
-      <span class="pc-duration">{{ right_duration }}</span>
+    <p class="ft-label">{% trans "End time" %}</p>
+    <div class="ft-field">
+      {{ form.end }}
+      {% if form.end.errors %}<div class="pc-errors" style="margin-top:0.4rem;">{{ form.end.errors|striptags }}</div>{% endif %}
     </div>
-    {% endif %}
 
     {# ── Amount ── #}
     <p class="pc-section">{% trans "Amount" %}</p>
@@ -293,4 +304,6 @@
   });
 })();
 </script>
+
+{% include 'dashboard/_time_roller.html' %}
 {% endblock %}

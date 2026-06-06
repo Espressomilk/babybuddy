@@ -4,6 +4,17 @@
     <a href="{% url "core:feeding-list" %}">{% trans "Recent Feedings" %}</a>
 {% endblock %}
 {% block title %}
+    <style>
+        /* Auto-fit the large value text to the screen: scale with viewport
+           width instead of a fixed 2em, which overflowed the three narrow
+           columns on phones (e.g. "1 小时, 28 分钟" / "128 ml" wrapping). */
+        #feeding-days-carousel .last-feeding-method {
+            font-size: clamp(0.95rem, 5.5vw, 2em);
+            line-height: 1.15;
+            word-break: keep-all;
+            overflow-wrap: normal;
+        }
+    </style>
     {% if feedings|length > 0 %}
         <div id="feeding-days-carousel"
              class="carousel slide"
