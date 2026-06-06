@@ -77,3 +77,42 @@ def timezone_aware_duration(
     """
     utc = datetime.timezone.utc
     return end.astimezone(utc) - start.astimezone(utc)
+
+
+# Maximum gap (end of one feeding to the start of the next) for two feedings to
+# count as part of the same feeding session. This groups a "triple feeding"
+# (breast feed + top-up bottle(s)) into a single session for frequency and
+# interval statistics.
+FEEDING_SESSION_GAP = datetime.timedelta(minutes=30)
+
+
+def group_feeding_sessions(instances, gap=FEEDING_SESSION_GAP):
+    """
+    Group an ordered sequence of Feeding instances into feeding sessions.
+
+    Consecutive feedings separated by less than ``gap`` (measured from the end
+    of one feeding to the start of the next) are treated as a single session,
+    so that e.g. a breast feed immediately followed by a top-up bottle counts
+    as one feeding rather than several.
+
+    :param instances: Feeding instances ordered by ``start``.
+    :param gap: maximum end-to-start gap to merge into one session.
+    :returns: a list of ``{"start", "end", "feedings"}`` dicts, one per session,
+        where ``start`` is the first feeding's start, ``end`` is the latest end,
+        and ``feedings`` is the list of member Feeding instances.
+    """
+    sessions = []
+    for instance in instances:
+        if sessions and (instance.start - sessions[-1]["end"]) < gap:
+            sessions[-1]["feedings"].append(instance)
+            if instance.end > sessions[-1]["end"]:
+                sessions[-1]["end"] = instance.end
+        else:
+            sessions.append(
+                {
+                    "start": instance.start,
+                    "end": instance.end,
+                    "feedings": [instance],
+                }
+            )
+    return sessions

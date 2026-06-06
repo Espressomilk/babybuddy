@@ -8,6 +8,7 @@ from django.utils.translation import gettext as _
 import collections
 
 from core import models
+from core.utils import duration_string, group_feeding_sessions
 
 register = template.Library()
 
@@ -579,6 +580,9 @@ def card_statistics(context, child):
                 }
             )
 
+    for item in _feeding_amount_statistics(child):
+        stats.append(item)
+
     naps = _nap_statistics(child)
     if naps:
         stats.append(
@@ -731,25 +735,110 @@ def _feeding_statistics(child):
         timespan["btwn_average"] = 0.0
 
     instances = models.Feeding.objects.filter(child=child).order_by("start")
-    if len(instances) == 0:
+    # Group consecutive feedings (e.g. a breast feed + top-up bottles) into
+    # single feeding sessions so "frequency" reflects how often the baby feeds,
+    # not how many sources each feeding used.
+    sessions = group_feeding_sessions(instances)
+    if len(sessions) == 0:
         return False
-    last_instance = None
+    last_session = None
 
-    for instance in instances:
-        if last_instance:
+    for session in sessions:
+        if last_session:
             for timespan in feedings:
-                start = timezone.localtime(instance.start)
-                last_start = timezone.localtime(last_instance.start)
-                last_end = timezone.localtime(last_instance.end)
+                start = timezone.localtime(session["start"])
+                last_start = timezone.localtime(last_session["start"])
+                last_end = timezone.localtime(last_session["end"])
                 if timespan["start"] is None or last_start > timespan["start"]:
                     timespan["btwn_total"] += start - last_end
                     timespan["btwn_count"] += 1
-        last_instance = instance
+        last_session = session
 
     for timespan in feedings:
         if timespan["btwn_count"] > 0:
             timespan["btwn_average"] = timespan["btwn_total"] / timespan["btwn_count"]
     return feedings
+
+
+def _format_amount(value):
+    """Format a feeding amount, dropping a trailing ``.0``."""
+    value = round(value, 1)
+    if value == int(value):
+        return str(int(value))
+    return "{:.1f}".format(value)
+
+
+def _feeding_amount_statistics(child):
+    """
+    Average per-session feeding amounts: breastfeeding duration and bottle
+    amount (all milk types), for yesterday / past 3 days / past 2 weeks.
+
+    Feedings are grouped into sessions (a breast feed plus any top-up bottles
+    counts as one session); each window's value is the per-session average
+    across all sessions whose start falls in the window.
+
+    :param child: an instance of the Child model.
+    :returns: a list of {"type", "stat", "title"} dicts for the statistics card.
+    """
+    breast_methods = ("left breast", "right breast", "both breasts")
+    now = timezone.localtime()
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    windows = [
+        {
+            "title": _("Feeding per session (yesterday)"),
+            "start": today - timezone.timedelta(days=1),
+            "end": today,
+        },
+        {
+            "title": _("Feeding per session (past 3 days)"),
+            "start": now - timezone.timedelta(days=3),
+            "end": None,
+        },
+        {
+            "title": _("Feeding per session (past 2 weeks)"),
+            "start": now - timezone.timedelta(weeks=2),
+            "end": None,
+        },
+    ]
+
+    instances = models.Feeding.objects.filter(child=child).order_by("start")
+    if len(instances) == 0:
+        return []
+    sessions = group_feeding_sessions(instances)
+
+    results = []
+    for window in windows:
+        selected = []
+        for session in sessions:
+            start = timezone.localtime(session["start"])
+            if start < window["start"]:
+                continue
+            if window["end"] is not None and start >= window["end"]:
+                continue
+            selected.append(session)
+        if not selected:
+            continue
+
+        count = len(selected)
+        breast_total = timezone.timedelta()
+        bottle_total = 0.0
+        for session in selected:
+            for feeding in session["feedings"]:
+                if feeding.method in breast_methods:
+                    breast_total += (feeding.duration_left or timezone.timedelta())
+                    breast_total += (feeding.duration_right or timezone.timedelta())
+                elif feeding.method == "bottle":
+                    bottle_total += feeding.amount or 0
+
+        breast_avg = breast_total / count
+        bottle_avg = bottle_total / count
+        value = "🤱 {} · 🍼 {} ml".format(
+            duration_string(breast_avg, "m"), _format_amount(bottle_avg)
+        )
+        results.append(
+            {"type": "amount_combo", "stat": value, "title": window["title"]}
+        )
+    return results
 
 
 def _nap_statistics(child):

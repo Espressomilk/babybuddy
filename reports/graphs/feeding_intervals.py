@@ -1,37 +1,41 @@
 # -*- coding: utf-8 -*-
-from django.db.models import Count, Sum
-from django.db.models.functions import TruncDate
 from django.utils.translation import gettext as _
 
 import plotly.offline as plotly
 import plotly.graph_objs as go
 
-from core.utils import duration_parts
+from core.utils import duration_parts, group_feeding_sessions
 
 from reports import utils
 
 
 def feeding_intervals(instances):
     """
-    Create a graph showing intervals of feeding instances over time.
+    Create a graph showing intervals between feeding sessions over time.
+
+    Consecutive feedings (e.g. a breast feed plus top-up bottles) are grouped
+    into a single session, so the interval reflects time between feedings rather
+    than between the individual sources of one feeding.
 
     :param instances: a QuerySet of Feeding instances.
     :returns: a tuple of the graph's html and javascript.
     """
-    totals = instances.annotate(count=Count("id")).order_by("start")
+    sessions = group_feeding_sessions(instances.order_by("start"))
 
+    starts = []
     intervals = []
-    last_feeding = totals.first()
-    for feeding in totals[1:]:
-        interval = feeding.start - last_feeding.start
+    last_session = sessions[0] if sessions else None
+    for session in sessions[1:]:
+        interval = session["start"] - last_session["start"]
         if interval.total_seconds() > 0:
+            starts.append(session["start"])
             intervals.append(interval)
-        last_feeding = feeding
+        last_session = session
 
     trace_avg = go.Scatter(
         name=_("Interval"),
         line=dict(shape="spline"),
-        x=list(totals.values_list("start", flat=True)),
+        x=starts,
         y=[i.total_seconds() / 3600 for i in intervals],
         hoverinfo="text",
         text=[_duration_string_hms(i) for i in intervals],
@@ -42,7 +46,8 @@ def feeding_intervals(instances):
     layout_args["xaxis"]["title"] = _("Date")
     layout_args["xaxis"]["type"] = "date"
     layout_args["xaxis"]["autorange"] = True
-    layout_args["xaxis"]["autorangeoptions"] = utils.autorangeoptions(trace_avg.x)
+    if starts:
+        layout_args["xaxis"]["autorangeoptions"] = utils.autorangeoptions(starts)
     layout_args["xaxis"]["rangeselector"] = utils.rangeselector_date()
     layout_args["yaxis"]["title"] = _("Feeding interval (hours)")
 

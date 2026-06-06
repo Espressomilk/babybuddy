@@ -3456,3 +3456,15 @@ msgstr "小便尿布"
 #: timeline daily summary
 msgid "Solid diapers"
 msgstr "大便尿布"
+
+#: statistics card
+msgid "Feeding per session (yesterday)"
+msgstr "每次喂养（昨天）"
+
+#: statistics card
+msgid "Feeding per session (past 3 days)"
+msgstr "每次喂养（过去三天）"
+
+#: statistics card
+msgid "Feeding per session (past 2 weeks)"
+msgstr "每次喂养（过去两周）"
