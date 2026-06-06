@@ -26,6 +26,8 @@
                class="list-group-item list-group-item-action">{% trans "Feeding Amounts" %}</a>
             <a href="{% url 'reports:report-feeding-duration-child' object.slug %}"
                class="list-group-item list-group-item-action">{% trans "Feeding Durations (Average)" %}</a>
+            <a href="{% url 'reports:report-feeding-duration-by-side-child' object.slug %}"
+               class="list-group-item list-group-item-action">{% trans "Breastfeeding Duration by Side" %}</a>
             <a href="{% url 'reports:report-feeding-intervals-child' object.slug %}"
                class="list-group-item list-group-item-action">{% trans "Feeding Intervals" %}</a>
             <a href="{% url 'reports:report-feeding-pattern-child' object.slug %}"
@@ -44,6 +46,8 @@
                class="list-group-item list-group-item-action">{% trans "Medication Intervals" %}</a>
             <a href="{% url 'reports:report-pumping-amounts-child' object.slug %}"
                class="list-group-item list-group-item-action">{% trans "Pumping Amounts" %}</a>
+            <a href="{% url 'reports:report-pumping-amounts-by-side-child' object.slug %}"
+               class="list-group-item list-group-item-action">{% trans "Pumping Amount by Side" %}</a>
             <a href="{% url 'reports:report-sleep-pattern-child' object.slug %}"
                class="list-group-item list-group-item-action">{% trans "Sleep Pattern" %}</a>
             <a href="{% url 'reports:report-sleep-totals-child' object.slug %}"

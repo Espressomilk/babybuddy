@@ -21,6 +21,7 @@ def _prepare_timeline_context_data(context, date, child=None):
     date = timezone.datetime.strptime(date, "%Y-%m-%d")
     date = timezone.localtime(timezone.make_aware(date))
     context["timeline_objects"] = timeline.get_objects(date, child)
+    context["timeline_summary"] = timeline.get_summary(date, child)
     context["date"] = date
     context["date_previous"] = date - timezone.timedelta(days=1)
     if date.date() < timezone.localdate():

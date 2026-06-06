@@ -72,6 +72,16 @@ urlpatterns = [
         name="report-pumping-amounts-child",
     ),
     path(
+        "children/<str:slug>/reports/pumping/amounts-by-side/",
+        views.PumpingAmountsBySide.as_view(),
+        name="report-pumping-amounts-by-side-child",
+    ),
+    path(
+        "children/<str:slug>/reports/feeding/duration-by-side/",
+        views.FeedingDurationBySideChildReport.as_view(),
+        name="report-feeding-duration-by-side-child",
+    ),
+    path(
         "children/<str:slug>/reports/feeding/intervals/",
         views.FeedingIntervalsChildReport.as_view(),
         name="report-feeding-intervals-child",

@@ -631,6 +631,10 @@ class BreastfeedQuickForm(forms.Form):
             attrs={"id": "id_right_minutes", "data-duration-roller": "1"}
         ),
     )
+    start = forms.DateTimeField(
+        label=_("Start time"),
+        widget=DateTimeInput(attrs={"step": 60, "id": "id_start"}),
+    )
     end = forms.DateTimeField(
         label=_("End time"),
         widget=DateTimeInput(attrs={"step": 60, "id": "id_end"}),
@@ -653,6 +657,7 @@ class BreastfeedQuickForm(forms.Form):
         if not self.is_bound:
             now = timezone.localtime().replace(second=0, microsecond=0, tzinfo=None)
             self.initial["end"] = now
+            self.initial["start"] = now
             self.initial["left_minutes"] = 0
             self.initial["right_minutes"] = 0
 
@@ -660,6 +665,9 @@ class BreastfeedQuickForm(forms.Form):
         if value and timezone.is_naive(value):
             return timezone.make_aware(value, timezone.get_current_timezone())
         return value
+
+    def clean_start(self):
+        return self._make_aware(self.cleaned_data.get("start"))
 
     def clean_end(self):
         return self._make_aware(self.cleaned_data.get("end"))
@@ -673,6 +681,21 @@ class BreastfeedQuickForm(forms.Form):
                 "left_minutes",
                 _("Please enter a duration for at least one side."),
             )
+        # The window between start and end must be long enough to contain the
+        # active feeding time; any surplus is treated as rest during the feed.
+        start = cleaned_data.get("start")
+        end = cleaned_data.get("end")
+        total = left + right
+        if start and end:
+            window = (end - start).total_seconds()
+            if window + 1 < total * 60:
+                self.add_error(
+                    "start",
+                    _(
+                        "Start time is too late for the entered durations. "
+                        "Move it earlier or shorten the durations."
+                    ),
+                )
         return cleaned_data
 
     def build_entry(self):
@@ -681,7 +704,6 @@ class BreastfeedQuickForm(forms.Form):
 
         left = self.cleaned_data.get("left_minutes") or 0
         right = self.cleaned_data.get("right_minutes") or 0
-        total = left + right
 
         if left > 0 and right > 0:
             method = self.BOTH
@@ -691,7 +713,9 @@ class BreastfeedQuickForm(forms.Form):
             method = self.LEFT
 
         end = self.cleaned_data["end"]
-        start = end - timedelta(minutes=total)
+        # User-chosen start (defaults to end - total active time, adjustable
+        # earlier to record rest during the feed).
+        start = self.cleaned_data["start"]
 
         return Feeding(
             child=self.child,
@@ -699,6 +723,8 @@ class BreastfeedQuickForm(forms.Form):
             end=end,
             type="breast milk",
             method=method,
+            duration_left=timedelta(minutes=left),
+            duration_right=timedelta(minutes=right),
             notes=self.cleaned_data.get("notes", ""),
         )
 
@@ -730,6 +756,10 @@ class PumpQuickForm(forms.Form):
         widget=forms.HiddenInput(
             attrs={"id": "id_right_minutes", "data-duration-roller": "1"}
         ),
+    )
+    start = forms.DateTimeField(
+        label=_("Start time"),
+        widget=DateTimeInput(attrs={"step": 60, "id": "id_start"}),
     )
     end = forms.DateTimeField(
         label=_("End time"),
@@ -779,6 +809,7 @@ class PumpQuickForm(forms.Form):
         if not self.is_bound:
             now = timezone.localtime().replace(second=0, microsecond=0, tzinfo=None)
             self.initial["end"] = now
+            self.initial["start"] = now
             self.initial["left_minutes"] = 0
             self.initial["right_minutes"] = 0
 
@@ -786,6 +817,9 @@ class PumpQuickForm(forms.Form):
         if value and timezone.is_naive(value):
             return timezone.make_aware(value, timezone.get_current_timezone())
         return value
+
+    def clean_start(self):
+        return self._make_aware(self.cleaned_data.get("start"))
 
     def clean_end(self):
         return self._make_aware(self.cleaned_data.get("end"))
@@ -799,26 +833,42 @@ class PumpQuickForm(forms.Form):
                 "left_minutes",
                 _("Please enter a duration for at least one side."),
             )
+        # Left and right pumping typically happen together, so the active
+        # session length is the longer side; the window must be at least that
+        # long, with any surplus treated as rest during the session.
+        start = cleaned_data.get("start")
+        end = cleaned_data.get("end")
+        active = max(left, right)
+        if start and end:
+            window = (end - start).total_seconds()
+            if window + 1 < active * 60:
+                self.add_error(
+                    "start",
+                    _(
+                        "Start time is too late for the entered durations. "
+                        "Move it earlier or shorten the durations."
+                    ),
+                )
         return cleaned_data
 
     def build_entry(self):
         """Return an unsaved Pumping instance for the data."""
         from core.models import Pumping
 
-        left = self.cleaned_data.get("left_minutes") or 0
-        right = self.cleaned_data.get("right_minutes") or 0
-        total = left + right
-
-        amount_left = self.cleaned_data.get("amount_left") or 0
-        amount_right = self.cleaned_data.get("amount_right") or 0
+        amount_left = self.cleaned_data.get("amount_left")
+        amount_right = self.cleaned_data.get("amount_right")
 
         end = self.cleaned_data["end"]
-        start = end - timedelta(minutes=total)
+        # User-chosen start (defaults to end - max(left, right) since the sides
+        # are pumped together; adjustable earlier to record rest).
+        start = self.cleaned_data["start"]
 
         return Pumping(
             child=self.child,
             start=start,
             end=end,
-            amount=amount_left + amount_right,
+            amount=(amount_left or 0) + (amount_right or 0),
+            amount_left=amount_left,
+            amount_right=amount_right,
             notes=self.cleaned_data.get("notes", ""),
         )

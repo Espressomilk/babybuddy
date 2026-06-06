@@ -620,7 +620,10 @@ class PumpCommit(PermissionRequiredMixin, FormView):
 
         start = form.cleaned_data.get("start")
         end = form.cleaned_data.get("end")
-        amount = (amount_left if left.exists() else 0) + (amount_right if right.exists() else 0)
+        # Only attribute a side's amount if that side actually had a timer.
+        side_left = amount_left if left.exists() else None
+        side_right = amount_right if right.exists() else None
+        amount = (side_left or 0) + (side_right or 0)
 
         try:
             entry = Pumping(
@@ -628,6 +631,8 @@ class PumpCommit(PermissionRequiredMixin, FormView):
                 start=start,
                 end=end,
                 amount=amount,
+                amount_left=side_left,
+                amount_right=side_right,
                 notes=notes,
             )
             entry.full_clean()
@@ -814,12 +819,21 @@ class FeedCommit(PermissionRequiredMixin, FormView):
                     method = "left breast"
                 else:
                     method = "right breast"
+                # Exact per-side durations from the individual timer sessions.
+                left_dur = sum(
+                    (p.end - p.start for p in left), timezone.timedelta()
+                )
+                right_dur = sum(
+                    (p.end - p.start for p in right), timezone.timedelta()
+                )
                 entry = Feeding(
                     child=child,
                     start=form.cleaned_data.get("breast_start"),
                     end=form.cleaned_data.get("breast_end"),
                     type="breast milk",
                     method=method,
+                    duration_left=left_dur,
+                    duration_right=right_dur,
                     notes=notes,
                 )
                 entry.full_clean()

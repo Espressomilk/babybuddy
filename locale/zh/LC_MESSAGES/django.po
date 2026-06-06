@@ -3392,3 +3392,67 @@ msgstr "小时"
 #: dashboard custom strings
 msgid "Minutes"
 msgstr "分钟"
+
+#: reports custom strings
+msgid "Breastfeeding Duration by Side"
+msgstr "按侧划分的母乳喂养时长"
+
+#: reports custom strings
+msgid "Pumping Amount by Side"
+msgstr "按侧划分的挤奶量"
+
+#: reports custom strings
+msgid "Duration (minutes)"
+msgstr "持续时间（分钟）"
+
+#: reports custom strings
+msgid "Unspecified"
+msgstr "未指定"
+
+#: core feeding form
+msgid "Left duration (minutes)"
+msgstr "左侧时长（分钟）"
+
+#: core feeding form
+msgid "Right duration (minutes)"
+msgstr "右侧时长（分钟）"
+
+#: core feeding form
+msgid ""
+"For breastfeeding only. Leave both sides blank to split the total duration "
+"evenly between sides."
+msgstr "仅适用于母乳喂养。两侧均留空则将总时长平均分配到两侧。"
+
+#: dashboard quick-add start time
+msgid ""
+"Defaults to end minus the total duration. Move it earlier to record rest "
+"during the feed."
+msgstr "默认为结束时间减去总时长。可将其向前调整以记录喂养期间的休息时间。"
+
+#: dashboard quick-add start time
+msgid ""
+"Defaults to end minus the longer side (sides are pumped together). Move it "
+"earlier to record rest."
+msgstr "默认为结束时间减去较长一侧的时长（两侧同时进行）。可将其向前调整以记录休息时间。"
+
+#: dashboard quick-add start time
+msgid ""
+"Start time is too late for the entered durations. Move it earlier or shorten "
+"the durations."
+msgstr "开始时间相对于所填时长过晚。请将其向前调整或缩短时长。"
+
+#: dashboard quick-add start time
+msgid "rest"
+msgstr "休息"
+
+#: timeline daily summary
+msgid "Bottle feeding"
+msgstr "奶瓶喂养"
+
+#: timeline daily summary
+msgid "Wet diapers"
+msgstr "小便尿布"
+
+#: timeline daily summary
+msgid "Solid diapers"
+msgstr "大便尿布"

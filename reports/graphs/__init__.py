@@ -5,11 +5,13 @@ from .diaperchange_types import diaperchange_types  # NOQA
 from .diaperchange_intervals import diaperchange_intervals  # NOQA
 from .feeding_amounts import feeding_amounts  # NOQA
 from .feeding_duration import feeding_duration  # NOQA
+from .feeding_duration_by_side import feeding_duration_by_side  # NOQA
 from .feeding_intervals import feeding_intervals  # NOQA
 from .feeding_pattern import feeding_pattern  # NOQA
 from .head_circumference_change import head_circumference_change  # NOQA
 from .height_change import height_change  # NOQA
 from .pumping_amounts import pumping_amounts  # NOQA
+from .pumping_amounts_by_side import pumping_amounts_by_side  # NOQA
 from .sleep_pattern import sleep_pattern  # NOQA
 from .sleep_totals import sleep_totals  # NOQA
 from .temperature_change import temperature_change  # NOQA

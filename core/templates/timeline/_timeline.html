@@ -1,4 +1,28 @@
 {% load i18n %}
+<style>
+  /* Exact event time displayed on the opposite side of the line from the card
+     (desktop two-column layout only; on mobile the card footer shows it). */
+  .timeline > li > .timeline-time {
+    position: absolute;
+    top: 22px;
+    width: 44%;
+    font-weight: 600;
+    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--bs-secondary-color, #6c757d);
+  }
+  .timeline > li:not(.timeline-inverted) > .timeline-time {
+    right: 0;
+    text-align: left;
+    padding-left: 2.5rem;
+  }
+  .timeline > li.timeline-inverted > .timeline-time {
+    left: 0;
+    text-align: right;
+    padding-right: 2.5rem;
+  }
+  .timeline-summary span { white-space: nowrap; }
+</style>
 <h3 class="text-center">
     {% if date_previous %}
         <a class="btn btn-sm btn-default"
@@ -18,10 +42,19 @@
         </a>
     {% endif %}
 </h3>
+{% if timeline_summary %}
+    <div class="timeline-summary text-center text-body-secondary mb-3">
+        {% if timeline_summary.breastfeeding_duration %}<span class="me-3" title="{% trans 'Breastfeeding' %}">🤱 {{ timeline_summary.breastfeeding_duration }}</span>{% endif %}
+        {% if timeline_summary.bottle_amount %}<span class="me-3" title="{% trans 'Bottle feeding' %}">🍼 {{ timeline_summary.bottle_amount|floatformat:"-2" }} ml</span>{% endif %}
+        <span class="me-3" title="{% trans 'Wet diapers' %}">💧 {{ timeline_summary.wet_count }}</span>
+        <span title="{% trans 'Solid diapers' %}">💩 {{ timeline_summary.solid_count }}</span>
+    </div>
+{% endif %}
 {% if timeline_objects %}
     <ul class="timeline m-auto">
         {% for object in timeline_objects %}
             <li {% cycle "" ' class="timeline-inverted"' %}>
+                <div class="timeline-time d-none d-md-block">{{ object.time|time }}</div>
                 <div class="timeline-badge {% if object.type == "start" %}bg-success{% elif object.type == "end" %}bg-danger{% else %}bg-info{% endif %}">
                     <i class="icon-{{ object.model_name }}"></i>
                 </div>

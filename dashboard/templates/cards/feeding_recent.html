@@ -9,10 +9,24 @@
            width instead of a fixed 2em, which overflowed the three narrow
            columns on phones (e.g. "1 小时, 28 分钟" / "128 ml" wrapping). */
         #feeding-days-carousel .last-feeding-method {
-            font-size: clamp(0.95rem, 5.5vw, 2em);
+            font-size: clamp(0.9rem, 4.5vw, 1.6em);
             line-height: 1.15;
             word-break: keep-all;
             overflow-wrap: normal;
+            white-space: nowrap;
+        }
+        /* Give the prev/next controls their own narrow gutters and inset the
+           slide content so the arrows never overlap the outer columns. */
+        #feeding-days-carousel .carousel-item { padding: 0 2rem; }
+        #feeding-days-carousel .carousel-control-prev,
+        #feeding-days-carousel .carousel-control-next { width: 2rem; opacity: 0.65; }
+        /* Reserve a consistent two-line height for the labels so the blue
+           values all line up on the same row even when a label wraps. */
+        #feeding-days-carousel .feeding-label {
+            min-height: 2.6em;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
         }
     </style>
     {% if feedings|length > 0 %}
@@ -25,11 +39,11 @@
                         <div class="row text-center g-2">
                             {% for method in feeding.methods %}
                                 <div class="col-4">
-                                    <div class="small text-body-secondary">{{ method.label }}</div>
+                                    <div class="small text-body-secondary feeding-label">{{ method.label }}</div>
                                     <div class="last-feeding-method">
                                         {% if method.metric == "duration" %}
                                             {% if method.total %}
-                                                {{ method.total|duration_string:"m" }}
+                                                {% if method.total|hours %}{{ method.total|hours }}h&nbsp;{% endif %}{{ method.total|minutes }}m
                                             {% else %}
                                                 {% trans "None" %}
                                             {% endif %}

@@ -150,11 +150,47 @@ def card_breastfeeding(context, child, date=None):
     for key, day_instances in per_day.items():
         left_count = 0
         right_count = 0
+        left_duration = timezone.timedelta()
+        right_duration = timezone.timedelta()
         for instance in day_instances:
-            if instance.method in ("left breast", "both breasts"):
+            duration = instance.duration or timezone.timedelta()
+            if instance.method == "both breasts":
                 left_count += 1
-            if instance.method in ("right breast", "both breasts"):
                 right_count += 1
+            elif instance.method == "left breast":
+                left_count += 1
+            elif instance.method == "right breast":
+                right_count += 1
+
+            if (
+                instance.duration_left is not None
+                or instance.duration_right is not None
+            ):
+                # Stored per-side durations (exact for newer entries, even-split
+                # backfill for older ones).
+                left_duration += instance.duration_left or timezone.timedelta()
+                right_duration += instance.duration_right or timezone.timedelta()
+            elif instance.method == "both breasts":
+                # Defensive fallback: split evenly when no per-side data exists.
+                half = duration / 2
+                left_duration += half
+                right_duration += half
+            elif instance.method == "left breast":
+                left_duration += duration
+            elif instance.method == "right breast":
+                right_duration += duration
+
+        left_secs = left_duration.total_seconds()
+        right_secs = right_duration.total_seconds()
+        total_secs = left_secs + right_secs
+        if total_secs > 0:
+            left_pct = round(100 * left_secs / total_secs)
+            right_pct = 100 - left_pct
+        else:
+            # Fall back to count proportions when all durations are zero.
+            total_count = left_count + right_count
+            left_pct = (100 * left_count // total_count) if total_count else 50
+            right_pct = 100 - left_pct
 
         stats[key] = {
             "count": len(day_instances),
@@ -164,8 +200,10 @@ def card_breastfeeding(context, child, date=None):
             ),
             "left_count": left_count,
             "right_count": right_count,
-            "left_pct": 100 * left_count // (left_count + right_count),
-            "right_pct": 100 * right_count // (left_count + right_count),
+            "left_duration": left_duration,
+            "right_duration": right_duration,
+            "left_pct": left_pct,
+            "right_pct": right_pct,
         }
 
     return {

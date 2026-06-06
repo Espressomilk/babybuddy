@@ -1,0 +1,10 @@
+{% extends 'reports/report_base.html' %}
+{% load i18n %}
+{% block title %}
+    {% trans "Pumping Amount by Side" %} - {{ object }}
+{% endblock %}
+{% block breadcrumbs %}
+    {{ block.super }}
+    {% include 'reports/breadcrumb_common_chunk.html' with target_url='reports:report-pumping-amounts-by-side-child' %}
+    <li class="breadcrumb-item active" aria-current="page">{% trans "Pumping Amount by Side" %}</li>
+{% endblock %}

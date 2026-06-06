@@ -119,8 +119,11 @@
     {# ── Time ── #}
     <p class="fc-section">{% trans "Time" %}</p>
     <p class="ft-label">{% trans "Start time" %}</p>
-    <div class="fc-start-display" id="fc-start-display">—</div>
-    <p class="fc-start-hint">{% trans "Calculated from end time and total duration." %}</p>
+    <div class="ft-field">
+      {{ form.start }}
+      {% if form.start.errors %}<div class="fc-errors" style="margin-top:0.4rem;">{{ form.start.errors|striptags }}</div>{% endif %}
+    </div>
+    <p class="fc-start-hint">{% trans "Defaults to end minus the longer side (sides are pumped together). Move it earlier to record rest." %} <span id="fc-rest-hint"></span></p>
     <p class="ft-label">{% trans "End time" %}</p>
     <div class="ft-field">
       {{ form.end }}
@@ -179,18 +182,29 @@
     });
   });
 
-  // ── Computed start time ──
+  // ── Computed / adjustable start time ──
   var MONTHS = [
     '{% trans "Jan" %}', '{% trans "Feb" %}', '{% trans "Mar" %}',
     '{% trans "Apr" %}', '{% trans "May" %}', '{% trans "Jun" %}',
     '{% trans "Jul" %}', '{% trans "Aug" %}', '{% trans "Sep" %}',
     '{% trans "Oct" %}', '{% trans "Nov" %}', '{% trans "Dec" %}'
   ];
+  var REST_LABEL = '{% trans "rest" %}';
 
+  var startInput = document.getElementById('id_start');
   var endInput = document.getElementById('id_end');
   var leftInput = document.getElementById('id_left_minutes');
   var rightInput = document.getElementById('id_right_minutes');
-  var display = document.getElementById('fc-start-display');
+  var restHint = document.getElementById('fc-rest-hint');
+
+  // Sides are pumped together, so the active session length is the longer side.
+  function activeMinutes() {
+    var left = parseInt((leftInput && leftInput.value) || '0', 10) || 0;
+    var right = parseInt((rightInput && rightInput.value) || '0', 10) || 0;
+    return Math.max(left, right);
+  }
+
+  var lastAuto = null;
 
   function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -203,32 +217,76 @@
       parseInt(m[4], 10), parseInt(m[5], 10), 0, 0
     );
   }
-
+  function fmtInput(d) {
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+           'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
   function fmtDisplay(d) {
     return MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' +
            d.getFullYear() + '  ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
 
-  function recompute() {
-    var end = parseLocal(endInput && endInput.value);
-    if (!end) { display.textContent = '—'; return; }
-    var left = parseInt((leftInput && leftInput.value) || '0', 10) || 0;
-    var right = parseInt((rightInput && rightInput.value) || '0', 10) || 0;
-    var total = left + right;
-    var start = new Date(end.getTime() - total * 60000);
-    display.textContent = fmtDisplay(start);
+  function refreshRoller(input) {
+    if (!input) return;
+    var btn = input.previousElementSibling;
+    if (btn && btn.classList && btn.classList.contains('tr-display')) {
+      var d = parseLocal(input.value);
+      if (d) { btn.textContent = fmtDisplay(d); btn.classList.remove('tr-empty'); }
+    }
   }
 
-  if (endInput) endInput.addEventListener('change', recompute);
-  if (leftInput) leftInput.addEventListener('change', recompute);
-  if (rightInput) rightInput.addEventListener('change', recompute);
+  function updateRestHint(end, start, active) {
+    if (!restHint) return;
+    var restMin = Math.round((end.getTime() - start.getTime()) / 60000) - active;
+    restHint.textContent = restMin > 0 ? ('· +' + restMin + 'm ' + REST_LABEL) : '';
+  }
+
+  function applyDefault() {
+    var end = parseLocal(endInput && endInput.value);
+    if (!end) return;
+    var active = activeMinutes();
+    var auto = new Date(end.getTime() - active * 60000);
+    var cur = parseLocal(startInput && startInput.value);
+
+    var next;
+    if (!cur || (lastAuto && fmtInput(cur) === lastAuto) || cur.getTime() > auto.getTime()) {
+      next = auto;
+    } else {
+      next = cur;
+    }
+    if (startInput) {
+      startInput.value = fmtInput(next);
+      refreshRoller(startInput);
+    }
+    lastAuto = fmtInput(auto);
+    updateRestHint(end, next, active);
+  }
+
+  function onStartChange() {
+    var end = parseLocal(endInput && endInput.value);
+    var cur = parseLocal(startInput && startInput.value);
+    if (!end || !cur) return;
+    var active = activeMinutes();
+    var auto = new Date(end.getTime() - active * 60000);
+    if (cur.getTime() > auto.getTime()) {
+      cur = auto;
+      startInput.value = fmtInput(cur);
+      refreshRoller(startInput);
+    }
+    updateRestHint(end, cur, active);
+  }
+
+  if (endInput) endInput.addEventListener('change', applyDefault);
+  if (leftInput) leftInput.addEventListener('change', applyDefault);
+  if (rightInput) rightInput.addEventListener('change', applyDefault);
+  if (startInput) startInput.addEventListener('change', onStartChange);
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', recompute);
+    document.addEventListener('DOMContentLoaded', applyDefault);
   } else {
-    recompute();
+    applyDefault();
   }
-  setTimeout(recompute, 60);
+  setTimeout(applyDefault, 60);
 })();
 </script>
 

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from datetime import timedelta
 
+from django.db.models import Sum
 from django.urls import reverse
 from django.utils import timezone, timesince
 from django.utils.translation import gettext as _
@@ -15,6 +16,45 @@ from core.models import (
     Medication,
 )
 from core.utils import duration_string
+
+BREAST_METHODS = ("left breast", "right breast", "both breasts")
+
+
+def get_summary(date, child=None):
+    """
+    Build a one-day totals summary for the timeline header.
+    :param date: a DateTime instance for the day to be summarized.
+    :param child: Child instance to filter results for (no filter if `None`).
+    :returns: a dict with the day's breastfeeding duration, bottle-feeding
+        amount, and wet / solid diaper counts.
+    """
+    min_date = date
+    max_date = date.replace(hour=23, minute=59, second=59)
+
+    feedings = Feeding.objects.filter(start__range=(min_date, max_date))
+    diapers = DiaperChange.objects.filter(time__range=(min_date, max_date))
+    if child:
+        feedings = feedings.filter(child=child)
+        diapers = diapers.filter(child=child)
+
+    breast_total = (
+        feedings.filter(method__in=BREAST_METHODS).aggregate(total=Sum("duration"))[
+            "total"
+        ]
+        or timedelta()
+    )
+    bottle_amount = (
+        feedings.filter(method="bottle").aggregate(total=Sum("amount"))["total"] or 0
+    )
+
+    return {
+        "breastfeeding_duration": (
+            duration_string(breast_total, "m") if breast_total else ""
+        ),
+        "bottle_amount": bottle_amount,
+        "wet_count": diapers.filter(wet=True).count(),
+        "solid_count": diapers.filter(solid=True).count(),
+    }
 
 
 def get_objects(date, child=None):

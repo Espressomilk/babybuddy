@@ -157,6 +157,36 @@ class FeedingDurationChildReport(PermissionRequiredMixin, DetailView):
         return context
 
 
+class FeedingDurationBySideChildReport(PermissionRequiredMixin, DetailView):
+    """
+    Graph of breastfeeding durations split by side over time.
+    """
+
+    model = models.Child
+    permission_required = ("core.view_child",)
+    template_name = "reports/feeding_duration_by_side.html"
+
+    def __init__(self):
+        super(FeedingDurationBySideChildReport, self).__init__()
+        self.html = ""
+        self.js = ""
+
+    def get_context_data(self, **kwargs):
+        context = super(FeedingDurationBySideChildReport, self).get_context_data(
+            **kwargs
+        )
+        child = context["object"]
+        instances = models.Feeding.objects.filter(
+            child=child,
+            method__in=("left breast", "right breast", "both breasts"),
+        )
+        if instances:
+            context["html"], context["js"] = graphs.feeding_duration_by_side(
+                instances
+            )
+        return context
+
+
 class FeedingIntervalsChildReport(PermissionRequiredMixin, DetailView):
     """
     Graph of diaper change intervals.
@@ -278,6 +308,24 @@ class PumpingAmounts(PermissionRequiredMixin, DetailView):
         changes = models.Pumping.objects.filter(child=child)
         if changes and changes.count() > 0:
             context["html"], context["js"] = graphs.pumping_amounts(changes)
+        return context
+
+
+class PumpingAmountsBySide(PermissionRequiredMixin, DetailView):
+    """
+    Graph of pumping milk amounts split by side (left/right).
+    """
+
+    model = models.Child
+    permission_required = ("core.view_child",)
+    template_name = "reports/pumping_amounts_by_side.html"
+
+    def get_context_data(self, **kwargs):
+        context = super(PumpingAmountsBySide, self).get_context_data(**kwargs)
+        child = context["object"]
+        changes = models.Pumping.objects.filter(child=child)
+        if changes and changes.count() > 0:
+            context["html"], context["js"] = graphs.pumping_amounts_by_side(changes)
         return context
 
 

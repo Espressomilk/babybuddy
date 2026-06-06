@@ -253,9 +253,30 @@ class DiaperChangeForm(CoreModelForm, TaggableModelForm):
 
 
 class FeedingForm(CoreModelForm, TaggableModelForm):
+    duration_left_minutes = forms.IntegerField(
+        min_value=0,
+        required=False,
+        label=_("Left duration (minutes)"),
+        help_text=_(
+            "For breastfeeding only. Leave both sides blank to split the total "
+            "duration evenly between sides."
+        ),
+        widget=forms.NumberInput(attrs={"min": "0", "step": "1"}),
+    )
+    duration_right_minutes = forms.IntegerField(
+        min_value=0,
+        required=False,
+        label=_("Right duration (minutes)"),
+        widget=forms.NumberInput(attrs={"min": "0", "step": "1"}),
+    )
+
     fieldsets = [
         {"fields": ["child", "start", "end", "type", "method"], "layout": "required"},
         {"fields": ["amount"]},
+        {
+            "fields": ["duration_left_minutes", "duration_right_minutes"],
+            "layout": "advanced",
+        },
         {"fields": ["notes", "tags"], "layout": "advanced"},
     ]
 
@@ -270,6 +291,43 @@ class FeedingForm(CoreModelForm, TaggableModelForm):
             "method": PillRadioSelect(),
             "notes": forms.Textarea(attrs={"rows": 5}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Seed the minute inputs from any stored per-side durations.
+        instance = getattr(self, "instance", None)
+        if instance is not None and instance.pk:
+            if instance.duration_left is not None:
+                self.initial.setdefault(
+                    "duration_left_minutes",
+                    round(instance.duration_left.total_seconds() / 60),
+                )
+            if instance.duration_right is not None:
+                self.initial.setdefault(
+                    "duration_right_minutes",
+                    round(instance.duration_right.total_seconds() / 60),
+                )
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        left = self.cleaned_data.get("duration_left_minutes")
+        right = self.cleaned_data.get("duration_right_minutes")
+        if instance.method in models.Feeding.BREAST_METHODS:
+            if left is None and right is None:
+                # Defer to the model's even-split when both are blank.
+                instance.duration_left = None
+                instance.duration_right = None
+            else:
+                instance.duration_left = timezone.timedelta(minutes=left or 0)
+                instance.duration_right = timezone.timedelta(minutes=right or 0)
+        else:
+            # Per-side durations are meaningless for bottle / solid feedings.
+            instance.duration_left = None
+            instance.duration_right = None
+        if commit:
+            instance.save()
+            self.save_m2m()
+        return instance
 
 
 class HeadCircumferenceForm(CoreModelForm, TaggableModelForm):

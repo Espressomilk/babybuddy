@@ -319,6 +319,12 @@ class Feeding(models.Model):
     duration = models.DurationField(
         editable=False, null=True, verbose_name=_("Duration")
     )
+    duration_left = models.DurationField(
+        blank=True, null=True, verbose_name=_("Left duration")
+    )
+    duration_right = models.DurationField(
+        blank=True, null=True, verbose_name=_("Right duration")
+    )
     type = models.CharField(
         choices=[
             ("breast milk", _("Breast milk")),
@@ -353,12 +359,34 @@ class Feeding(models.Model):
         verbose_name = _("Feeding")
         verbose_name_plural = _("Feedings")
 
+    BREAST_METHODS = ("left breast", "right breast", "both breasts")
+
     def __str__(self):
         return str(_("Feeding"))
 
     def save(self, *args, **kwargs):
         if self.start and self.end:
             self.duration = timezone_aware_duration(self.start, self.end)
+        # Populate per-side breast durations when they were not provided
+        # explicitly. "Both breasts" is split evenly since a single combined
+        # duration carries no per-side detail; entry points that know the real
+        # split (quick add, per-side timers) set these fields directly.
+        if (
+            self.method in self.BREAST_METHODS
+            and self.duration_left is None
+            and self.duration_right is None
+        ):
+            total = self.duration or datetime.timedelta()
+            if self.method == "both breasts":
+                half = total / 2
+                self.duration_left = half
+                self.duration_right = half
+            elif self.method == "left breast":
+                self.duration_left = total
+                self.duration_right = datetime.timedelta()
+            else:  # right breast
+                self.duration_left = datetime.timedelta()
+                self.duration_right = total
         super(Feeding, self).save(*args, **kwargs)
 
     def clean(self):
@@ -506,6 +534,12 @@ class Pumping(models.Model):
         verbose_name=_("Duration"),
     )
     amount = models.FloatField(blank=False, null=False, verbose_name=_("Amount"))
+    amount_left = models.FloatField(
+        blank=True, null=True, verbose_name=_("Left amount")
+    )
+    amount_right = models.FloatField(
+        blank=True, null=True, verbose_name=_("Right amount")
+    )
     notes = models.TextField(blank=True, null=True, verbose_name=_("Notes"))
     tags = TaggableManager(blank=True, through=Tagged)
 
