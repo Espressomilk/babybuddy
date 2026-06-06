@@ -1,7 +1,9 @@
 {% load i18n %}
 <style>
-  /* Exact event time displayed on the opposite side of the line from the card
-     (desktop two-column layout only; on mobile the card footer shows it). */
+  /* Exact event time. On the desktop two-column layout it sits on the opposite
+     side of the line from the card. On mobile the timeline is single-column
+     with the line at the far left (no room beside it), so the time is shown as
+     a small header at the top of each card instead. */
   .timeline > li > .timeline-time {
     position: absolute;
     top: 22px;
@@ -22,6 +24,31 @@
     padding-right: 2.5rem;
   }
   .timeline-summary span { white-space: nowrap; }
+
+  /* Mobile single-column layout: shift the line to the right, narrow the event
+     card, and place the exact time in a left gutter right next to the circle. */
+  @media (max-width: 767.98px) {
+    .timeline::before { left: 78px; }
+    .timeline li .timeline-badge { left: 53px; }
+    .timeline li .card { width: calc(100% - 130px); }
+    .timeline-time-m {
+      position: absolute;
+      left: 0;
+      width: 53px;
+      top: 16px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      text-align: right;
+      padding-right: 6px;
+      line-height: 1.1;
+      font-weight: 600;
+      font-size: 0.9rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--bs-secondary-color, #6c757d);
+    }
+  }
 </style>
 <h3 class="text-center">
     {% if date_previous %}
@@ -58,6 +85,7 @@
                 <div class="timeline-badge {% if object.type == "start" %}bg-success{% elif object.type == "end" %}bg-danger{% else %}bg-info{% endif %}">
                     <i class="icon-{{ object.model_name }}"></i>
                 </div>
+                <div class="timeline-time-m d-md-none">{{ object.time|time }}</div>
                 <div class="card text-end">
                     <div class="card-body">
                         {{ object.event }}
@@ -71,8 +99,8 @@
                         {% endif %}
                     </div>
                     <div class="card-footer text-body-secondary">
-                        {% blocktrans trimmed with since=object.time|timesince time=object.time|time %}
-                            {{ since }} ago ({{ time }})
+                        {% blocktrans trimmed with time_ago=object.time|timesince %}
+                            {{ time_ago }} ago
                         {% endblocktrans %}
                         {% if object.duration %}
                             <div>
