@@ -49,5 +49,8 @@ devenv.local.nix
 # Local runtime data (SQLite DB, media uploads)
 local-data/
 
+# Database / media backups created by scripts/backup.sh
+backups/
+
 # Claude Code memory and session files
 .claude/
