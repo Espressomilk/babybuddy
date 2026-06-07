@@ -715,6 +715,26 @@ class FeedTimerToggle(PermissionRequiredMixin, View):
             )
             timer.stop()
         else:
+            # Breastfeeding is one side at a time: starting a breast side stops
+            # the other breast side (into pending) if it is still running.
+            if side in ("left", "right"):
+                other = "right" if side == "left" else "left"
+                other_timer = Timer.objects.filter(
+                    child=child, name=FEED_TIMER_BY_SIDE[other]
+                ).first()
+                if other_timer:
+                    FeedPending.objects.create(
+                        child=child,
+                        side=other,
+                        start=other_timer.start,
+                        end=now,
+                    )
+                    other_timer.stop()
+                    messages.info(
+                        request,
+                        _("Stopped the %(side)s side.")
+                        % {"side": _("left") if other == "left" else _("right")},
+                    )
             Timer.objects.create(child=child, user=request.user, name=name)
         _broadcast_track(kwargs["slug"])
         return HttpResponseRedirect(

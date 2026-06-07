@@ -24,6 +24,16 @@ def _format_amount(value):
     return "{:.1f}".format(value)
 
 
+def _pump_side_label(sides):
+    """Spoken side label for pump messages: both / left / right."""
+    s = set(sides)
+    if {"left", "right"} <= s:
+        return _("both")
+    if "right" in s:
+        return _("right")
+    return _("left")
+
+
 class BMIViewSet(viewsets.ModelViewSet):
     queryset = models.BMI.objects.all()
     serializer_class = serializers.BMISerializer
@@ -546,28 +556,45 @@ class QuickBreastStartView(_QuickActionBase):
         child, error = self.get_child(request)
         if error:
             return error
-        side = (self._param(request, "side", "both")).lower()
-        sides = ["left", "right"] if side in ("both", "both breasts") else [side]
-        valid = [s for s in sides if FEED_TIMER_NAMES.get(s)]
-        if not valid:
-            return Response({"detail": "Invalid side."}, status=400)
-        started = []
-        for s in valid:
-            name = FEED_TIMER_NAMES[s]
-            if models.Timer.objects.filter(child=child, name=name).exists():
-                continue
-            models.Timer.objects.create(child=child, user=request.user, name=name)
-            started.append(s)
-        self._broadcast(child.slug)
-        with translation.override(self.language(request)):
-            if started:
-                speech = _("Started breastfeeding (%(side)s) for %(child)s.") % {
-                    "side": self._side_label(started),
-                    "child": child.first_name,
-                }
-            else:
+        # Breastfeeding is one side at a time: require left or right.
+        side = (self._param(request, "side", "")).lower()
+        if side not in ("left", "right"):
+            with translation.override(self.language(request)):
+                speech = _(
+                    "Please choose a side for %(child)s: say left or right."
+                ) % {"child": child.first_name}
+            return Response({"speech": speech}, status=200)
+        name = FEED_TIMER_NAMES[side]
+        if models.Timer.objects.filter(child=child, name=name).exists():
+            with translation.override(self.language(request)):
                 speech = _("Breastfeeding is already running for %(child)s.") % {
                     "child": child.first_name
+                }
+            return Response({"speech": speech}, status=200)
+        # One side at a time: stop the other side (into pending) if running.
+        other = "right" if side == "left" else "left"
+        other_timer = models.Timer.objects.filter(
+            child=child, name=FEED_TIMER_NAMES[other]
+        ).first()
+        stopped_other = False
+        if other_timer:
+            from dashboard.models import FeedPending
+
+            FeedPending.objects.create(
+                child=child, side=other, start=other_timer.start, end=timezone.now()
+            )
+            other_timer.stop()
+            stopped_other = True
+        models.Timer.objects.create(child=child, user=request.user, name=name)
+        self._broadcast(child.slug)
+        with translation.override(self.language(request)):
+            speech = _("Started breastfeeding (%(side)s) for %(child)s.") % {
+                "side": self._side_label([side]),
+                "child": child.first_name,
+            }
+            if stopped_other:
+                speech += " " + _("Stopped the %(side)s side.") % {
+                    "side": self._side_label([other])
                 }
         return Response({"speech": speech}, status=201)
 
@@ -580,7 +607,7 @@ class QuickBreastStartView(_QuickActionBase):
 
 
 class QuickBreastStopView(_QuickActionBase):
-    """POST /api/quick/breast/stop — stop running breast timers and log."""
+    """POST /api/quick/breast/stop — stop the breast timer(s) into pending (no log)."""
 
     queryset = models.Feeding.objects.all()
 
@@ -600,41 +627,149 @@ class QuickBreastStopView(_QuickActionBase):
                 msg = _("No breastfeeding timer was running for %(child)s.") % {
                     "child": child.first_name
                 }
-            return Response({"speech": msg}, status=400)
+            return Response({"speech": msg}, status=200)
 
-        if left and right:
-            method = "both breasts"
-        elif left:
-            method = "left breast"
-        else:
-            method = "right breast"
-        start = min(t.start for t in (left, right) if t)
-        left_dur = (now - left.start) if left else timezone.timedelta()
-        right_dur = (now - right.start) if right else timezone.timedelta()
-        feeding = models.Feeding(
-            child=child,
-            start=start,
-            end=now,
-            type="breast milk",
-            method=method,
-            duration_left=left_dur,
-            duration_right=right_dur,
-        )
-        try:
-            feeding.full_clean()
-            feeding.save()
-        except Exception as e:
-            return Response({"detail": str(e)}, status=400)
+        # Stop only: persist as pending for Review & Save in the app; no log.
+        from dashboard.models import FeedPending
+
         if left:
+            FeedPending.objects.create(
+                child=child, side="left", start=left.start, end=now
+            )
             left.stop()
         if right:
+            FeedPending.objects.create(
+                child=child, side="right", start=right.start, end=now
+            )
             right.stop()
         self._broadcast(child.slug)
         with translation.override(self.language(request)):
-            speech = _("Logged %(duration)s of breastfeeding for %(child)s.") % {
-                "duration": duration_string(feeding.duration or timezone.timedelta(), "m"),
-                "child": child.first_name,
-            }
+            speech = _("Stopped breastfeeding for %(child)s.") % {
+                "child": child.first_name
+            } + " " + _("Remember to review and save in the app.")
+        return Response({"speech": speech}, status=201)
+
+
+class QuickBreastView(_QuickActionBase):
+    """
+    POST /api/quick/breast?text=...
+
+    A single free-text breastfeeding endpoint that toggles: if a breast timer is
+    running it stops it (into pending for Review & Save in the app, no log),
+    otherwise it starts. Side and start/stop can be set via the spoken phrase.
+    """
+
+    queryset = models.Feeding.objects.all()
+
+    STOP_WORDS = ("stop", "end", "done", "停", "结束", "完成")
+    START_WORDS = ("start", "begin", "开始")
+
+    def _side_label(self, sides):
+        if "left" in sides and "right" in sides:
+            return _("both sides")
+        if "right" in sides:
+            return _("right")
+        return _("left")
+
+    def post(self, request):
+        child, error = self.get_child(request)
+        if error:
+            return error
+        text = (self._param(request, "text", "") or "").lower()
+        left = models.Timer.objects.filter(
+            child=child, name=FEED_TIMER_NAMES["left"]
+        ).first()
+        right = models.Timer.objects.filter(
+            child=child, name=FEED_TIMER_NAMES["right"]
+        ).first()
+        any_running = bool(left or right)
+
+        # Breastfeeding does not toggle: a side word starts that side, and only
+        # a stop word stops. (Stopping can stop both running sides.)
+        if any(k in text for k in self.STOP_WORDS):
+            action = "stop"
+        else:
+            action = "start"
+
+        language = self.language(request)
+
+        if action == "start":
+            # Breastfeeding is one side at a time: require left or right.
+            if "左" in text or "left" in text:
+                side = "left"
+            elif "右" in text or "right" in text:
+                side = "right"
+            else:
+                side = None
+            if side is None:
+                with translation.override(language):
+                    speech = _(
+                        "Please choose a side for %(child)s: say left or right."
+                    ) % {"child": child.first_name}
+                return Response({"speech": speech}, status=200)
+            name = FEED_TIMER_NAMES[side]
+            if models.Timer.objects.filter(child=child, name=name).exists():
+                with translation.override(language):
+                    speech = _("Breastfeeding is already running for %(child)s.") % {
+                        "child": child.first_name
+                    }
+                return Response({"speech": speech}, status=200)
+            # One side at a time: stop the other side (into pending) if running.
+            other = "right" if side == "left" else "left"
+            other_timer = models.Timer.objects.filter(
+                child=child, name=FEED_TIMER_NAMES[other]
+            ).first()
+            stopped_other = False
+            if other_timer:
+                from dashboard.models import FeedPending
+
+                FeedPending.objects.create(
+                    child=child,
+                    side=other,
+                    start=other_timer.start,
+                    end=timezone.now(),
+                )
+                other_timer.stop()
+                stopped_other = True
+            models.Timer.objects.create(child=child, user=request.user, name=name)
+            self._broadcast(child.slug)
+            with translation.override(language):
+                speech = _("Started breastfeeding (%(side)s) for %(child)s.") % {
+                    "side": self._side_label([side]),
+                    "child": child.first_name,
+                }
+                if stopped_other:
+                    speech += " " + _("Stopped the %(side)s side.") % {
+                        "side": self._side_label([other])
+                    }
+            return Response({"speech": speech}, status=201)
+
+        # action == "stop"
+        if not any_running:
+            with translation.override(language):
+                speech = _("No breastfeeding timer was running for %(child)s.") % {
+                    "child": child.first_name
+                }
+            return Response({"speech": speech}, status=200)
+
+        from dashboard.models import FeedPending
+
+        now = timezone.now()
+        if left:
+            FeedPending.objects.create(
+                child=child, side="left", start=left.start, end=now
+            )
+            left.stop()
+        if right:
+            FeedPending.objects.create(
+                child=child, side="right", start=right.start, end=now
+            )
+            right.stop()
+        self._broadcast(child.slug)
+        with translation.override(language):
+            speech = _("Stopped breastfeeding for %(child)s.") % {
+                "child": child.first_name
+            } + " " + _("Remember to review and save in the app.")
         return Response({"speech": speech}, status=201)
 
 
@@ -653,18 +788,28 @@ class QuickPumpStartView(_QuickActionBase):
         if not valid:
             return Response({"detail": "Invalid side."}, status=400)
         started = []
+        already = []
         for s in valid:
             name = PUMP_TIMER_NAMES[s]
             if models.Timer.objects.filter(child=child, name=name).exists():
+                already.append(s)
                 continue
             models.Timer.objects.create(child=child, user=request.user, name=name)
             started.append(s)
         self._broadcast(child.slug)
         with translation.override(self.language(request)):
+            parts = []
             if started:
-                speech = _("Started pumping.")
-            else:
-                speech = _("Pumping is already running.")
+                parts.append(
+                    _("Started pumping %(side)s.")
+                    % {"side": _pump_side_label(started)}
+                )
+            if already:
+                parts.append(
+                    _("Pumping %(side)s is already started.")
+                    % {"side": _pump_side_label(already)}
+                )
+            speech = " ".join(parts)
         return Response({"speech": speech}, status=201)
 
 
@@ -687,24 +832,41 @@ class QuickPumpStopView(_QuickActionBase):
         if not left and not right:
             with translation.override(self.language(request)):
                 msg = _("No pumping timer was running.")
-            return Response({"speech": msg}, status=400)
+            return Response({"speech": msg}, status=200)
+
+        side = (self._param(request, "side", "") or "").lower()
+        if side == "left":
+            targets = {"left"}
+        elif side == "right":
+            targets = {"right"}
+        else:
+            targets = {"left", "right"}
 
         # Stop only: persist as pending for Review & Save in the app; no log.
         from dashboard.models import PumpPending
 
-        if left:
+        stopped = []
+        if left and "left" in targets:
             PumpPending.objects.create(
                 child=child, side="left", start=left.start, end=now
             )
             left.stop()
-        if right:
+            stopped.append("left")
+        if right and "right" in targets:
             PumpPending.objects.create(
                 child=child, side="right", start=right.start, end=now
             )
             right.stop()
+            stopped.append("right")
+        if not stopped:
+            with translation.override(self.language(request)):
+                msg = _("No pumping timer was running.")
+            return Response({"speech": msg}, status=200)
         self._broadcast(child.slug)
         with translation.override(self.language(request)):
-            speech = _("Stopped pumping.")
+            speech = _("Stopped pumping %(side)s.") % {
+                "side": _pump_side_label(stopped)
+            } + " " + _("Remember to review and save in the app.")
         return Response({"speech": speech}, status=201)
 
 
@@ -755,9 +917,11 @@ class QuickPumpView(_QuickActionBase):
             else:
                 sides = ["left", "right"]
             started = []
+            already = []
             for side in sides:
                 name = PUMP_TIMER_NAMES[side]
                 if models.Timer.objects.filter(child=child, name=name).exists():
+                    already.append(side)
                     continue
                 models.Timer.objects.create(
                     child=child, user=request.user, name=name
@@ -765,17 +929,32 @@ class QuickPumpView(_QuickActionBase):
                 started.append(side)
             self._broadcast(child.slug)
             with translation.override(language):
+                parts = []
                 if started:
-                    speech = _("Started pumping.")
-                else:
-                    speech = _("Pumping is already running.")
+                    parts.append(
+                        _("Started pumping %(side)s.")
+                        % {"side": _pump_side_label(started)}
+                    )
+                if already:
+                    parts.append(
+                        _("Pumping %(side)s is already started.")
+                        % {"side": _pump_side_label(already)}
+                    )
+                speech = " ".join(parts)
             return Response({"speech": speech}, status=201)
 
-        # action == "stop"
+        # action == "stop" — honor a side if given, else stop both.
         if not any_running:
             with translation.override(language):
                 speech = _("No pumping timer was running.")
-            return Response({"speech": speech}, status=400)
+            return Response({"speech": speech}, status=200)
+
+        if "左" in text or "left" in text:
+            targets = {"left"}
+        elif "右" in text or "right" in text:
+            targets = {"right"}
+        else:
+            targets = {"left", "right"}
 
         # Stop only: persist the timer(s) as pending (matching the dashboard's
         # stop) so they can be reviewed and saved with amounts in the app. Do
@@ -783,17 +962,26 @@ class QuickPumpView(_QuickActionBase):
         from dashboard.models import PumpPending
 
         now = timezone.now()
-        if left:
+        stopped = []
+        if left and "left" in targets:
             PumpPending.objects.create(
                 child=child, side="left", start=left.start, end=now
             )
             left.stop()
-        if right:
+            stopped.append("left")
+        if right and "right" in targets:
             PumpPending.objects.create(
                 child=child, side="right", start=right.start, end=now
             )
             right.stop()
+            stopped.append("right")
+        if not stopped:
+            with translation.override(language):
+                speech = _("No pumping timer was running.")
+            return Response({"speech": speech}, status=200)
         self._broadcast(child.slug)
         with translation.override(language):
-            speech = _("Stopped pumping.")
+            speech = _("Stopped pumping %(side)s.") % {
+                "side": _pump_side_label(stopped)
+            } + " " + _("Remember to review and save in the app.")
         return Response({"speech": speech}, status=201)

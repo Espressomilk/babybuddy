@@ -3563,6 +3563,38 @@ msgid "No breastfeeding timer was running for %(child)s."
 msgstr "%(child)s 当前没有正在计时的母乳亲喂。"
 
 #: api quick actions (Siri)
+msgid "Stopped breastfeeding for %(child)s."
+msgstr "已停止 %(child)s 的母乳亲喂计时。"
+
+#: api quick actions (Siri)
+msgid "Stopped the %(side)s side."
+msgstr "已停止%(side)s侧。"
+
+#: api quick actions (Siri)
+msgid "both"
+msgstr "两侧"
+
+#: api quick actions (Siri)
+msgid "Started pumping %(side)s."
+msgstr "已开始挤奶（%(side)s）。"
+
+#: api quick actions (Siri)
+msgid "Pumping %(side)s is already started."
+msgstr "挤奶（%(side)s）已在进行中。"
+
+#: api quick actions (Siri)
+msgid "Stopped pumping %(side)s."
+msgstr "已停止挤奶（%(side)s）。"
+
+#: api quick actions (Siri)
+msgid "Remember to review and save in the app."
+msgstr "记得在应用中查看并保存。"
+
+#: api quick actions (Siri)
+msgid "Please choose a side for %(child)s: say left or right."
+msgstr "请为 %(child)s 选择一侧：说左或右。"
+
+#: api quick actions (Siri)
 msgid "Logged %(duration)s of breastfeeding for %(child)s."
 msgstr "已为 %(child)s 记录 %(duration)s 的母乳亲喂。"
 

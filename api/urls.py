@@ -75,6 +75,9 @@ router.add_detail_path(
     "quick/breast/stop", "quick-breast-stop", views.QuickBreastStopView.as_view()
 )
 router.add_detail_path(
+    "quick/breast", "quick-breast", views.QuickBreastView.as_view()
+)
+router.add_detail_path(
     "quick/pump/start", "quick-pump-start", views.QuickPumpStartView.as_view()
 )
 router.add_detail_path(
@@ -104,6 +107,7 @@ urlpatterns = [
     path("api/quick/bottle/", views.QuickBottleView.as_view()),
     path("api/quick/breast/start/", views.QuickBreastStartView.as_view()),
     path("api/quick/breast/stop/", views.QuickBreastStopView.as_view()),
+    path("api/quick/breast/", views.QuickBreastView.as_view()),
     path("api/quick/pump/start/", views.QuickPumpStartView.as_view()),
     path("api/quick/pump/stop/", views.QuickPumpStopView.as_view()),
     path("api/quick/pump/", views.QuickPumpView.as_view()),
