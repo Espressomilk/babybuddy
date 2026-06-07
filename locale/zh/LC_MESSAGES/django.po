@@ -3386,6 +3386,10 @@ msgid "Select duration"
 msgstr "选择时长"
 
 #: dashboard custom strings
+msgid "Select amount"
+msgstr "选择数量"
+
+#: dashboard custom strings
 msgid "Hours"
 msgstr "小时"
 
@@ -3468,3 +3472,103 @@ msgstr "每次喂养（过去三天）"
 #: statistics card
 msgid "Feeding per session (past 2 weeks)"
 msgstr "每次喂养（过去两周）"
+
+#: api quick status (Siri)
+msgid "breast"
+msgstr "母乳亲喂"
+
+#: api quick status (Siri)
+msgid "formula bottle"
+msgstr "配方奶瓶"
+
+#: api quick status (Siri)
+msgid "breast-milk bottle"
+msgstr "母乳瓶喂"
+
+#: api quick status (Siri)
+msgid "No feedings recorded yet for %(child)s."
+msgstr "%(child)s 还没有任何喂养记录。"
+
+#: api quick status (Siri)
+msgid "%(child)s was last fed %(since)s ago (%(method)s)."
+msgstr "%(child)s 上次喂养在 %(since)s前（%(method)s）。"
+
+#: api quick status (Siri)
+msgid "Last amount %(amount)s ml."
+msgstr "上次喂养量 %(amount)s 毫升。"
+
+#: api quick status (Siri)
+msgid ""
+"Today: %(sessions)s feeding sessions, %(breast)s of breastfeeding, "
+"%(bottle)s ml from bottles, %(wet)s wet and %(solid)s solid diapers."
+msgstr ""
+"今天：%(sessions)s 次喂养，母乳亲喂 %(breast)s，奶瓶 %(bottle)s 毫升，"
+"%(wet)s 次小便、%(solid)s 次大便。"
+
+#: api quick actions (Siri)
+msgid "wet and solid"
+msgstr "小便和大便"
+
+#: api quick actions (Siri)
+msgid "Logged a %(type)s diaper for %(child)s."
+msgstr "已为 %(child)s 记录一次%(type)s尿布。"
+
+#: api quick actions (Siri)
+msgid "Logged a %(color)s %(type)s diaper for %(child)s."
+msgstr "已为 %(child)s 记录一次%(color)s%(type)s尿布。"
+
+#: api quick actions (Siri)
+msgid "Log a %(type)s diaper for %(child)s?"
+msgstr "要为 %(child)s 记录一次%(type)s尿布吗？"
+
+#: api quick actions (Siri)
+msgid "Log a %(color)s %(type)s diaper for %(child)s?"
+msgstr "要为 %(child)s 记录一次%(color)s%(type)s尿布吗？"
+
+#: api quick actions (Siri)
+msgid "formula"
+msgstr "配方奶"
+
+#: api quick actions (Siri)
+msgid "breast milk"
+msgstr "母乳"
+
+#: api quick actions (Siri)
+msgid "Logged a %(amount)s ml %(type)s bottle for %(child)s."
+msgstr "已为 %(child)s 记录一瓶 %(amount)s 毫升%(type)s。"
+
+#: api quick actions (Siri)
+msgid "Logged a %(type)s bottle for %(child)s."
+msgstr "已为 %(child)s 记录一瓶%(type)s。"
+
+#: api quick actions (Siri)
+msgid "both sides"
+msgstr "两侧"
+
+#: api quick actions (Siri)
+msgid "Started breastfeeding (%(side)s) for %(child)s."
+msgstr "已开始为 %(child)s 母乳亲喂（%(side)s）。"
+
+#: api quick actions (Siri)
+msgid "No breastfeeding timer was running for %(child)s."
+msgstr "%(child)s 当前没有正在计时的母乳亲喂。"
+
+#: api quick actions (Siri)
+msgid "Logged %(duration)s of breastfeeding for %(child)s."
+msgstr "已为 %(child)s 记录 %(duration)s 的母乳亲喂。"
+
+#: api quick actions (Siri)
+msgid "Started pumping for %(child)s."
+msgstr "已开始为 %(child)s 挤奶计时。"
+
+#: api quick actions (Siri)
+msgid "No pumping timer was running for %(child)s."
+msgstr "%(child)s 当前没有正在计时的挤奶。"
+
+#: api quick actions (Siri)
+msgid "Logged a pumping session (%(amount)s ml) for %(child)s."
+msgstr "已为 %(child)s 记录一次挤奶（%(amount)s 毫升）。"
+
+#: api quick actions (Siri)
+msgid "Logged a pumping session for %(child)s."
+msgstr "已为 %(child)s 记录一次挤奶。"

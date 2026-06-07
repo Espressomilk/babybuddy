@@ -1,0 +1,181 @@
+{% load i18n %}
+{% comment %}
+   Reusable iOS-style INLINE roller (wheel) amount picker (1 ml steps).
+
+   Auto-enhances every <input data-amount-roller> on the page. The native input
+   is hidden and replaced, in place, by an embedded spinning wheel of integer ml
+   values (0 .. data-max, step 1). The centred value is written back to the input
+   as you spin, so normal form submission is unchanged. No popup sheet.
+{% endcomment %}
+<style>
+  .ar-wrap { display: flex; align-items: center; gap: 0.6rem; width: 100%; }
+  .ar-window {
+    position: relative; flex: 1; min-width: 0; height: 160px; overflow: hidden;
+    border-radius: 16px;
+    background: linear-gradient(#f7f8fb, #eef1f6);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.06);
+    touch-action: none; user-select: none; -webkit-user-select: none;
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 26%, #000 74%, transparent);
+            mask-image: linear-gradient(to bottom, transparent, #000 26%, #000 74%, transparent);
+  }
+  /* Rounded selection highlight pill in the centre. */
+  .ar-center {
+    position: absolute; left: 8px; right: 8px; top: 60px; height: 40px;
+    background: rgba(46,61,95,0.10);
+    border-radius: 11px; pointer-events: none;
+    box-shadow: inset 0 0 0 1px rgba(46,61,95,0.06);
+  }
+  .ar-col { position: absolute; inset: 0; cursor: grab; touch-action: none; }
+  .ar-col:active { cursor: grabbing; }
+  .ar-list { will-change: transform; }
+  .ar-item {
+    height: 40px; line-height: 40px; text-align: center;
+    font-size: 1.05rem; font-weight: 500; color: #aab2c0;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+    transition: color 0.14s ease, font-size 0.14s ease, font-weight 0.14s ease;
+  }
+  .ar-item.ar-sel {
+    color: #2e3d5f; font-weight: 700; font-size: 1.5rem;
+  }
+  .ar-unit { font-size: 0.95rem; font-weight: 600; color: #6b7280; min-width: 18px; }
+</style>
+
+<script>
+(function () {
+  var ITEM_H = 40;
+  var CENTER = 1.5 * ITEM_H;       // centred item top at 60px (window 160, 4 rows)
+  var SNAP = 'transform 0.24s cubic-bezier(0.23, 1, 0.32, 1)';
+  var DEFAULT_MAX = 400;
+  var active = null;               // widget currently being dragged
+
+  function applyTransform(w) {
+    w.list.style.transform = 'translateY(' + w.offset + 'px)';
+    updateSel(w);
+  }
+  function setTransition(w, on) { w.list.style.transition = on ? SNAP : 'none'; }
+  function bounds(w) { return { max: CENTER, min: CENTER - (w.values.length - 1) * ITEM_H }; }
+  function clampRubber(w, off) {
+    var b = bounds(w);
+    if (off > b.max) return b.max + (off - b.max) * 0.3;
+    if (off < b.min) return b.min + (off - b.min) * 0.3;
+    return off;
+  }
+  function clampIdx(w, idx) { return Math.max(0, Math.min(w.values.length - 1, idx)); }
+  function indexFromOffset(w, off) { return Math.round((CENTER - off) / ITEM_H); }
+  function setIndex(w, idx, animate) {
+    idx = clampIdx(w, idx);
+    w.index = idx;
+    w.offset = CENTER - idx * ITEM_H;
+    setTransition(w, animate);
+    applyTransform(w);
+  }
+  function updateSel(w) {
+    var idx = clampIdx(w, indexFromOffset(w, w.offset));
+    if (w.selIdx === idx) return;
+    if (w.selEl) w.selEl.classList.remove('ar-sel');
+    var el = w.list.children[idx];
+    if (el) { el.classList.add('ar-sel'); w.selEl = el; }
+    w.selIdx = idx;
+  }
+
+  function onStart(w, y) {
+    w.dragging = true; w.startY = y; w.startOffset = w.offset;
+    w.lastY = y; w.lastT = Date.now(); w.velocity = 0;
+    setTransition(w, false);
+  }
+  function onMove(w, y) {
+    if (!w.dragging) return;
+    w.offset = clampRubber(w, w.startOffset + (y - w.startY));
+    applyTransform(w);
+    var now = Date.now(), dt = now - w.lastT;
+    if (dt > 0) w.velocity = (y - w.lastY) / dt;
+    w.lastY = y; w.lastT = now;
+  }
+  function onEnd(w) {
+    if (!w.dragging) return;
+    w.dragging = false;
+    var projected = w.offset + w.velocity * 140;
+    setIndex(w, indexFromOffset(w, projected), true);
+    commit(w);
+  }
+  function onWheel(w, dy) {
+    w.offset = clampRubber(w, w.offset - dy);
+    setTransition(w, false);
+    applyTransform(w);
+    clearTimeout(w.wheelT);
+    w.wheelT = setTimeout(function () { setIndex(w, indexFromOffset(w, w.offset), true); commit(w); }, 80);
+  }
+  function commit(w) {
+    var v = w.values[w.index];
+    w.input.value = v;
+    w.input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function ptrOff() {
+    try { if (window.PullToRefresh && window.PullToRefresh.destroyAll) window.PullToRefresh.destroyAll(); } catch (e) {}
+  }
+  function ptrOn() {
+    try { if (window.BabyBuddy && window.BabyBuddy.PullToRefresh) window.BabyBuddy.PullToRefresh.init(); } catch (e) {}
+  }
+
+  function makeWidget(input) {
+    var max = parseInt(input.dataset.max || '', 10);
+    if (isNaN(max) || max <= 0) max = DEFAULT_MAX;
+    var val = parseInt(input.value || '0', 10);
+    if (isNaN(val) || val < 0) val = 0;
+    if (val > max) max = val;
+
+    var wrap = document.createElement('div'); wrap.className = 'ar-wrap';
+    var win = document.createElement('div'); win.className = 'ar-window';
+    var center = document.createElement('div'); center.className = 'ar-center';
+    var colEl = document.createElement('div'); colEl.className = 'ar-col';
+    var list = document.createElement('div'); list.className = 'ar-list';
+    colEl.appendChild(list); win.appendChild(center); win.appendChild(colEl);
+    wrap.appendChild(win);
+    var unit = document.createElement('span'); unit.className = 'ar-unit'; unit.textContent = 'ml';
+    wrap.appendChild(unit);
+
+    input.style.display = 'none';
+    input.parentNode.insertBefore(wrap, input);
+
+    var w = { input: input, list: list, colEl: colEl, values: [], index: 0, offset: CENTER, selIdx: -1, selEl: null };
+    var html = '';
+    for (var i = 0; i <= max; i++) { w.values.push(i); html += '<div class="ar-item">' + i + '</div>'; }
+    list.innerHTML = html;
+    setIndex(w, val, false);
+
+    colEl.addEventListener('mousedown', function (e) { active = w; onStart(w, e.clientY); e.preventDefault(); });
+    colEl.addEventListener('wheel', function (e) { e.preventDefault(); onWheel(w, e.deltaY); }, { passive: false });
+    colEl.addEventListener('touchstart', function (e) {
+      active = w; onStart(w, e.touches[0].clientY); ptrOff();
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false });
+
+    return w;
+  }
+
+  document.addEventListener('touchmove', function (e) {
+    if (!active) return;
+    onMove(active, e.touches[0].clientY);
+    if (e.cancelable) e.preventDefault();
+  }, { passive: false });
+  function endTouch() { if (active) { onEnd(active); active = null; ptrOn(); } }
+  document.addEventListener('touchend', endTouch);
+  document.addEventListener('touchcancel', endTouch);
+  document.addEventListener('mousemove', function (e) { if (active) onMove(active, e.clientY); });
+  document.addEventListener('mouseup', function () { if (active) { onEnd(active); active = null; } });
+
+  function init() {
+    document.querySelectorAll('input[data-amount-roller]').forEach(function (input) {
+      if (input.dataset.arEnhanced) return;
+      input.dataset.arEnhanced = '1';
+      makeWidget(input);
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>

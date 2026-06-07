@@ -42,6 +42,7 @@
   .fc-unit-btn.active { background: #2e3d5f; border-color: #2e3d5f; color: #fff; }
   .fc-amount-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.3rem 0; }
   .fc-amount-label { width: 3.5rem; font-size: 0.9rem; font-weight: 600; color: #555; flex-shrink: 0; }
+  .fc-amount-field { flex: 1; min-width: 0; }
   .fc-stepper {
     display: flex; align-items: stretch; flex: 1;
     border: 1.5px solid #ddd; border-radius: 12px; overflow: hidden; background: #fff;
@@ -127,21 +128,11 @@
     <p class="fc-section">{% trans "Amount" %}</p>
     <div class="fc-amount-row" id="fc-amount-bm">
       <span class="fc-amount-label">{% trans "Breast Milk" %}</span>
-      <div class="fc-stepper">
-        <button type="button" class="fc-stepper-btn" data-target="id_bottle_amount_breast_milk" data-delta="-5">−</button>
-        {{ form.bottle_amount_breast_milk }}
-        <button type="button" class="fc-stepper-btn" data-target="id_bottle_amount_breast_milk" data-delta="5">+</button>
-      </div>
-      <span class="fc-amount-unit">ml</span>
+      <div class="fc-amount-field">{{ form.bottle_amount_breast_milk }}</div>
     </div>
     <div class="fc-amount-row" id="fc-amount-formula" style="display: none;">
       <span class="fc-amount-label">{% trans "Formula" %}</span>
-      <div class="fc-stepper">
-        <button type="button" class="fc-stepper-btn" data-target="id_bottle_amount_formula" data-delta="-5">−</button>
-        {{ form.bottle_amount_formula }}
-        <button type="button" class="fc-stepper-btn" data-target="id_bottle_amount_formula" data-delta="5">+</button>
-      </div>
-      <span class="fc-amount-unit">ml</span>
+      <div class="fc-amount-field">{{ form.bottle_amount_formula }}</div>
     </div>
 
     {# ── Notes ── #}
@@ -163,17 +154,6 @@
 
 <script>
 (function () {
-  document.querySelectorAll('.fc-stepper-btn').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var input = document.getElementById(btn.dataset.target);
-      if (!input) return;
-      var delta = parseFloat(btn.dataset.delta);
-      var current = parseFloat(input.value) || 0;
-      var min = parseFloat(input.min) || 0;
-      input.value = Math.max(min, Math.round((current + delta) * 10) / 10);
-    });
-  });
-
   var typeInput = document.getElementById('id_bottle_type');
   var rowBm = document.getElementById('fc-amount-bm');
   var rowFormula = document.getElementById('fc-amount-formula');
@@ -199,4 +179,5 @@
 </script>
 
 {% include 'dashboard/_time_roller.html' %}
+{% include 'dashboard/_amount_roller.html' %}
 {% endblock %}

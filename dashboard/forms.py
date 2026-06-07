@@ -480,12 +480,44 @@ class FeedQuickForm(forms.Form):
     def __init__(self, *args, child=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.child = child
+        # Enter amounts with the iOS-style roller (1 ml steps).
+        for name in ("bottle_amount_breast_milk", "bottle_amount_formula"):
+            self.fields[name].widget.attrs.update(
+                {"data-amount-roller": "1", "data-max": "400"}
+            )
         if not self.is_bound:
             # Default both start and end to "now" so the start date already
             # matches the end date; the user can roll the time as needed.
             now = timezone.localtime().replace(second=0, microsecond=0, tzinfo=None)
             self.initial["end"] = now
             self.initial["start"] = now
+            # Default each amount to the last bottle feeding of that type, so
+            # the roller starts near the usual value instead of at zero.
+            if child:
+                last_bm = (
+                    models.Feeding.objects.filter(
+                        child=child,
+                        method="bottle",
+                        type="breast milk",
+                        amount__isnull=False,
+                    )
+                    .order_by("-start")
+                    .first()
+                )
+                last_f = (
+                    models.Feeding.objects.filter(
+                        child=child,
+                        method="bottle",
+                        type="formula",
+                        amount__isnull=False,
+                    )
+                    .order_by("-start")
+                    .first()
+                )
+                if last_bm:
+                    self.initial["bottle_amount_breast_milk"] = last_bm.amount
+                if last_f:
+                    self.initial["bottle_amount_formula"] = last_f.amount
 
     def _make_aware(self, value):
         if value and timezone.is_naive(value):

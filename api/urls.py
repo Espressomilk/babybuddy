@@ -64,6 +64,24 @@ router.register(r"weight", views.WeightViewSet)
 
 router.add_detail_path("profile", "profile", views.ProfileView.as_view())
 router.add_detail_path(
+    "quick/status", "quick-status", views.QuickStatusView.as_view()
+)
+router.add_detail_path("quick/diaper", "quick-diaper", views.QuickDiaperView.as_view())
+router.add_detail_path("quick/bottle", "quick-bottle", views.QuickBottleView.as_view())
+router.add_detail_path(
+    "quick/breast/start", "quick-breast-start", views.QuickBreastStartView.as_view()
+)
+router.add_detail_path(
+    "quick/breast/stop", "quick-breast-stop", views.QuickBreastStopView.as_view()
+)
+router.add_detail_path(
+    "quick/pump/start", "quick-pump-start", views.QuickPumpStartView.as_view()
+)
+router.add_detail_path(
+    "quick/pump/stop", "quick-pump-stop", views.QuickPumpStopView.as_view()
+)
+router.add_detail_path("quick/pump", "quick-pump", views.QuickPumpView.as_view())
+router.add_detail_path(
     "schema",
     "openapi-schema",
     get_schema_view(
