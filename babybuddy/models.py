@@ -3,6 +3,7 @@ import zoneinfo
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -128,6 +129,15 @@ class Settings(models.Model):
         ],
         default=25,
         verbose_name=_("Items Per Page"),
+    )
+    bottle_amount_roller_step = models.PositiveIntegerField(
+        default=10,
+        validators=[MinValueValidator(1)],
+        verbose_name=_("Bottle amount step (ml)"),
+        help_text=_(
+            "The increment used by the amount wheel on the Save Bottle Feeding "
+            "page."
+        ),
     )
 
     def __str__(self):

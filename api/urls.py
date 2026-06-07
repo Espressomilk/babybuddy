@@ -97,4 +97,14 @@ app_name = "api"
 urlpatterns = [
     path("api/", include(router.urls)),
     path("api/auth/", include("rest_framework.urls", namespace="rest_framework")),
+    # Tolerate an accidental trailing slash on the quick (Siri) endpoints so a
+    # mistyped Shortcut URL still works instead of returning a 500 error page.
+    path("api/quick/status/", views.QuickStatusView.as_view()),
+    path("api/quick/diaper/", views.QuickDiaperView.as_view()),
+    path("api/quick/bottle/", views.QuickBottleView.as_view()),
+    path("api/quick/breast/start/", views.QuickBreastStartView.as_view()),
+    path("api/quick/breast/stop/", views.QuickBreastStopView.as_view()),
+    path("api/quick/pump/start/", views.QuickPumpStartView.as_view()),
+    path("api/quick/pump/stop/", views.QuickPumpStopView.as_view()),
+    path("api/quick/pump/", views.QuickPumpView.as_view()),
 ]

@@ -3389,6 +3389,15 @@ msgstr "选择时长"
 msgid "Select amount"
 msgstr "选择数量"
 
+#: babybuddy settings
+msgid "Bottle amount step (ml)"
+msgstr "奶瓶喂养数量步进（毫升）"
+
+#: babybuddy settings
+msgid ""
+"The increment used by the amount wheel on the Save Bottle Feeding page."
+msgstr "保存瓶喂界面中数量滚轮使用的步进值。"
+
 #: dashboard custom strings
 msgid "Hours"
 msgstr "小时"
@@ -3558,12 +3567,24 @@ msgid "Logged %(duration)s of breastfeeding for %(child)s."
 msgstr "已为 %(child)s 记录 %(duration)s 的母乳亲喂。"
 
 #: api quick actions (Siri)
-msgid "Started pumping for %(child)s."
-msgstr "已开始为 %(child)s 挤奶计时。"
+msgid "Started pumping."
+msgstr "已开始挤奶计时。"
 
 #: api quick actions (Siri)
-msgid "No pumping timer was running for %(child)s."
-msgstr "%(child)s 当前没有正在计时的挤奶。"
+msgid "No pumping timer was running."
+msgstr "当前没有正在计时的挤奶。"
+
+#: api quick actions (Siri)
+msgid "Stopped pumping."
+msgstr "已停止挤奶计时。"
+
+#: api quick actions (Siri)
+msgid "Pumping is already running."
+msgstr "挤奶计时已在进行中。"
+
+#: api quick actions (Siri)
+msgid "Breastfeeding is already running for %(child)s."
+msgstr "%(child)s 的母乳亲喂计时已在进行中。"
 
 #: api quick actions (Siri)
 msgid "Logged a pumping session (%(amount)s ml) for %(child)s."

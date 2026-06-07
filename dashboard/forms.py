@@ -477,13 +477,20 @@ class FeedQuickForm(forms.Form):
         ),
     )
 
-    def __init__(self, *args, child=None, **kwargs):
+    def __init__(self, *args, child=None, roller_step=10, **kwargs):
         super().__init__(*args, **kwargs)
         self.child = child
-        # Enter amounts with the iOS-style roller (1 ml steps).
+        # Enter amounts with the iOS-style roller; the step is configurable in
+        # the user's settings (defaults to 10 ml).
+        try:
+            step = int(roller_step)
+        except (TypeError, ValueError):
+            step = 10
+        if step < 1:
+            step = 1
         for name in ("bottle_amount_breast_milk", "bottle_amount_formula"):
             self.fields[name].widget.attrs.update(
-                {"data-amount-roller": "1", "data-max": "400"}
+                {"data-amount-roller": "1", "data-max": "400", "data-step": str(step)}
             )
         if not self.is_bound:
             # Default both start and end to "now" so the start date already

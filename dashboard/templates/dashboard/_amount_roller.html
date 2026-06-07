@@ -119,6 +119,8 @@
   }
 
   function makeWidget(input) {
+    var step = parseInt(input.dataset.step || '', 10);
+    if (isNaN(step) || step < 1) step = 1;
     var max = parseInt(input.dataset.max || '', 10);
     if (isNaN(max) || max <= 0) max = DEFAULT_MAX;
     var val = parseInt(input.value || '0', 10);
@@ -140,9 +142,9 @@
 
     var w = { input: input, list: list, colEl: colEl, values: [], index: 0, offset: CENTER, selIdx: -1, selEl: null };
     var html = '';
-    for (var i = 0; i <= max; i++) { w.values.push(i); html += '<div class="ar-item">' + i + '</div>'; }
+    for (var i = 0; i <= max; i += step) { w.values.push(i); html += '<div class="ar-item">' + i + '</div>'; }
     list.innerHTML = html;
-    setIndex(w, val, false);
+    setIndex(w, Math.round(val / step), false);
 
     colEl.addEventListener('mousedown', function (e) { active = w; onStart(w, e.clientY); e.preventDefault(); });
     colEl.addEventListener('wheel', function (e) { e.preventDefault(); onWheel(w, e.deltaY); }, { passive: false });

@@ -943,6 +943,8 @@ class FeedQuickAdd(PermissionRequiredMixin, FormView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs["child"] = self.get_child()
+        settings = getattr(self.request.user, "settings", None)
+        kwargs["roller_step"] = getattr(settings, "bottle_amount_roller_step", 10)
         return kwargs
 
     def get_context_data(self, **kwargs):

@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-import re
-
 from django.shortcuts import get_object_or_404
 from django.utils import timezone, translation
 from django.utils.timesince import timesince
@@ -550,25 +548,27 @@ class QuickBreastStartView(_QuickActionBase):
             return error
         side = (self._param(request, "side", "both")).lower()
         sides = ["left", "right"] if side in ("both", "both breasts") else [side]
-        started = []
-        for s in sides:
-            name = FEED_TIMER_NAMES.get(s)
-            if not name:
-                continue
-            if not models.Timer.objects.filter(child=child, name=name).exists():
-                models.Timer.objects.create(
-                    child=child, user=request.user, name=name
-                )
-            started.append(s)
-        if not started:
+        valid = [s for s in sides if FEED_TIMER_NAMES.get(s)]
+        if not valid:
             return Response({"detail": "Invalid side."}, status=400)
+        started = []
+        for s in valid:
+            name = FEED_TIMER_NAMES[s]
+            if models.Timer.objects.filter(child=child, name=name).exists():
+                continue
+            models.Timer.objects.create(child=child, user=request.user, name=name)
+            started.append(s)
         self._broadcast(child.slug)
         with translation.override(self.language(request)):
-            side_label = self._side_label(started)
-            speech = _("Started breastfeeding (%(side)s) for %(child)s.") % {
-                "side": side_label,
-                "child": child.first_name,
-            }
+            if started:
+                speech = _("Started breastfeeding (%(side)s) for %(child)s.") % {
+                    "side": self._side_label(started),
+                    "child": child.first_name,
+                }
+            else:
+                speech = _("Breastfeeding is already running for %(child)s.") % {
+                    "child": child.first_name
+                }
         return Response({"speech": speech}, status=201)
 
     def _side_label(self, sides):
@@ -649,28 +649,27 @@ class QuickPumpStartView(_QuickActionBase):
             return error
         side = (self._param(request, "side", "both")).lower()
         sides = ["left", "right"] if side in ("both", "both breasts") else [side]
-        started = []
-        for s in sides:
-            name = PUMP_TIMER_NAMES.get(s)
-            if not name:
-                continue
-            if not models.Timer.objects.filter(child=child, name=name).exists():
-                models.Timer.objects.create(
-                    child=child, user=request.user, name=name
-                )
-            started.append(s)
-        if not started:
+        valid = [s for s in sides if PUMP_TIMER_NAMES.get(s)]
+        if not valid:
             return Response({"detail": "Invalid side."}, status=400)
+        started = []
+        for s in valid:
+            name = PUMP_TIMER_NAMES[s]
+            if models.Timer.objects.filter(child=child, name=name).exists():
+                continue
+            models.Timer.objects.create(child=child, user=request.user, name=name)
+            started.append(s)
         self._broadcast(child.slug)
         with translation.override(self.language(request)):
-            speech = _("Started pumping for %(child)s.") % {
-                "child": child.first_name
-            }
+            if started:
+                speech = _("Started pumping.")
+            else:
+                speech = _("Pumping is already running.")
         return Response({"speech": speech}, status=201)
 
 
 class QuickPumpStopView(_QuickActionBase):
-    """POST /api/quick/pump/stop?amount_left=&amount_right= — stop and log."""
+    """POST /api/quick/pump/stop — stop the pump timer(s) into pending (no log)."""
 
     queryset = models.Pumping.objects.all()
 
@@ -687,51 +686,25 @@ class QuickPumpStopView(_QuickActionBase):
         ).first()
         if not left and not right:
             with translation.override(self.language(request)):
-                msg = _("No pumping timer was running for %(child)s.") % {
-                    "child": child.first_name
-                }
+                msg = _("No pumping timer was running.")
             return Response({"speech": msg}, status=400)
 
-        def _amt(key):
-            raw = self._param(request, key)
-            try:
-                return float(raw) if raw is not None else None
-            except (TypeError, ValueError):
-                return None
+        # Stop only: persist as pending for Review & Save in the app; no log.
+        from dashboard.models import PumpPending
 
-        amount_left = _amt("amount_left") if left else None
-        amount_right = _amt("amount_right") if right else None
-        start = min(t.start for t in (left, right) if t)
-        pumping = models.Pumping(
-            child=child,
-            start=start,
-            end=now,
-            amount=(amount_left or 0) + (amount_right or 0),
-            amount_left=amount_left,
-            amount_right=amount_right,
-        )
-        try:
-            pumping.full_clean()
-            pumping.save()
-        except Exception as e:
-            return Response({"detail": str(e)}, status=400)
         if left:
+            PumpPending.objects.create(
+                child=child, side="left", start=left.start, end=now
+            )
             left.stop()
         if right:
+            PumpPending.objects.create(
+                child=child, side="right", start=right.start, end=now
+            )
             right.stop()
         self._broadcast(child.slug)
         with translation.override(self.language(request)):
-            if pumping.amount:
-                speech = _(
-                    "Logged a pumping session (%(amount)s ml) for %(child)s."
-                ) % {
-                    "amount": _format_amount(pumping.amount),
-                    "child": child.first_name,
-                }
-            else:
-                speech = _("Logged a pumping session for %(child)s.") % {
-                    "child": child.first_name
-                }
+            speech = _("Stopped pumping.")
         return Response({"speech": speech}, status=201)
 
 
@@ -749,26 +722,6 @@ class QuickPumpView(_QuickActionBase):
 
     STOP_WORDS = ("stop", "end", "done", "停", "结束", "完成")
     START_WORDS = ("start", "begin", "开始")
-
-    def _parse_amounts(self, text):
-        left = right = total = None
-        m = re.search(r"左\s*(\d+(?:\.\d+)?)", text) or re.search(
-            r"left\s*(\d+(?:\.\d+)?)", text
-        )
-        if m:
-            left = float(m.group(1))
-        m = re.search(r"右\s*(\d+(?:\.\d+)?)", text) or re.search(
-            r"right\s*(\d+(?:\.\d+)?)", text
-        )
-        if m:
-            right = float(m.group(1))
-        if left is None and right is None:
-            nums = [float(n) for n in re.findall(r"\d+(?:\.\d+)?", text)]
-            if len(nums) >= 2:
-                left, right = nums[0], nums[1]
-            elif len(nums) == 1:
-                total = nums[0]
-        return left, right, total
 
     def post(self, request):
         child, error = self.get_child(request)
@@ -801,65 +754,46 @@ class QuickPumpView(_QuickActionBase):
                 sides = ["right"]
             else:
                 sides = ["left", "right"]
+            started = []
             for side in sides:
                 name = PUMP_TIMER_NAMES[side]
-                if not models.Timer.objects.filter(
-                    child=child, name=name
-                ).exists():
-                    models.Timer.objects.create(
-                        child=child, user=request.user, name=name
-                    )
+                if models.Timer.objects.filter(child=child, name=name).exists():
+                    continue
+                models.Timer.objects.create(
+                    child=child, user=request.user, name=name
+                )
+                started.append(side)
             self._broadcast(child.slug)
             with translation.override(language):
-                speech = _("Started pumping for %(child)s.") % {
-                    "child": child.first_name
-                }
+                if started:
+                    speech = _("Started pumping.")
+                else:
+                    speech = _("Pumping is already running.")
             return Response({"speech": speech}, status=201)
 
         # action == "stop"
         if not any_running:
             with translation.override(language):
-                speech = _("No pumping timer was running for %(child)s.") % {
-                    "child": child.first_name
-                }
+                speech = _("No pumping timer was running.")
             return Response({"speech": speech}, status=400)
 
-        amount_left, amount_right, total = self._parse_amounts(text)
+        # Stop only: persist the timer(s) as pending (matching the dashboard's
+        # stop) so they can be reviewed and saved with amounts in the app. Do
+        # not create the Pumping log here.
+        from dashboard.models import PumpPending
+
         now = timezone.now()
-        start = min(t.start for t in (left, right) if t)
-        side_left = amount_left if left else None
-        side_right = amount_right if right else None
-        amount = (side_left or 0) + (side_right or 0)
-        if not amount and total:
-            amount = total
-        pumping = models.Pumping(
-            child=child,
-            start=start,
-            end=now,
-            amount=amount,
-            amount_left=side_left,
-            amount_right=side_right,
-        )
-        try:
-            pumping.full_clean()
-            pumping.save()
-        except Exception as e:
-            return Response({"detail": str(e)}, status=400)
         if left:
+            PumpPending.objects.create(
+                child=child, side="left", start=left.start, end=now
+            )
             left.stop()
         if right:
+            PumpPending.objects.create(
+                child=child, side="right", start=right.start, end=now
+            )
             right.stop()
         self._broadcast(child.slug)
         with translation.override(language):
-            if pumping.amount:
-                speech = _(
-                    "Logged a pumping session (%(amount)s ml) for %(child)s."
-                ) % {
-                    "amount": _format_amount(pumping.amount),
-                    "child": child.first_name,
-                }
-            else:
-                speech = _("Logged a pumping session for %(child)s.") % {
-                    "child": child.first_name
-                }
+            speech = _("Stopped pumping.")
         return Response({"speech": speech}, status=201)
