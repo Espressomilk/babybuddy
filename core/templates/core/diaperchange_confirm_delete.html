@@ -10,10 +10,5 @@
     <li class="breadcrumb-item active" aria-current="page">{% trans "Delete" %}</li>
 {% endblock %}
 {% block content %}
-    <form role="form" method="post">
-        {% csrf_token %}
-        <h1>{% confirm_delete_text object %}</h1>
-        <input type="submit" value="{% trans "Delete" %}" class="btn btn-danger" />
-        <a href="{% url 'core:diaperchange-list' %}" class="btn btn-default">{% trans "Cancel" %}</a>
-    </form>
+    {% include 'babybuddy/confirm_delete.html' %}
 {% endblock %}

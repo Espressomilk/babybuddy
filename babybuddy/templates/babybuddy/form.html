@@ -1,7 +1,43 @@
 {% load i18n widget_tweaks %}
 {# Load any form-javascript files #}
 {{ form.media.js }}
-<div class="container-fluid pb-5">
+<style>
+  /* Touch-friendly modern styling for the shared add/edit forms. */
+  .bb-form-modern { max-width: 560px; margin: 0 auto; }
+  /* Stack each field's label above its input on all widths. */
+  .bb-form-modern .row.mb-3 > * { flex: 0 0 100%; max-width: 100%; }
+  .bb-form-modern .col-form-label {
+    font-weight: 600; font-size: 0.9rem; color: #555;
+    padding-top: 0.4rem; padding-bottom: 0.25rem;
+  }
+  .bb-form-modern .form-control,
+  .bb-form-modern .form-select {
+    min-height: 48px; padding: 0.65rem 0.9rem; font-size: 1.05rem;
+    border-radius: 12px; border-width: 1.5px;
+  }
+  .bb-form-modern textarea.form-control { min-height: 88px; }
+  .bb-form-modern .form-control:focus,
+  .bb-form-modern .form-select:focus {
+    border-color: #2e3d5f; box-shadow: 0 0 0 0.15rem rgba(46,61,95,0.15);
+  }
+  /* Larger pill / radio choices (e.g. type & method selectors). */
+  .bb-form-modern label.btn {
+    padding: 0.6rem 1rem; font-size: 1rem; border-radius: 12px;
+  }
+  /* Time roller renders its own tappable display button. */
+  .bb-form-modern .tr-display { min-height: 48px; }
+  .bb-form-modern .help-block { margin-top: 0.3rem; color: #888; }
+  /* Stacked, full-width action buttons. */
+  .bb-form-modern .form-actions { margin-top: 1.75rem; }
+  .bb-form-modern .submit-primary {
+    width: 100%; padding: 0.85rem; font-size: 1.1rem; border-radius: 14px;
+  }
+  .bb-form-modern .btn-outline-danger {
+    width: 100%; margin-top: 0.6rem; float: none !important;
+    padding: 0.85rem; font-size: 1.05rem; border-radius: 14px;
+  }
+</style>
+<div class="container-fluid pb-5 bb-form-modern">
     <form role="form" method="post" enctype="multipart/form-data">
         {% csrf_token %}
         {% if form.fieldsets %}
@@ -16,14 +52,17 @@
                 <div class="row">{% include 'babybuddy/form_field.html' %}</div>
             {% endfor %}
         {% endif %}
-        <button type="submit" class="submit-primary btn btn-primary btn-lg">{% trans "Save" %}</button>
-        {% if object and object.pk and object.model_name and object.model_name != "child" and object.model_name != "tag" and request.resolver_match.url_name|slice:"-7:" == "-update" %}
-            {% with del_name="core:"|add:request.resolver_match.url_name|cut:"-update"|add:"-delete" %}
-                {% url del_name object.pk as del_url %}
-                {% if del_url %}
-                    <a href="{{ del_url }}" class="btn btn-outline-danger btn-lg float-end">{% trans "Delete" %}</a>
-                {% endif %}
-            {% endwith %}
-        {% endif %}
+        <div class="form-actions">
+            <button type="submit" class="submit-primary btn btn-primary btn-lg">{% trans "Save" %}</button>
+            {% if object and object.pk and object.model_name and object.model_name != "child" and object.model_name != "tag" and request.resolver_match.url_name|slice:"-7:" == "-update" %}
+                {% with del_name="core:"|add:request.resolver_match.url_name|cut:"-update"|add:"-delete" %}
+                    {% url del_name object.pk as del_url %}
+                    {% if del_url %}
+                        <a href="{{ del_url }}" class="btn btn-outline-danger btn-lg">{% trans "Delete" %}</a>
+                    {% endif %}
+                {% endwith %}
+            {% endif %}
+        </div>
     </form>
 </div>
+{% include 'dashboard/_time_roller.html' %}

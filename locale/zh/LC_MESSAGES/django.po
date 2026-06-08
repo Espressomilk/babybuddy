@@ -3625,3 +3625,7 @@ msgstr "已为 %(child)s 记录一次挤奶（%(amount)s 毫升）。"
 #: api quick actions (Siri)
 msgid "Logged a pumping session for %(child)s."
 msgstr "已为 %(child)s 记录一次挤奶。"
+
+#: babybuddy/templates/babybuddy/confirm_delete.html
+msgid "This action cannot be undone."
+msgstr "此操作无法撤销。"
