@@ -117,6 +117,7 @@
 
   function onStart(key, y) {
     var c = cols[key];
+    recenter(c);
     c.dragging = true; c.startY = y; c.startOffset = c.offset;
     c.lastY = y; c.lastT = Date.now(); c.velocity = 0;
     setTransition(c, false);
@@ -146,6 +147,7 @@
     clearTimeout(c.wheelT);
     c.wheelT = setTimeout(function () {
       setIndex(key, indexFromOffset(c, c.offset), true);
+      recenter(c);
       if (c.onChange) c.onChange();
     }, 80);
   }
@@ -158,7 +160,7 @@
     list.className = 'dr-list';
     el.appendChild(list);
     colsWrap.appendChild(el);
-    cols[key] = { el: el, list: list, values: [], index: 0, offset: CENTER, onChange: null };
+    cols[key] = { el: el, list: list, values: [], index: 0, offset: CENTER, onChange: null, cycle: 0, copies: 1 };
     bindCol(key);
     return el;
   }
@@ -222,10 +224,37 @@
   function fillCol(key, values, selectedIdx) {
     var c = cols[key];
     c.values = values;
+    c.cycle = 0;
+    c.copies = 1;
     var html = '';
     for (var i = 0; i < values.length; i++) html += '<div class="dr-item">' + values[i].label + '</div>';
     c.list.innerHTML = html;
     setIndex(key, selectedIdx, false);
+  }
+
+  // Looping column: repeat values and keep selection in the middle copy so the
+  // wheel wraps past either end.
+  function fillLoop(key, baseValues, baseSelectedIdx) {
+    var COPIES = 7;
+    var rep = [];
+    for (var k = 0; k < COPIES; k++) rep = rep.concat(baseValues);
+    var idx = Math.floor(COPIES / 2) * baseValues.length + baseSelectedIdx;
+    fillCol(key, rep, idx);
+    var c = cols[key];
+    c.cycle = baseValues.length;
+    c.copies = COPIES;
+  }
+
+  function recenter(c) {
+    if (!c.cycle) return;
+    var cy = c.cycle;
+    var valIdx = ((c.index % cy) + cy) % cy;
+    var mid = Math.floor(c.copies / 2) * cy + valIdx;
+    if (mid === c.index) return;
+    c.index = mid;
+    c.offset = CENTER - mid * ITEM_H;
+    setTransition(c, false);
+    applyTransform(c);
   }
   function selectedValue(key) { var c = cols[key]; return c.values[c.index].value; }
 
@@ -242,8 +271,8 @@
     var minutes = [];
     for (var j = 0; j < 60; j++) minutes.push({ label: pad(j), value: j });
 
-    fillCol('hour', hours, h);
-    fillCol('minute', minutes, m);
+    fillLoop('hour', hours, h);
+    fillLoop('minute', minutes, m);
     cols.hour.onChange = null;
     cols.minute.onChange = null;
 

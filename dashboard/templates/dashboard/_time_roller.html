@@ -122,7 +122,7 @@
     colsWrap.appendChild(el);
     cols[key] = {
       el: el, list: list, values: [], index: 0, offset: CENTER,
-      onChange: null
+      onChange: null, cycle: 0, copies: 1
     };
     bindCol(key);
     return el;
@@ -158,6 +158,7 @@
 
   function onStart(key, y) {
     var c = cols[key];
+    recenter(c);
     c.dragging = true;
     c.startY = y;
     c.startOffset = c.offset;
@@ -193,6 +194,7 @@
     clearTimeout(c.wheelT);
     c.wheelT = setTimeout(function () {
       setIndex(key, indexFromOffset(c, c.offset), true);
+      recenter(c);
       if (c.onChange) c.onChange();
     }, 80);
   }
@@ -289,12 +291,41 @@
   function fillCol(key, values, selectedIdx) {
     var c = cols[key];
     c.values = values;
+    c.cycle = 0;
+    c.copies = 1;
     var html = '';
     for (var i = 0; i < values.length; i++) {
       html += '<div class="tr-item">' + values[i].label + '</div>';
     }
     c.list.innerHTML = html;
     setIndex(key, selectedIdx, false);
+  }
+
+  // Looping column: repeat the base values several times and keep the selection
+  // in the middle copy so the wheel can be scrolled past either end and wrap.
+  function fillLoop(key, baseValues, baseSelectedIdx) {
+    var COPIES = 7;
+    var rep = [];
+    for (var k = 0; k < COPIES; k++) rep = rep.concat(baseValues);
+    var idx = Math.floor(COPIES / 2) * baseValues.length + baseSelectedIdx;
+    fillCol(key, rep, idx);
+    var c = cols[key];
+    c.cycle = baseValues.length;
+    c.copies = COPIES;
+  }
+
+  // Silently snap a looping column back to its middle copy (same value), so a
+  // drag/scroll always has copies available in both directions.
+  function recenter(c) {
+    if (!c.cycle) return;
+    var cy = c.cycle;
+    var valIdx = ((c.index % cy) + cy) % cy;
+    var mid = Math.floor(c.copies / 2) * cy + valIdx;
+    if (mid === c.index) return;
+    c.index = mid;
+    c.offset = CENTER - mid * ITEM_H;
+    setTransition(c, false);
+    applyTransform(c);
   }
 
   function selectedIndex(key) { return cols[key].index; }
@@ -325,22 +356,22 @@
     var minutes = [];
     for (var mi = 0; mi < 60; mi++) minutes.push({ label: pad(mi), value: mi });
 
-    fillCol('month', months, d.getMonth());
-    fillCol('day', days, d.getDate() - 1);
+    fillLoop('month', months, d.getMonth());
+    fillLoop('day', days, d.getDate() - 1);
     fillCol('year', years, years.findIndex(function (o) { return o.value === d.getFullYear(); }));
-    fillCol('hour', hours, d.getHours());
-    fillCol('minute', minutes, d.getMinutes());
+    fillLoop('hour', hours, d.getHours());
+    fillLoop('minute', minutes, d.getMinutes());
 
     // Rebuild the day column if the user changes month/year.
     var refreshDays = function () {
       var yr = selectedValue('year');
       var mo = selectedValue('month');
       var dimNew = daysInMonth(yr, mo);
-      if (cols.day.values.length !== dimNew) {
-        var cur = Math.min(selectedIndex('day'), dimNew - 1);
+      if (cols.day.cycle !== dimNew) {
+        var cur = Math.min(selectedValue('day'), dimNew);
         var ds = [];
         for (var k = 1; k <= dimNew; k++) ds.push({ label: String(k), value: k });
-        fillCol('day', ds, cur);
+        fillLoop('day', ds, cur - 1);
       }
     };
     cols.month.onChange = refreshDays;
