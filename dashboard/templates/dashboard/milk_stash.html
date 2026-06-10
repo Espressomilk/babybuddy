@@ -49,14 +49,14 @@
     {% csrf_token %}
     <p class="ms-section">{% trans "Current volumes" %}</p>
     <div class="ms-row">
-      <span class="ms-icon">🧊</span>
+      <span class="ms-icon">❄️</span>
       <label for="ms-fridge">{% trans "Fridge" %}</label>
       <input type="number" inputmode="decimal" step="any" min="0"
              id="ms-fridge" name="fridge" value="{{ stash.fridge|floatformat:'-1' }}">
       <span class="ms-unit">ml</span>
     </div>
     <div class="ms-row">
-      <span class="ms-icon">❄️</span>
+      <span class="ms-icon">🧊</span>
       <label for="ms-freezer">{% trans "Freezer" %}</label>
       <input type="number" inputmode="decimal" step="any" min="0"
              id="ms-freezer" name="freezer" value="{{ stash.freezer|floatformat:'-1' }}">
@@ -73,7 +73,7 @@
     {% csrf_token %}
     <p class="ms-section">{% trans "Thaw from freezer" %}</p>
     <div class="ms-row">
-      <span class="ms-icon">❄️→🧊</span>
+      <span class="ms-icon">🧊→❄️</span>
       <label for="ms-thaw-amount">{% trans "Amount" %}</label>
       <input type="number" inputmode="decimal" step="any" min="0"
              max="{{ stash.freezer|floatformat:'-1' }}"

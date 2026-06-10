@@ -5,11 +5,11 @@
 {% endblock %}
 {% block title %}
     <div class="d-flex justify-content-between align-items-center">
-        <span>🧊 {% trans "Fridge" %}</span>
+        <span>❄️ {% trans "Fridge" %}</span>
         <span class="text-info">{{ fridge }} ml</span>
     </div>
     <div class="d-flex justify-content-between align-items-center">
-        <span>❄️ {% trans "Freezer" %}</span>
+        <span>🧊 {% trans "Freezer" %}</span>
         <span class="text-info">{{ freezer }} ml</span>
     </div>
 {% endblock %}
@@ -46,6 +46,6 @@
         <a href="{% url 'dashboard:milk-stash-calibrate' child.slug %}"
            class="btn btn-sm btn-outline-secondary">{% trans "Calibrate" %}</a>
         <a href="{% url 'dashboard:milk-stash-calibrate' child.slug %}#thaw"
-           class="btn btn-sm btn-outline-secondary">❄️→🧊 {% trans "Thaw" %}</a>
+           class="btn btn-sm btn-outline-secondary">🧊→❄️ {% trans "Thaw" %}</a>
     </div>
 {% endblock %}
