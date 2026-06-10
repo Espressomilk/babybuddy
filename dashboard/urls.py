@@ -154,6 +154,11 @@ urlpatterns = [
         name="health-vaccine-quick",
     ),
     path(
+        "children/<str:slug>/health/procedure/",
+        views.HealthProcedureQuick.as_view(),
+        name="health-procedure-quick",
+    ),
+    path(
         "children/<str:slug>/health/medication/",
         views.HealthMedQuick.as_view(),
         name="health-med-quick",
@@ -182,5 +187,15 @@ urlpatterns = [
         "children/<str:slug>/health/weight/",
         views.HealthWeightQuick.as_view(),
         name="health-weight-quick",
+    ),
+    path(
+        "children/<str:slug>/milk-stash/",
+        views.MilkStashCalibrate.as_view(),
+        name="milk-stash-calibrate",
+    ),
+    path(
+        "children/<str:slug>/milk-stash/thaw/",
+        views.MilkStashThaw.as_view(),
+        name="milk-stash-thaw",
     ),
 ]

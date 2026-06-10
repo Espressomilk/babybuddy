@@ -1,0 +1,93 @@
+{% extends 'babybuddy/page.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Procedure" %} - {{ child }}{% endblock %}
+
+{% block breadcrumbs %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'core:child-list' %}">{% trans "Children" %}</a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="{% url 'dashboard:track-child' child.slug %}">{{ child }}</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">{% trans "Procedure" %}</li>
+{% endblock %}
+
+{% block content %}
+<style>
+  .hq-wrap { max-width: 480px; margin: 0 auto; padding: 1rem 0 3rem; }
+  .hq-section {
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #888; margin: 1.5rem 0 0.4rem;
+  }
+  .hq-info {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.7rem 1rem; border: 1.5px solid #ddd; border-radius: 12px;
+    background: #f7f8fa; font-size: 1.05rem; color: #2d2d2d;
+  }
+  .hq-info-label { font-size: 0.85rem; color: #888; font-weight: 600; }
+  .hq-input {
+    width: 100%; padding: 0.75rem 1rem; border: 1.5px solid #ddd;
+    border-radius: 12px; font-size: 1.05rem; color: #2d2d2d;
+    background: #fff; box-sizing: border-box; transition: border-color 0.15s;
+  }
+  .hq-input:focus { outline: none; border-color: #2e3d5f; }
+  .hq-input.error { border-color: #dc3545; }
+  .hq-notes textarea {
+    width: 100%; padding: 0.7rem 1rem; border: 1.5px solid #ddd;
+    border-radius: 12px; font-size: 1rem; color: #2d2d2d;
+    background: #fff; box-sizing: border-box; resize: vertical;
+    transition: border-color 0.15s;
+  }
+  .hq-notes textarea:focus { outline: none; border-color: #2e3d5f; }
+  .hq-save {
+    width: 100%; padding: 0.9rem; border: none; border-radius: 14px;
+    background: #2e3d5f; color: #fff; font-size: 1.1rem; font-weight: 700;
+    cursor: pointer; margin-top: 2rem; transition: background 0.15s;
+  }
+  .hq-save:hover { background: #1a2a45; }
+</style>
+
+<div class="hq-wrap">
+  <form method="post" id="hq-form">
+    {% csrf_token %}
+
+    <p class="hq-section">{% trans "Date" %}</p>
+    <div class="hq-info">
+      <span class="hq-info-label">{% trans "Today" %}</span>
+      <span id="hq-date-display">—</span>
+    </div>
+
+    <p class="hq-section">{% trans "Procedure Name" %}</p>
+    <input type="text" name="name" id="hq-name" class="hq-input"
+           placeholder="{% trans "e.g. Hearing screen, heel prick…" %}" autocomplete="off">
+
+    <p class="hq-section">{% trans "Notes" %}</p>
+    <div class="hq-notes">
+      <textarea name="notes" rows="3" placeholder="{% trans "Optional notes…" %}"></textarea>
+    </div>
+
+    <button type="submit" class="hq-save">{% trans "Save" %}</button>
+  </form>
+</div>
+
+<script>
+(function () {
+  var dateEl = document.getElementById('hq-date-display');
+  var now = new Date();
+  dateEl.textContent = now.toLocaleDateString([], {year:'numeric', month:'long', day:'numeric'});
+
+  document.getElementById('hq-form').addEventListener('submit', function (e) {
+    var name = document.getElementById('hq-name');
+    if (!name.value.trim()) {
+      e.preventDefault();
+      name.classList.add('error');
+      name.focus();
+    }
+  });
+  document.getElementById('hq-name').addEventListener('input', function () {
+    this.classList.remove('error');
+  });
+})();
+</script>
+{% endblock %}

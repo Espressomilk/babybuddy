@@ -143,4 +143,8 @@ urlpatterns = [
     path("vaccine/add/", views.VaccineAdd.as_view(), name="vaccine-add"),
     path("vaccine/<int:pk>/", views.VaccineUpdate.as_view(), name="vaccine-update"),
     path("vaccine/<int:pk>/delete/", views.VaccineDelete.as_view(), name="vaccine-delete"),
+    path("procedure/", views.ProcedureList.as_view(), name="procedure-list"),
+    path("procedure/add/", views.ProcedureAdd.as_view(), name="procedure-add"),
+    path("procedure/<int:pk>/", views.ProcedureUpdate.as_view(), name="procedure-update"),
+    path("procedure/<int:pk>/delete/", views.ProcedureDelete.as_view(), name="procedure-delete"),
 ]

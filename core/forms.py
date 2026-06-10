@@ -441,16 +441,32 @@ class VaccineForm(CoreModelForm, TaggableModelForm):
         }
 
 
+class ProcedureForm(CoreModelForm, TaggableModelForm):
+    fieldsets = [
+        {"fields": ["child", "date", "name"], "layout": "required"},
+        {"fields": ["notes", "tags"], "layout": "advanced"},
+    ]
+
+    class Meta:
+        model = models.Procedure
+        fields = ["child", "name", "date", "notes", "tags"]
+        widgets = {
+            "child": ChildRadioSelect,
+            "date": DateTimeInput(),
+            "notes": forms.Textarea(attrs={"rows": 5}),
+        }
+
+
 class PumpingForm(CoreModelForm, TaggableModelForm):
     fieldsets = [
         {"fields": ["child", "start", "end"], "layout": "required"},
-        {"fields": ["amount"]},
+        {"fields": ["amount", "storage"]},
         {"fields": ["notes", "tags"], "layout": "advanced"},
     ]
 
     class Meta:
         model = models.Pumping
-        fields = ["child", "start", "end", "amount", "notes", "tags"]
+        fields = ["child", "start", "end", "amount", "storage", "notes", "tags"]
         widgets = {
             "child": ChildRadioSelect,
             "start": DateTimeInput(),

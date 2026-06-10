@@ -255,6 +255,13 @@ class VaccineAdmin(ImportExportMixin, ExportActionMixin, admin.ModelAdmin):
     search_fields = ("child__first_name", "child__last_name", "name")
 
 
+@admin.register(models.Procedure)
+class ProcedureAdmin(ImportExportMixin, ExportActionMixin, admin.ModelAdmin):
+    list_display = ("child", "name", "date")
+    list_filter = ("child", "tags")
+    search_fields = ("child__first_name", "child__last_name", "name")
+
+
 @admin.register(models.Timer)
 class TimerAdmin(admin.ModelAdmin):
     list_display = ("name", "child", "start", "duration", "user")

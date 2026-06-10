@@ -328,6 +328,35 @@ class VaccineDelete(CoreDeleteView):
     success_url = reverse_lazy("core:vaccine-list")
 
 
+class ProcedureList(
+    PermissionRequiredMixin, BabyBuddyPaginatedView, BabyBuddyFilterView
+):
+    model = models.Procedure
+    template_name = "core/procedure_list.html"
+    permission_required = ("core.view_procedure",)
+    filterset_class = filters.ProcedureFilter
+
+
+class ProcedureAdd(CoreAddView):
+    model = models.Procedure
+    permission_required = ("core.add_procedure",)
+    form_class = forms.ProcedureForm
+    success_url = reverse_lazy("core:procedure-list")
+
+
+class ProcedureUpdate(CoreUpdateView):
+    model = models.Procedure
+    permission_required = ("core.change_procedure",)
+    form_class = forms.ProcedureForm
+    success_url = reverse_lazy("core:procedure-list")
+
+
+class ProcedureDelete(CoreDeleteView):
+    model = models.Procedure
+    permission_required = ("core.delete_procedure",)
+    success_url = reverse_lazy("core:procedure-list")
+
+
 class NoteList(PermissionRequiredMixin, BabyBuddyPaginatedView, BabyBuddyFilterView):
     model = models.Note
     template_name = "core/note_list.html"

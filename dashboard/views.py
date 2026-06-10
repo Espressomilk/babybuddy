@@ -593,7 +593,7 @@ class PumpCommit(PermissionRequiredMixin, FormView):
         child = self.get_child()
         pending = PumpPending.objects.filter(child=child)
         start, end = self._bounds(pending)
-        kwargs.update({"start": start, "end": end})
+        kwargs.update({"start": start, "end": end, "child": child})
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -633,6 +633,7 @@ class PumpCommit(PermissionRequiredMixin, FormView):
                 amount=amount,
                 amount_left=side_left,
                 amount_right=side_right,
+                storage=form.cleaned_data.get("storage") or "",
                 notes=notes,
             )
             entry.full_clean()
@@ -1441,5 +1442,128 @@ class HealthMedQuick(PermissionRequiredMixin, View):
         except (ValueError, ValidationError) as e:
             msgs = e.messages if hasattr(e, "messages") else [str(e)]
             for m in msgs:
+                messages.error(request, m)
+        return HttpResponseRedirect(reverse("dashboard:track-child", kwargs={"slug": self.kwargs["slug"]}))
+
+
+class MilkStashCalibrate(PermissionRequiredMixin, View):
+    """Set the current breast milk volumes in the fridge and freezer."""
+
+    permission_required = ("core.add_pumping",)
+    template_name = "dashboard/milk_stash.html"
+
+    def get_child(self):
+        return get_object_or_404(Child, slug=self.kwargs["slug"])
+
+    def get(self, request, *args, **kwargs):
+        from core.utils import milk_stash_status
+
+        child = self.get_child()
+        return render(
+            request,
+            self.template_name,
+            {"child": child, "stash": milk_stash_status(child)},
+        )
+
+    def post(self, request, *args, **kwargs):
+        from core.models import MilkStashCalibration
+
+        child = self.get_child()
+        try:
+            fridge = float(request.POST.get("fridge", "").strip() or 0)
+            freezer = float(request.POST.get("freezer", "").strip() or 0)
+            if fridge < 0 or freezer < 0:
+                raise ValueError(_("Amounts cannot be negative."))
+            MilkStashCalibration.objects.create(
+                child=child,
+                fridge_amount=fridge,
+                freezer_amount=freezer,
+                time=timezone.now(),
+            )
+            messages.success(request, _("Milk stash calibrated."))
+        except ValueError as e:
+            messages.error(request, str(e) or _("Enter valid amounts."))
+            return HttpResponseRedirect(
+                reverse(
+                    "dashboard:milk-stash-calibrate",
+                    kwargs={"slug": self.kwargs["slug"]},
+                )
+            )
+        return HttpResponseRedirect(
+            reverse("dashboard:dashboard-child", kwargs={"slug": self.kwargs["slug"]})
+        )
+
+
+class MilkStashThaw(PermissionRequiredMixin, View):
+    """Move a custom amount of milk from the freezer to the fridge.
+
+    Implemented as a recalibration: a new MilkStashCalibration row is written
+    with the current computed balances shifted by the thawed amount.
+    """
+
+    permission_required = ("core.add_pumping",)
+
+    def post(self, request, *args, **kwargs):
+        from core.models import MilkStashCalibration
+        from core.utils import milk_stash_status
+
+        child = get_object_or_404(Child, slug=self.kwargs["slug"])
+        back = HttpResponseRedirect(
+            reverse(
+                "dashboard:milk-stash-calibrate", kwargs={"slug": self.kwargs["slug"]}
+            )
+        )
+        try:
+            amount = float(request.POST.get("amount", "").strip())
+        except ValueError:
+            messages.error(request, _("Enter valid amounts."))
+            return back
+        if amount <= 0:
+            messages.error(request, _("Enter valid amounts."))
+            return back
+        status = milk_stash_status(child)
+        if amount > status["freezer"]:
+            messages.error(request, _("Not enough milk in the freezer."))
+            return back
+        MilkStashCalibration.objects.create(
+            child=child,
+            fridge_amount=status["fridge"] + amount,
+            freezer_amount=status["freezer"] - amount,
+            time=timezone.now(),
+        )
+        messages.success(
+            request,
+            _("Moved %(amount)s ml from the freezer to the fridge.")
+            % {"amount": int(amount) if amount == int(amount) else amount},
+        )
+        return back
+
+
+class HealthProcedureQuick(PermissionRequiredMixin, View):
+    permission_required = ("core.add_procedure",)
+    template_name = "dashboard/health_procedure_quick.html"
+
+    def get_child(self):
+        return get_object_or_404(Child, slug=self.kwargs["slug"])
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name, {"child": self.get_child()})
+
+    def post(self, request, *args, **kwargs):
+        from core.models import Procedure
+
+        child = self.get_child()
+        name = request.POST.get("name", "").strip()
+        notes = request.POST.get("notes", "").strip()
+        if not name:
+            messages.error(request, _("Procedure name is required."))
+            return render(request, self.template_name, {"child": child})
+        try:
+            entry = Procedure(child=child, name=name, date=timezone.now(), notes=notes or None)
+            entry.full_clean()
+            entry.save()
+            messages.success(request, _("Procedure recorded."))
+        except ValidationError as e:
+            for m in e.messages:
                 messages.error(request, m)
         return HttpResponseRedirect(reverse("dashboard:track-child", kwargs={"slug": self.kwargs["slug"]}))

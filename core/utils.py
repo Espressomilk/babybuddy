@@ -116,3 +116,91 @@ def group_feeding_sessions(instances, gap=FEEDING_SESSION_GAP):
                 }
             )
     return sessions
+
+
+# Feeding types that consume stored breast milk when given by bottle.
+BREAST_MILK_BOTTLE_TYPES = ["breast milk", "fortified breast milk"]
+
+
+def milk_stash_status(child):
+    """
+    Compute the current breast milk stash for a child.
+
+    Balances start from the most recent ``MilkStashCalibration`` (or zero if
+    none exists). Pumpings recorded since then add to the location stored to;
+    bottle feedings of (fortified) breast milk since then draw from the fridge.
+
+    The storage suggestion compares the fridge balance against the projected
+    bottle breast-milk consumption for the next 24 hours (average of the past
+    3 days): if the fridge already covers it, new milk should go to the
+    freezer (fridge milk should be consumed within 24 hours).
+
+    :returns: dict with ``fridge``, ``freezer`` (floats, ml, clamped at 0),
+        ``needs_calibration`` (True when a computed balance went negative or
+        no calibration exists yet), ``suggestion`` ("fridge"/"freezer"),
+        ``daily_need`` (projected 24h bottle breast-milk consumption, ml) and
+        ``calibrated_at`` (datetime or None).
+    """
+    from django.db.models import Sum
+
+    from core import models
+
+    calibration = (
+        models.MilkStashCalibration.objects.filter(child=child)
+        .order_by("-time")
+        .first()
+    )
+    if calibration:
+        fridge = calibration.fridge_amount
+        freezer = calibration.freezer_amount
+        since = calibration.time
+    else:
+        fridge = 0.0
+        freezer = 0.0
+        since = None
+
+    pumpings = models.Pumping.objects.filter(child=child)
+    feedings = models.Feeding.objects.filter(
+        child=child, method="bottle", type__in=BREAST_MILK_BOTTLE_TYPES
+    )
+    if since:
+        # Milk enters storage when the pumping session ends; anchor on end so
+        # a session in progress while calibrating is still counted after.
+        pumpings = pumpings.filter(end__gt=since)
+        feedings = feedings.filter(start__gt=since)
+
+    def _sum(queryset, field):
+        return queryset.aggregate(total=Sum(field))["total"] or 0.0
+
+    fridge += _sum(pumpings.filter(storage="fridge"), "amount")
+    freezer += _sum(pumpings.filter(storage="freezer"), "amount")
+    fridge -= _sum(feedings, "amount")
+
+    needs_calibration = calibration is None or fridge < 0 or freezer < 0
+    fridge = max(fridge, 0.0)
+    freezer = max(freezer, 0.0)
+
+    # Projected consumption for the next 24h: average daily bottle
+    # breast-milk amount over the past 3 days.
+    now = timezone.now()
+    recent = models.Feeding.objects.filter(
+        child=child,
+        method="bottle",
+        type__in=BREAST_MILK_BOTTLE_TYPES,
+        start__gte=now - datetime.timedelta(days=3),
+    )
+    daily_need = _sum(recent, "amount") / 3.0
+
+    # Fridge only when there is upcoming consumption it does not yet cover;
+    # otherwise freezer (including when no bottle feeds happen at all, since
+    # fridge milk would expire unused).
+    suggestion = "fridge" if daily_need > 0 and fridge < daily_need else "freezer"
+
+    return {
+        "fridge": fridge,
+        "freezer": freezer,
+        "needs_calibration": needs_calibration,
+        "suggestion": suggestion,
+        "daily_need": daily_need,
+        "calibrated_at": calibration.time if calibration else None,
+    }

@@ -1,0 +1,78 @@
+{% extends 'babybuddy/page.html' %}
+{% load datetime i18n widget_tweaks %}
+{% block title %}
+    {% trans "Procedure" %}
+{% endblock %}
+{% block breadcrumbs %}
+    <li class="breadcrumb-item active" aria-current="page">{% trans "Procedure" %}</li>
+{% endblock %}
+{% block content %}
+    <h1>
+        {% trans "Procedure" %}
+        {% if perms.core.add_procedure %}
+            <a href="{% url 'core:procedure-add' %}" class="btn btn-sm btn-success">
+                <i class="icon-add" aria-hidden="true"></i> {% trans "Add Procedure" %}
+            </a>
+        {% endif %}
+    </h1>
+    {% include 'babybuddy/filter.html' %}
+    <div class="table-responsive">
+        <table class="table table-instances table-borderless table-striped table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>{% trans "Actions" %}</th>
+                    <th>{% trans "Date" %}</th>
+                    {% if not unique_child %}
+                        <th>{% trans "Child" %}</th>
+                    {% endif %}
+                    <th>{% trans "Procedure Name" %}</th>
+                    <th>{% trans "Tags" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for procedure in object_list %}
+                    <tr>
+                        <td>
+                            <div class="btn-group btn-group-sm"
+                                 role="group"
+                                 aria-label="{% trans "Actions" %}">
+                                {% if perms.core.change_procedure %}
+                                    <a href="{% url 'core:procedure-update' procedure.id %}"
+                                       class="btn btn-primary">
+                                        <i class="icon-update" aria-hidden="true"></i>
+                                    </a>
+                                {% endif %}
+                                {% if perms.core.delete_procedure %}
+                                    <a href="{% url 'core:procedure-delete' procedure.id %}"
+                                       class="btn btn-danger">
+                                        <i class="icon-delete" aria-hidden="true"></i>
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <th scope="row">{{ procedure.date|datetime_short }}</th>
+                        {% if not unique_child %}
+                            <td>
+                                <a href="{% url 'core:child' procedure.child.slug %}">{{ procedure.child }}</a>
+                            </td>
+                        {% endif %}
+                        <td>{{ procedure.name }}</td>
+                        <td>{% include "core/render_tag_list.html" with tags=procedure.tags.all %}</td>
+                    </tr>
+                    {% if procedure.notes %}
+                        <tr class="{{ row_class }} row-details">
+                            <td colspan="5">
+                                <i class="icon-note me-2" aria-hidden="true"></i>{{ procedure.notes }}
+                            </td>
+                        </tr>
+                    {% endif %}
+                {% empty %}
+                    <tr>
+                        <th colspan="5">{% trans "No procedure entries found." %}</th>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include 'babybuddy/paginator.html' %}
+{% endblock %}

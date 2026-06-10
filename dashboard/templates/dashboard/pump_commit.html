@@ -137,6 +137,17 @@
     min-width: 20px;
   }
 
+  /* ── Storage pills ── */
+  .pc-storage-pills { display: flex; gap: 0.6rem; }
+  .pc-storage-pill {
+    flex: 1; padding: 0.7rem 0.5rem; border: 2px solid #ddd; border-radius: 12px;
+    background: transparent; font-size: 0.95rem; font-weight: 600; color: inherit;
+    text-align: center; cursor: pointer; transition: all 0.15s ease; user-select: none;
+    touch-action: manipulation;
+  }
+  .pc-storage-pill:hover { border-color: #2e3d5f; }
+  .pc-storage-pill.active { background: #2e3d5f; border-color: #2e3d5f; color: #fff; }
+
   /* ── Notes ── */
   .pc-notes textarea {
     width: 100%;
@@ -268,6 +279,14 @@
     </div>
     {% endif %}
 
+    {# ── Storage ── #}
+    <p class="pc-section">{% trans "Store in" %}</p>
+    {{ form.storage }}
+    <div class="pc-storage-pills">
+      <div class="pc-storage-pill" data-value="fridge">🧊 {% trans "Fridge" %}</div>
+      <div class="pc-storage-pill" data-value="freezer">❄️ {% trans "Freezer" %}</div>
+    </div>
+
     {# ── Notes ── #}
     <p class="pc-section">{% trans "Notes" %}</p>
     <div class="pc-notes">
@@ -293,6 +312,20 @@
 
 <script>
 (function () {
+  // ── Storage pills ──
+  var storageInput = document.getElementById('id_storage');
+  var storagePills = document.querySelectorAll('.pc-storage-pill');
+  function activateStorage(value) {
+    if (storageInput) storageInput.value = value;
+    storagePills.forEach(function (p) {
+      p.classList.toggle('active', p.dataset.value === value);
+    });
+  }
+  storagePills.forEach(function (p) {
+    p.addEventListener('click', function () { activateStorage(p.dataset.value); });
+  });
+  if (storageInput) activateStorage(storageInput.value || 'fridge');
+
   document.querySelectorAll('.pc-stepper-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
       const input = document.getElementById(btn.dataset.target);

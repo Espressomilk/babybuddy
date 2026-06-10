@@ -1,0 +1,14 @@
+{% extends 'babybuddy/page.html' %}
+{% load babybuddy i18n widget_tweaks %}
+{% block title %}
+    {% trans "Delete a Vaccine" %}
+{% endblock %}
+{% block breadcrumbs %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'core:vaccine-list' %}">{% trans "Vaccine" %}</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">{% trans "Delete" %}</li>
+{% endblock %}
+{% block content %}
+    {% include 'babybuddy/confirm_delete.html' %}
+{% endblock %}

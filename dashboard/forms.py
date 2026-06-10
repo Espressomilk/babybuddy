@@ -239,6 +239,11 @@ class PumpCommitForm(forms.Form):
             }
         ),
     )
+    storage = forms.ChoiceField(
+        choices=[("fridge", _("Fridge")), ("freezer", _("Freezer"))],
+        label=_("Store in"),
+        widget=forms.HiddenInput(attrs={"id": "id_storage"}),
+    )
     notes = forms.CharField(
         required=False,
         label=_("Notes"),
@@ -251,11 +256,15 @@ class PumpCommitForm(forms.Form):
         ),
     )
 
-    def __init__(self, *args, start=None, end=None, **kwargs):
+    def __init__(self, *args, start=None, end=None, child=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["start"].required = True
         self.fields["end"].required = True
         if not self.is_bound:
+            if child:
+                from core.utils import milk_stash_status
+
+                self.initial["storage"] = milk_stash_status(child)["suggestion"]
             if start:
                 self.initial["start"] = start
             if end:
@@ -830,6 +839,11 @@ class PumpQuickForm(forms.Form):
             }
         ),
     )
+    storage = forms.ChoiceField(
+        choices=[("fridge", _("Fridge")), ("freezer", _("Freezer"))],
+        label=_("Store in"),
+        widget=forms.HiddenInput(attrs={"id": "id_storage"}),
+    )
     notes = forms.CharField(
         required=False,
         label=_("Notes"),
@@ -851,6 +865,10 @@ class PumpQuickForm(forms.Form):
             self.initial["start"] = now
             self.initial["left_minutes"] = 0
             self.initial["right_minutes"] = 0
+            if child:
+                from core.utils import milk_stash_status
+
+                self.initial["storage"] = milk_stash_status(child)["suggestion"]
 
     def _make_aware(self, value):
         if value and timezone.is_naive(value):
@@ -909,5 +927,6 @@ class PumpQuickForm(forms.Form):
             amount=(amount_left or 0) + (amount_right or 0),
             amount_left=amount_left,
             amount_right=amount_right,
+            storage=self.cleaned_data.get("storage") or "",
             notes=self.cleaned_data.get("notes", ""),
         )

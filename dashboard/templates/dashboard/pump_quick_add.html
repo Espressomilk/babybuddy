@@ -64,6 +64,16 @@
   .fc-stepper input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   .fc-stepper input[type="number"]:focus { outline: none; }
   .fc-amount-unit { font-size: 0.95rem; font-weight: 600; color: #555; min-width: 20px; }
+  /* ── Storage pills ── */
+  .fc-storage-pills { display: flex; gap: 0.6rem; }
+  .fc-storage-pill {
+    flex: 1; padding: 0.7rem 0.5rem; border: 2px solid #ddd; border-radius: 12px;
+    background: transparent; font-size: 0.95rem; font-weight: 600; color: inherit;
+    text-align: center; cursor: pointer; transition: all 0.15s ease; user-select: none;
+    touch-action: manipulation;
+  }
+  .fc-storage-pill:hover { border-color: #2e3d5f; }
+  .fc-storage-pill.active { background: #2e3d5f; border-color: #2e3d5f; color: #fff; }
   .fc-notes textarea {
     width: 100%; padding: 0.7rem 1rem; border: 1.5px solid #ddd; border-radius: 12px;
     font-size: 1rem; color: #2d2d2d; background: #fff; box-sizing: border-box;
@@ -151,6 +161,14 @@
       <span class="fc-amount-unit">ml</span>
     </div>
 
+    {# ── Storage ── #}
+    <p class="fc-section">{% trans "Store in" %}</p>
+    {{ form.storage }}
+    <div class="fc-storage-pills">
+      <div class="fc-storage-pill" data-value="fridge">🧊 {% trans "Fridge" %}</div>
+      <div class="fc-storage-pill" data-value="freezer">❄️ {% trans "Freezer" %}</div>
+    </div>
+
     {# ── Notes ── #}
     <p class="fc-section">{% trans "Notes" %}</p>
     <div class="fc-notes">
@@ -170,6 +188,20 @@
 
 <script>
 (function () {
+  // ── Storage pills ──
+  var storageInput = document.getElementById('id_storage');
+  var storagePills = document.querySelectorAll('.fc-storage-pill');
+  function activateStorage(value) {
+    if (storageInput) storageInput.value = value;
+    storagePills.forEach(function (p) {
+      p.classList.toggle('active', p.dataset.value === value);
+    });
+  }
+  storagePills.forEach(function (p) {
+    p.addEventListener('click', function () { activateStorage(p.dataset.value); });
+  });
+  if (storageInput) activateStorage(storageInput.value || 'fridge');
+
   // ── Amount steppers ──
   document.querySelectorAll('.fc-stepper-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {

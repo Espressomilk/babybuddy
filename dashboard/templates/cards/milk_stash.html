@@ -1,0 +1,51 @@
+{% extends 'cards/base.html' %}
+{% load i18n %}
+{% block header %}
+    {% trans "Milk Stash" %}
+{% endblock %}
+{% block title %}
+    <div class="d-flex justify-content-between align-items-center">
+        <span>🧊 {% trans "Fridge" %}</span>
+        <span class="text-info">{{ fridge }} ml</span>
+    </div>
+    <div class="d-flex justify-content-between align-items-center">
+        <span>❄️ {% trans "Freezer" %}</span>
+        <span class="text-info">{{ freezer }} ml</span>
+    </div>
+{% endblock %}
+{% block content %}
+    {% if stash.suggestion == "freezer" %}
+        <div>
+            💡 {% trans "Store new milk in the freezer" %}
+            {% if stash.daily_need > 0 %}
+                <br>
+                <small class="text-muted">
+                    {% blocktrans trimmed with amount=daily_need %}
+                        Fridge covers the next 24h (~{{ amount }} ml needed).
+                    {% endblocktrans %}
+                </small>
+            {% endif %}
+        </div>
+    {% else %}
+        <div>
+            💡 {% trans "Store new milk in the fridge" %}
+            <br>
+            <small class="text-muted">
+                {% blocktrans trimmed with amount=daily_need %}
+                    ~{{ amount }} ml needed in the next 24h.
+                {% endblocktrans %}
+            </small>
+        </div>
+    {% endif %}
+    {% if stash.needs_calibration %}
+        <div class="mt-1">
+            <small class="text-warning">⚠️ {% trans "Calibration recommended." %}</small>
+        </div>
+    {% endif %}
+    <div class="mt-2">
+        <a href="{% url 'dashboard:milk-stash-calibrate' child.slug %}"
+           class="btn btn-sm btn-outline-secondary">{% trans "Calibrate" %}</a>
+        <a href="{% url 'dashboard:milk-stash-calibrate' child.slug %}#thaw"
+           class="btn btn-sm btn-outline-secondary">❄️→🧊 {% trans "Thaw" %}</a>
+    </div>
+{% endblock %}

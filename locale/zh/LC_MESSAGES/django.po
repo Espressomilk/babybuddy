@@ -3629,3 +3629,122 @@ msgstr "已为 %(child)s 记录一次挤奶。"
 #: babybuddy/templates/babybuddy/confirm_delete.html
 msgid "This action cannot be undone."
 msgstr "此操作无法撤销。"
+
+#: milk stash
+msgid "Storage"
+msgstr "存放"
+
+msgid "Fridge"
+msgstr "冷藏"
+
+msgid "Freezer"
+msgstr "冷冻"
+
+msgid "Milk Stash"
+msgstr "母乳库存"
+
+msgid "Milk Stash Calibration"
+msgstr "母乳库存校准"
+
+msgid "Milk Stash Calibrations"
+msgstr "母乳库存校准"
+
+msgid "Fridge amount"
+msgstr "冷藏量"
+
+msgid "Freezer amount"
+msgstr "冷冻量"
+
+msgid "Store in"
+msgstr "存放到"
+
+msgid "Store new milk in the freezer"
+msgstr "新挤的奶建议放冷冻"
+
+msgid "Store new milk in the fridge"
+msgstr "新挤的奶建议放冷藏"
+
+msgid "Fridge covers the next 24h (~%(amount)s ml needed)."
+msgstr "冷藏的量足够未来 24 小时（约需 %(amount)s 毫升）。"
+
+msgid "~%(amount)s ml needed in the next 24h."
+msgstr "未来 24 小时约需 %(amount)s 毫升。"
+
+msgid "Calibration recommended."
+msgstr "建议进行校准。"
+
+msgid "Calibrate"
+msgstr "校准"
+
+msgid "Current volumes"
+msgstr "当前存量"
+
+msgid "Count what is actually in storage right now. Future pumpings and bottle feedings of breast milk adjust from this baseline."
+msgstr "请清点当前实际存量。之后的挤奶和母乳瓶喂记录将以此为基准自动增减。"
+
+msgid "Milk stash calibrated."
+msgstr "母乳库存已校准。"
+
+msgid "Amounts cannot be negative."
+msgstr "数量不能为负。"
+
+msgid "Enter valid amounts."
+msgstr "请输入有效的数量。"
+
+#: milk stash thaw
+msgid "Thaw from freezer"
+msgstr "冷冻解冻"
+
+msgid "Thaw"
+msgstr "解冻"
+
+msgid "Move to fridge"
+msgstr "移入冷藏"
+
+msgid "Moves the amount from the freezer (%(amount)s ml available) to the fridge."
+msgstr "将该数量从冷冻（现有 %(amount)s 毫升）移入冷藏。"
+
+msgid "Moved %(amount)s ml from the freezer to the fridge."
+msgstr "已将 %(amount)s 毫升从冷冻移入冷藏。"
+
+msgid "Not enough milk in the freezer."
+msgstr "冷冻的母乳不足。"
+
+#: vaccine form/delete pages
+msgid "Add a Vaccine"
+msgstr "添加疫苗"
+
+msgid "Delete a Vaccine"
+msgstr "删除疫苗"
+
+
+#: procedure tracking
+msgid "Procedure"
+msgstr "医疗操作"
+
+msgid "Procedures"
+msgstr "医疗操作"
+
+msgid "Procedure Name"
+msgstr "操作名称"
+
+msgid "Add Procedure"
+msgstr "添加医疗操作"
+
+msgid "Add a Procedure"
+msgstr "添加医疗操作"
+
+msgid "Delete a Procedure"
+msgstr "删除医疗操作"
+
+msgid "No procedure entries found."
+msgstr "未找到医疗操作记录。"
+
+msgid "Procedure recorded."
+msgstr "已记录医疗操作。"
+
+msgid "Procedure name is required."
+msgstr "请填写操作名称。"
+
+msgid "e.g. Hearing screen, heel prick…"
+msgstr "如:听力筛查、足跟血…"

@@ -8,7 +8,7 @@ from django.utils.translation import gettext as _
 import collections
 
 from core import models
-from core.utils import duration_string, group_feeding_sessions
+from core.utils import duration_string, group_feeding_sessions, milk_stash_status
 
 register = template.Library()
 
@@ -388,6 +388,26 @@ def card_pumping_last(context, child):
         "type": "pumping",
         "pumping": instance,
         "empty": empty,
+        "hide_empty": _hide_empty(context),
+    }
+
+
+@register.inclusion_tag("cards/milk_stash.html", takes_context=True)
+def card_milk_stash(context, child):
+    """
+    Breast milk stash: remaining volume in the fridge and freezer plus a
+    suggestion for where to store newly pumped milk.
+    :param child: an instance of the Child model.
+    """
+    status = milk_stash_status(child)
+    return {
+        "type": "pumping",
+        "child": child,
+        "stash": status,
+        "fridge": _format_amount(status["fridge"]),
+        "freezer": _format_amount(status["freezer"]),
+        "daily_need": _format_amount(status["daily_need"]),
+        "empty": False,
         "hide_empty": _hide_empty(context),
     }
 

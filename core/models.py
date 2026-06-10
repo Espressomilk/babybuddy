@@ -540,6 +540,13 @@ class Pumping(models.Model):
     amount_right = models.FloatField(
         blank=True, null=True, verbose_name=_("Right amount")
     )
+    storage = models.CharField(
+        blank=True,
+        default="",
+        choices=[("fridge", _("Fridge")), ("freezer", _("Freezer"))],
+        max_length=255,
+        verbose_name=_("Storage"),
+    )
     notes = models.TextField(blank=True, null=True, verbose_name=_("Notes"))
     tags = TaggableManager(blank=True, through=Tagged)
 
@@ -563,6 +570,45 @@ class Pumping(models.Model):
         validate_time(self.start, "start")
         validate_duration(self)
         validate_unique_period(Pumping.objects.filter(child=self.child), self)
+
+
+class MilkStashCalibration(models.Model):
+    """Manual baseline for stored breast milk volumes.
+
+    Balances are computed as the latest calibration plus pumpings stored to
+    each location since, minus bottle feedings of breast milk (fridge) since.
+    """
+
+    model_name = "milkstashcalibration"
+    child = models.ForeignKey(
+        "Child",
+        on_delete=models.CASCADE,
+        related_name="milk_stash_calibrations",
+        verbose_name=_("Child"),
+    )
+    fridge_amount = models.FloatField(
+        blank=False, null=False, verbose_name=_("Fridge amount")
+    )
+    freezer_amount = models.FloatField(
+        blank=False, null=False, verbose_name=_("Freezer amount")
+    )
+    time = models.DateTimeField(
+        blank=False,
+        default=timezone.localtime,
+        null=False,
+        verbose_name=_("Time"),
+    )
+
+    objects = models.Manager()
+
+    class Meta:
+        default_permissions = ("view", "add", "change", "delete")
+        ordering = ["-time"]
+        verbose_name = _("Milk Stash Calibration")
+        verbose_name_plural = _("Milk Stash Calibrations")
+
+    def __str__(self):
+        return str(_("Milk Stash Calibration"))
 
 
 class Sleep(models.Model):
@@ -921,6 +967,45 @@ class Vaccine(models.Model):
 
     def __str__(self):
         return str(_("Vaccine"))
+
+    def clean(self):
+        validate_time(self.date, "date")
+
+
+class Procedure(models.Model):
+    model_name = "procedure"
+
+    child = models.ForeignKey(
+        "Child",
+        on_delete=models.CASCADE,
+        related_name="procedure",
+        verbose_name=_("Child"),
+    )
+    name = models.CharField(
+        max_length=255,
+        blank=False,
+        null=False,
+        verbose_name=_("Procedure Name"),
+    )
+    date = models.DateTimeField(
+        blank=False,
+        default=timezone.localtime,
+        null=False,
+        verbose_name=_("Date"),
+    )
+    notes = models.TextField(blank=True, null=True, verbose_name=_("Notes"))
+    tags = TaggableManager(blank=True, through=Tagged)
+
+    objects = models.Manager()
+
+    class Meta:
+        default_permissions = ("view", "add", "change", "delete")
+        ordering = ["-date"]
+        verbose_name = _("Procedure")
+        verbose_name_plural = _("Procedures")
+
+    def __str__(self):
+        return str(_("Procedure"))
 
     def clean(self):
         validate_time(self.date, "date")

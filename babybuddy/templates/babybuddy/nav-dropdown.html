@@ -159,6 +159,42 @@
 {% trans "Temperature reading" %}
 </a>
 {% endif %}
+{% if perms.core.view_medication %}
+<a class="dropdown-item{% if request.path == '/medication/' %} active{% endif %}"
+   href="{% url 'core:medication-list' %}"><i class="icon-medication" aria-hidden="true"></i>
+{% trans "Medication" %}
+</a>
+{% endif %}
+{% if perms.core.add_medication %}
+<a class="dropdown-item ps-5{% if request.path == '/medication/add/' %} active{% endif %}"
+   href="{% url 'core:medication-add' %}"><i class="icon-add" aria-hidden="true"></i>
+{% trans "Medication" %}
+</a>
+{% endif %}
+{% if perms.core.view_vaccine %}
+<a class="dropdown-item{% if request.path == '/vaccine/' %} active{% endif %}"
+   href="{% url 'core:vaccine-list' %}"><i class="icon-note" aria-hidden="true"></i>
+{% trans "Vaccine" %}
+</a>
+{% endif %}
+{% if perms.core.add_vaccine %}
+<a class="dropdown-item ps-5{% if request.path == '/vaccine/add/' %} active{% endif %}"
+   href="{% url 'core:vaccine-add' %}"><i class="icon-add" aria-hidden="true"></i>
+{% trans "Vaccine" %}
+</a>
+{% endif %}
+{% if perms.core.view_procedure %}
+<a class="dropdown-item{% if request.path == '/procedure/' %} active{% endif %}"
+   href="{% url 'core:procedure-list' %}"><i class="icon-note" aria-hidden="true"></i>
+{% trans "Procedure" %}
+</a>
+{% endif %}
+{% if perms.core.add_procedure %}
+<a class="dropdown-item ps-5{% if request.path == '/procedure/add/' %} active{% endif %}"
+   href="{% url 'core:procedure-add' %}"><i class="icon-add" aria-hidden="true"></i>
+{% trans "Procedure" %}
+</a>
+{% endif %}
 {% if perms.core.view_weight %}
     <a class="dropdown-item{% if request.path == '/weight/' %} active{% endif %}"
        href="{% url 'core:weight-list' %}">
@@ -212,30 +248,6 @@
 <a class="dropdown-item ps-5{% if request.path == '/feedings/bottle/add/' %} active{% endif %}"
    href="{% url 'core:bottle-feeding-add' %}"><i class="icon-add" aria-hidden="true"></i>
 {% trans "Bottle Feeding" %}
-</a>
-{% endif %}
-{% if perms.core.view_medication %}
-<a class="dropdown-item{% if request.path == '/medication/' %} active{% endif %}"
-   href="{% url 'core:medication-list' %}"><i class="icon-medication" aria-hidden="true"></i>
-{% trans "Medication" %}
-</a>
-{% endif %}
-{% if perms.core.add_medication %}
-<a class="dropdown-item ps-5{% if request.path == '/medication/add/' %} active{% endif %}"
-   href="{% url 'core:medication-add' %}"><i class="icon-add" aria-hidden="true"></i>
-{% trans "Medication" %}
-</a>
-{% endif %}
-{% if perms.core.view_vaccine %}
-<a class="dropdown-item{% if request.path == '/vaccine/' %} active{% endif %}"
-   href="{% url 'core:vaccine-list' %}"><i class="icon-note" aria-hidden="true"></i>
-{% trans "Vaccine" %}
-</a>
-{% endif %}
-{% if perms.core.add_vaccine %}
-<a class="dropdown-item ps-5{% if request.path == '/vaccine/add/' %} active{% endif %}"
-   href="{% url 'core:vaccine-add' %}"><i class="icon-add" aria-hidden="true"></i>
-{% trans "Vaccine" %}
 </a>
 {% endif %}
 {% if perms.core.view_pumping %}

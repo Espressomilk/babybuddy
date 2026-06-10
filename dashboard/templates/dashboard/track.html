@@ -864,6 +864,9 @@
           {% if perms.core.add_medication %}
           <a href="{% url 'dashboard:health-med-quick' object.slug %}" class="qa-btn">{% trans "Medication" %}</a>
           {% endif %}
+          {% if perms.core.add_procedure %}
+          <a href="{% url 'dashboard:health-procedure-quick' object.slug %}" class="qa-btn">{% trans "Procedure" %}</a>
+          {% endif %}
         </div>
       </div>
     </div>

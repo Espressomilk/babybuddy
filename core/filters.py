@@ -57,6 +57,12 @@ class VaccineFilter(TagFilter):
         fields = ["child", "name"]
 
 
+class ProcedureFilter(TagFilter):
+    class Meta:
+        model = models.Procedure
+        fields = ["child", "name"]
+
+
 class NoteFilter(TagFilter):
     class Meta:
         model = models.Note

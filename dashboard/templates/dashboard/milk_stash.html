@@ -1,0 +1,91 @@
+{% extends 'babybuddy/page.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "Milk Stash" %} - {{ child }}{% endblock %}
+
+{% block breadcrumbs %}
+    <li class="breadcrumb-item">
+        <a href="{% url 'core:child-list' %}">{% trans "Children" %}</a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="{% url 'dashboard:dashboard-child' child.slug %}">{{ child }}</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">{% trans "Milk Stash" %}</li>
+{% endblock %}
+
+{% block content %}
+<style>
+  .ms-wrap { max-width: 480px; margin: 0 auto; padding: 1rem 0 3rem; }
+  .ms-section {
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #888; margin: 1.5rem 0 0.5rem;
+  }
+  .ms-row {
+    display: flex; align-items: center; gap: 0.75rem;
+    background: #fff; border: 1.5px solid #ddd; border-radius: 12px;
+    padding: 0.6rem 1rem; margin-bottom: 0.75rem;
+  }
+  .ms-row .ms-icon { font-size: 1.6rem; }
+  .ms-row label { flex: 1; font-weight: 600; color: #444; margin: 0; }
+  .ms-row input {
+    width: 110px; border: none; outline: none; text-align: right;
+    font-size: 1.25rem; font-weight: 700; color: #2e3d5f; background: transparent;
+  }
+  .ms-row .ms-unit { color: #999; font-size: 0.95rem; }
+  .ms-hint { color: #888; font-size: 0.85rem; margin-top: 0.5rem; }
+  .ms-save {
+    width: 100%; padding: 0.85rem; border: none; border-radius: 14px;
+    background: #2e3d5f; color: #fff; font-size: 1.1rem; font-weight: 700;
+    cursor: pointer; margin-top: 2rem; transition: background 0.15s;
+    touch-action: manipulation;
+  }
+  .ms-save:hover { background: #1a2a45; }
+  .ms-thaw-btn { background: #3a6ea5; margin-top: 1rem; }
+  .ms-thaw-btn:hover { background: #28527d; }
+</style>
+
+<div class="ms-wrap">
+  <form method="post">
+    {% csrf_token %}
+    <p class="ms-section">{% trans "Current volumes" %}</p>
+    <div class="ms-row">
+      <span class="ms-icon">🧊</span>
+      <label for="ms-fridge">{% trans "Fridge" %}</label>
+      <input type="number" inputmode="decimal" step="any" min="0"
+             id="ms-fridge" name="fridge" value="{{ stash.fridge|floatformat:'-1' }}">
+      <span class="ms-unit">ml</span>
+    </div>
+    <div class="ms-row">
+      <span class="ms-icon">❄️</span>
+      <label for="ms-freezer">{% trans "Freezer" %}</label>
+      <input type="number" inputmode="decimal" step="any" min="0"
+             id="ms-freezer" name="freezer" value="{{ stash.freezer|floatformat:'-1' }}">
+      <span class="ms-unit">ml</span>
+    </div>
+    <p class="ms-hint">
+      {% trans "Count what is actually in storage right now. Future pumpings and bottle feedings of breast milk adjust from this baseline." %}
+    </p>
+    <button type="submit" class="ms-save">{% trans "Save" %}</button>
+  </form>
+
+  {# ── Thaw: move milk from freezer to fridge ── #}
+  <form method="post" action="{% url 'dashboard:milk-stash-thaw' child.slug %}" id="thaw">
+    {% csrf_token %}
+    <p class="ms-section">{% trans "Thaw from freezer" %}</p>
+    <div class="ms-row">
+      <span class="ms-icon">❄️→🧊</span>
+      <label for="ms-thaw-amount">{% trans "Amount" %}</label>
+      <input type="number" inputmode="decimal" step="any" min="0"
+             max="{{ stash.freezer|floatformat:'-1' }}"
+             id="ms-thaw-amount" name="amount" placeholder="0">
+      <span class="ms-unit">ml</span>
+    </div>
+    <p class="ms-hint">
+      {% blocktrans trimmed with amount=stash.freezer|floatformat:'-1' %}
+        Moves the amount from the freezer ({{ amount }} ml available) to the fridge.
+      {% endblocktrans %}
+    </p>
+    <button type="submit" class="ms-save ms-thaw-btn">{% trans "Move to fridge" %}</button>
+  </form>
+</div>
+{% endblock %}
