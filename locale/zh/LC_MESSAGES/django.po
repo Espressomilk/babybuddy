@@ -3748,3 +3748,21 @@ msgstr "请填写操作名称。"
 
 msgid "e.g. Hearing screen, heel prick…"
 msgstr "如:听力筛查、足跟血…"
+
+#: precise child age (core/templatetags/duration.py)
+msgid "%(count)s day"
+msgid_plural "%(count)s days"
+msgstr[0] "%(count)s 天"
+
+msgid "%(count)s week"
+msgid_plural "%(count)s weeks"
+msgstr[0] "%(count)s 周"
+
+msgid "%(count)s month"
+msgid_plural "%(count)s months"
+msgstr[0] "%(count)s 个月"
+
+msgid "%(count)s year"
+msgid_plural "%(count)s years"
+msgstr[0] "%(count)s 岁"
+
