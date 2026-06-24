@@ -394,7 +394,7 @@
 
         {# Review & Save — always visible; disabled when nothing to save #}
         {% if feed_bottle_timer or feed_bottle_pending_duration %}
-        <a href="{% url 'dashboard:feed-commit' object.slug %}"
+        <a href="{% url 'dashboard:feed-commit' object.slug 'bottle' %}"
            class="qa-btn" style="text-align:center;">
           {% trans "Review & Save" %}
         </a>
@@ -632,7 +632,7 @@
 
         {# Breastfeed Review & Save #}
         {% if feed_left_timer or feed_right_timer or feed_left_pending_duration or feed_right_pending_duration %}
-        <a href="{% url 'dashboard:feed-commit' object.slug %}"
+        <a href="{% url 'dashboard:feed-commit' object.slug 'breast' %}"
            class="qa-btn" style="text-align:center;">
           {% trans "Review & Save" %}
         </a>

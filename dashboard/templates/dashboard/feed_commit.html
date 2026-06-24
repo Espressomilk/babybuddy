@@ -194,7 +194,7 @@
   </form>
 
   {# Discard is separate — outside the save form #}
-  <form method="post" action="{% url 'dashboard:feed-discard' child.slug %}">
+  <form method="post" action="{% url 'dashboard:feed-discard' child.slug kind %}">
     {% csrf_token %}
     <button type="submit" class="fc-discard">{% trans "Discard Session" %}</button>
   </form>

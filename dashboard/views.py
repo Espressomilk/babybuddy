@@ -514,10 +514,10 @@ class PumpTimerToggle(PermissionRequiredMixin, View):
             if running:
                 for timer in running:
                     side_label = "left" if timer.name == "Pump Left" else "right"
-                    PumpPending.objects.create(
-                        child=child, side=side_label, start=timer.start, end=now
-                    )
-                    timer.stop()
+                    if _claim_stop(timer):
+                        PumpPending.objects.create(
+                            child=child, side=side_label, start=timer.start, end=now
+                        )
             else:
                 for name in ["Pump Left", "Pump Right"]:
                     Timer.objects.create(child=child, user=request.user, name=name)
@@ -525,10 +525,12 @@ class PumpTimerToggle(PermissionRequiredMixin, View):
             name = "Pump Left" if side == "left" else "Pump Right"
             timer = Timer.objects.filter(child=child, name=name).first()
             if timer:
-                PumpPending.objects.create(
-                    child=child, side=side, start=timer.start, end=now
-                )
-                timer.stop()
+                # Record the interval only if we actually stopped the timer, so
+                # a raced double-tap can't double the recorded time.
+                if _claim_stop(timer):
+                    PumpPending.objects.create(
+                        child=child, side=side, start=timer.start, end=now
+                    )
             else:
                 Timer.objects.create(child=child, user=request.user, name=name)
 
@@ -694,6 +696,36 @@ FEED_TIMER_BY_SIDE = {
 }
 
 
+def _feed_side_label(side):
+    return {
+        "left": _("left breast"),
+        "right": _("right breast"),
+        "bottle": _("bottle"),
+    }.get(side, side)
+
+
+# Breast and bottle feed sessions are reviewed and saved independently (often
+# by different caregivers), so the commit/discard flows are scoped by "kind".
+FEED_KIND_SIDES = {
+    "breast": ("left", "right"),
+    "bottle": ("bottle",),
+}
+
+
+def _claim_stop(timer):
+    """Atomically stop a timer, returning True only for the caller that
+    actually deleted the row.
+
+    Stopping a feed/pump timer records its interval as a pending row. If a
+    double-submitted or raced Pause request let two callers both see the same
+    running timer, each would record the interval and the saved duration would
+    double. The row delete is atomic, so only one racer gets a non-zero count;
+    only that caller should create the pending interval.
+    """
+    deleted, _ = Timer.objects.filter(pk=timer.pk).delete()
+    return bool(deleted)
+
+
 class FeedTimerToggle(PermissionRequiredMixin, View):
     """Start or stop a feed timer for the left breast, right breast, or bottle."""
 
@@ -711,30 +743,35 @@ class FeedTimerToggle(PermissionRequiredMixin, View):
         now = timezone.now()
         timer = Timer.objects.filter(child=child, name=name).first()
         if timer:
-            FeedPending.objects.create(
-                child=child, side=side, start=timer.start, end=now
-            )
-            timer.stop()
+            # Record the interval only if we are the request that actually
+            # stopped the timer, so a raced double-tap can't double the time.
+            if _claim_stop(timer):
+                FeedPending.objects.create(
+                    child=child, side=side, start=timer.start, end=now
+                )
         else:
-            # Breastfeeding is one side at a time: starting a breast side stops
-            # the other breast side (into pending) if it is still running.
-            if side in ("left", "right"):
-                other = "right" if side == "left" else "left"
+            # Only one feed timer may run at a time for a child: breast and
+            # bottle sessions are saved as separate Feeding records, so if their
+            # timers overlapped the second would be rejected for a conflicting
+            # timeline. Stop any other running feed timer (into pending) so the
+            # finished session ends exactly where the new one begins.
+            for other_side, other_name in FEED_TIMER_BY_SIDE.items():
+                if other_side == side:
+                    continue
                 other_timer = Timer.objects.filter(
-                    child=child, name=FEED_TIMER_BY_SIDE[other]
+                    child=child, name=other_name
                 ).first()
-                if other_timer:
+                if other_timer and _claim_stop(other_timer):
                     FeedPending.objects.create(
                         child=child,
-                        side=other,
+                        side=other_side,
                         start=other_timer.start,
                         end=now,
                     )
-                    other_timer.stop()
                     messages.info(
                         request,
-                        _("Stopped the %(side)s side.")
-                        % {"side": _("left") if other == "left" else _("right")},
+                        _("Stopped the %(side)s timer.")
+                        % {"side": _feed_side_label(other_side)},
                     )
             Timer.objects.create(child=child, user=request.user, name=name)
         _broadcast_track(kwargs["slug"])
@@ -753,10 +790,15 @@ class FeedCommit(PermissionRequiredMixin, FormView):
     def get_child(self):
         return get_object_or_404(Child, slug=self.kwargs["slug"])
 
-    def _stop_running_timers(self, child):
-        """Stop any running feed timers and persist them as FeedPending rows."""
+    def get_kind(self):
+        kind = self.kwargs.get("kind")
+        return kind if kind in FEED_KIND_SIDES else "breast"
+
+    def _stop_running_timers(self, child, sides):
+        """Stop running feed timers for the given sides into FeedPending rows."""
         now = timezone.now()
-        for side, name in FEED_TIMER_BY_SIDE.items():
+        for side in sides:
+            name = FEED_TIMER_BY_SIDE[side]
             timer = Timer.objects.filter(child=child, name=name).first()
             if timer:
                 FeedPending.objects.create(
@@ -766,8 +808,11 @@ class FeedCommit(PermissionRequiredMixin, FormView):
 
     def dispatch(self, request, *args, **kwargs):
         child = self.get_child()
-        self._stop_running_timers(child)
-        if not FeedPending.objects.filter(child=child).exists():
+        sides = FEED_KIND_SIDES[self.get_kind()]
+        # Only finalize the kind being reviewed; leave the other side's timer
+        # running so a second caregiver can review it separately.
+        self._stop_running_timers(child, sides)
+        if not FeedPending.objects.filter(child=child, side__in=sides).exists():
             return HttpResponseRedirect(
                 reverse("dashboard:track-child", kwargs={"slug": self.kwargs["slug"]})
             )
@@ -790,7 +835,8 @@ class FeedCommit(PermissionRequiredMixin, FormView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         child = self.get_child()
-        pending = FeedPending.objects.filter(child=child)
+        kind = self.get_kind()
+        pending = FeedPending.objects.filter(child=child, side__in=FEED_KIND_SIDES[kind])
         breast = pending.filter(side__in=["left", "right"])
         bottle = pending.filter(side="bottle")
         breast_start, breast_end = self._bounds(breast)
@@ -810,19 +856,23 @@ class FeedCommit(PermissionRequiredMixin, FormView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         child = self.get_child()
+        kind = self.get_kind()
+        sides = FEED_KIND_SIDES[kind]
         left = FeedPending.objects.filter(child=child, side="left")
         right = FeedPending.objects.filter(child=child, side="right")
         bottle = FeedPending.objects.filter(child=child, side="bottle")
         ctx["child"] = child
-        ctx["has_left"] = left.exists()
-        ctx["has_right"] = right.exists()
-        ctx["has_bottle"] = bottle.exists()
-        ctx["has_breast"] = left.exists() or right.exists()
+        ctx["kind"] = kind
+        ctx["has_left"] = "left" in sides and left.exists()
+        ctx["has_right"] = "right" in sides and right.exists()
+        ctx["has_bottle"] = "bottle" in sides and bottle.exists()
+        ctx["has_breast"] = kind == "breast" and (left.exists() or right.exists())
         return ctx
 
     def form_valid(self, form):
         child = self.get_child()
-        pending = FeedPending.objects.filter(child=child)
+        kind = self.get_kind()
+        pending = FeedPending.objects.filter(child=child, side__in=FEED_KIND_SIDES[kind])
         left = pending.filter(side="left")
         right = pending.filter(side="right")
         bottle = pending.filter(side="bottle")
@@ -929,17 +979,23 @@ class FeedSideDiscard(PermissionRequiredMixin, View):
 
 
 class FeedPendingDiscard(PermissionRequiredMixin, View):
-    """Discard all pending feed data and stop any running feed timers."""
+    """Discard pending feed data and stop running feed timers for one kind.
+
+    Scoped to breast or bottle so one caregiver's session can be discarded
+    without affecting the other's.
+    """
 
     permission_required = ("core.add_feeding",)
     http_method_names = ["post"]
 
     def post(self, request, *args, **kwargs):
         child = get_object_or_404(Child, slug=kwargs["slug"])
+        kind = kwargs.get("kind")
+        sides = FEED_KIND_SIDES.get(kind, tuple(FEED_TIMER_BY_SIDE.keys()))
         Timer.objects.filter(
-            child=child, name__in=list(FEED_TIMER_BY_SIDE.values())
+            child=child, name__in=[FEED_TIMER_BY_SIDE[s] for s in sides]
         ).delete()
-        FeedPending.objects.filter(child=child).delete()
+        FeedPending.objects.filter(child=child, side__in=sides).delete()
         _broadcast_track(kwargs["slug"])
         return HttpResponseRedirect(
             reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})

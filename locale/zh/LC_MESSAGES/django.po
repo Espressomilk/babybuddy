@@ -3766,3 +3766,16 @@ msgid "%(count)s year"
 msgid_plural "%(count)s years"
 msgstr[0] "%(count)s 岁"
 
+
+#: feed timer mutual-exclusion
+msgid "left breast"
+msgstr "左侧亲喂"
+
+msgid "right breast"
+msgstr "右侧亲喂"
+
+msgid "bottle"
+msgstr "瓶喂"
+
+msgid "Stopped the %(side)s timer."
+msgstr "已停止%(side)s计时。"

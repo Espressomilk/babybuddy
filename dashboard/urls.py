@@ -134,12 +134,12 @@ urlpatterns = [
         name="pump-quick-add",
     ),
     path(
-        "children/<str:slug>/feed/commit/",
+        "children/<str:slug>/feed/commit/<str:kind>/",
         views.FeedCommit.as_view(),
         name="feed-commit",
     ),
     path(
-        "children/<str:slug>/feed/discard/",
+        "children/<str:slug>/feed/discard/<str:kind>/",
         views.FeedPendingDiscard.as_view(),
         name="feed-discard",
     ),
