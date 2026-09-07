@@ -6,7 +6,8 @@
      a small header at the top of each card instead. */
   .timeline > li > .timeline-time {
     position: absolute;
-    top: 22px;
+    top: 50%;
+    transform: translateY(-50%);
     width: 44%;
     font-weight: 600;
     font-size: 1.05rem;
@@ -38,6 +39,28 @@
   }
   .tl-detail::before, .tl-edit::before { content: "·"; margin: 0 0.3rem; opacity: 0.6; }
   .tl-tags { margin-top: 0.2rem; }
+
+  /* The stock badge is a 50px circle pinned near the top of each row. Now that
+     the cards are compact, consecutive badges collided and the fixed-position
+     card arrow no longer met the card. Shrink the circle and centre both it and
+     the arrow on the card, so they line up whatever height the card ends up. */
+  .timeline li .timeline-badge {
+    width: 32px;
+    height: 32px;
+    line-height: 32px;
+    font-size: 0.95rem;
+    top: 50%;
+    margin-top: -16px;
+    margin-left: -16px;
+  }
+  .timeline li .card::before {
+    top: 50%;
+    margin-top: -15px;
+  }
+  .timeline li .card::after {
+    top: 50%;
+    margin-top: -14px;
+  }
   @media (max-width: 767.98px) {
     .tl-event { font-size: 0.85rem; }
     .tl-detail, .tl-edit { font-size: 0.74rem; }
@@ -47,22 +70,20 @@
      card, and place the exact time in a left gutter right next to the circle. */
   @media (max-width: 767.98px) {
     .timeline::before { left: 78px; }
-    .timeline li .timeline-badge { left: 53px; }
-    .timeline li .card { width: calc(100% - 130px); }
+    /* Keep the smaller badge centred on the line (78 - 32/2). */
+    .timeline li .timeline-badge { left: 62px; margin-left: 0; }
+    .timeline li .card { width: calc(100% - 110px); }
     .timeline-time-m {
       position: absolute;
       left: 0;
-      width: 53px;
-      top: 16px;
-      height: 50px;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
+      width: 56px;
+      top: 50%;
+      transform: translateY(-50%);
       text-align: right;
       padding-right: 6px;
-      line-height: 1.1;
+      line-height: 1.15;
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       font-variant-numeric: tabular-nums;
       color: var(--bs-secondary-color, #6c757d);
     }
