@@ -111,6 +111,18 @@
     transition: border-color 0.15s, color 0.15s;
   }
   .sn-cancel:hover { border-color: #555; color: #333; }
+  .sn-label { font-size: 0.8rem; font-weight: 600; color: #777; margin: 0.6rem 0 0.3rem; }
+  .sn-field input {
+    width: 100%; max-width: 100%; padding: 0.7rem 1rem;
+    border: 1.5px solid #ddd; border-radius: 12px;
+    font-size: 1.05rem; background: #fff; color: #2d2d2d;
+    box-sizing: border-box; -webkit-appearance: none; appearance: none;
+  }
+  .sn-field input:focus { outline: none; border-color: #2e3d5f; }
+  .sn-errors {
+    background: #fdecea; border: 1.5px solid #c0392b; border-radius: 10px;
+    padding: 0.5rem 0.8rem; color: #c0392b; font-size: 0.85rem; margin-top: 0.4rem;
+  }
 </style>
 
 <div class="sn-wrap">
@@ -122,6 +134,22 @@
     <div class="sn-summary">
       <span class="sn-type-badge">{% if timer.name == "Sleep" %}{% trans "Sleep" %}{% elif timer.name == "Nap" %}{% trans "Nap" %}{% else %}{{ timer.name }}{% endif %}</span>
       <span class="sn-elapsed" data-start="{{ timer.start|date:'c' }}">0:00:00</span>
+    </div>
+
+    {# ── Time ── #}
+    <p class="sn-section">{% trans "Time" %}</p>
+    {% if form.non_field_errors %}
+      <div class="sn-errors">{{ form.non_field_errors|striptags }}</div>
+    {% endif %}
+    <p class="sn-label">{% trans "Start time" %}</p>
+    <div class="sn-field">
+      {{ form.start }}
+      {% if form.start.errors %}<div class="sn-errors">{{ form.start.errors|striptags }}</div>{% endif %}
+    </div>
+    <p class="sn-label">{% trans "End time" %}</p>
+    <div class="sn-field">
+      {{ form.end }}
+      {% if form.end.errors %}<div class="sn-errors">{{ form.end.errors|striptags }}</div>{% endif %}
     </div>
 
     {# ── Notes ── #}
@@ -156,4 +184,5 @@
   setInterval(tick, 1000);
 })();
 </script>
+{% include 'dashboard/_time_roller.html' %}
 {% endblock %}

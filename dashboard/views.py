@@ -490,6 +490,21 @@ class SleepTimerNote(PermissionRequiredMixin, FormView):
     def get_timer(self):
         return get_object_or_404(Timer, pk=self.kwargs["pk"], child=self.get_child())
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        timer = self.get_timer()
+        kwargs.update(
+            {
+                "start": timezone.localtime(timer.start).replace(
+                    second=0, microsecond=0, tzinfo=None
+                ),
+                "end": timezone.localtime().replace(
+                    second=0, microsecond=0, tzinfo=None
+                ),
+            }
+        )
+        return kwargs
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["child"] = self.get_child()
@@ -503,8 +518,8 @@ class SleepTimerNote(PermissionRequiredMixin, FormView):
         try:
             entry = Sleep(
                 child=child,
-                start=timer.start,
-                end=timezone.now(),
+                start=form.cleaned_data.get("start") or timer.start,
+                end=form.cleaned_data.get("end") or timezone.now(),
                 nap=(timer.name == "Nap"),
                 notes=notes,
             )

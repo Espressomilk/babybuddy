@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from django.db.models import Sum
 from django.urls import reverse
-from django.utils import timezone, timesince
+from django.utils import timezone
 from django.utils.translation import gettext as _
 
 from core.models import (
@@ -18,6 +18,16 @@ from core.models import (
 from core.utils import duration_string
 
 BREAST_METHODS = ("left breast", "right breast", "both breasts")
+
+
+def _in_day(dt, min_date, max_date):
+    """Whether a moment falls on the day being shown.
+
+    Events are placed on the timeline of the day they actually happen, so an
+    overnight sleep starting at 21:00 shows "fell asleep" on that day and
+    "woke up" on the next one.
+    """
+    return min_date <= dt <= max_date
 
 
 def get_summary(date, child=None):
@@ -43,8 +53,12 @@ def get_summary(date, child=None):
         ]
         or timedelta()
     )
+    # Milk total: bottles plus any amount recorded against a breast feed.
     bottle_amount = (
-        feedings.filter(method="bottle").aggregate(total=Sum("amount"))["total"] or 0
+        feedings.filter(method__in=("bottle",) + BREAST_METHODS).aggregate(
+            total=Sum("amount")
+        )["total"]
+        or 0
     )
 
     return {
@@ -89,9 +103,9 @@ def get_objects(date, child=None):
 
 
 def _add_tummy_times(min_date, max_date, events, child=None):
-    instances = TummyTime.objects.filter(start__range=(min_date, max_date)).order_by(
-        "-start"
-    )
+    instances = TummyTime.objects.filter(
+        start__lte=max_date, end__gte=min_date
+    ).order_by("-start")
     if child:
         instances = instances.filter(child=child)
     for instance in instances:
@@ -99,37 +113,41 @@ def _add_tummy_times(min_date, max_date, events, child=None):
         if instance.milestone:
             details.append(instance.milestone)
         edit_link = reverse("core:tummytime-update", args=[instance.id])
-        events.append(
-            {
-                "time": timezone.localtime(instance.start),
-                "event": _("%(child)s started tummy time!")
+        if _in_day(instance.start, min_date, max_date):
+            events.append(
+                {
+                    "time": timezone.localtime(instance.start),
+                    "event": _("%(child)s started tummy time!")
+                    % {"child": instance.child.first_name},
+                    "details": details,
+                    "edit_link": edit_link,
+                    "model_name": instance.model_name,
+                    "type": "start",
+                    "tags": instance.tags.all(),
+                }
+            )
+
+        if _in_day(instance.end, min_date, max_date):
+            end = {
+                "time": timezone.localtime(instance.end),
+                "event": _("%(child)s finished tummy time.")
                 % {"child": instance.child.first_name},
                 "details": details,
                 "edit_link": edit_link,
                 "model_name": instance.model_name,
-                "type": "start",
+                "type": "end",
                 "tags": instance.tags.all(),
             }
-        )
+            if instance.duration > timedelta(seconds=0):
+                end["duration"] = duration_string(instance.duration)
 
-        end = {
-            "time": timezone.localtime(instance.end),
-            "event": _("%(child)s finished tummy time.")
-            % {"child": instance.child.first_name},
-            "details": details,
-            "edit_link": edit_link,
-            "model_name": instance.model_name,
-            "type": "end",
-            "tags": instance.tags.all(),
-        }
-        if instance.duration > timedelta(seconds=0):
-            end["duration"] = duration_string(instance.duration)
-
-        events.append(end)
+            events.append(end)
 
 
 def _add_sleeps(min_date, max_date, events, child=None):
-    instances = Sleep.objects.filter(start__range=(min_date, max_date)).order_by(
+    # Overlapping, not just starting: an overnight sleep belongs to both days,
+    # contributing "fell asleep" to one and "woke up" to the next.
+    instances = Sleep.objects.filter(start__lte=max_date, end__gte=min_date).order_by(
         "-start"
     )
     if child:
@@ -139,31 +157,33 @@ def _add_sleeps(min_date, max_date, events, child=None):
         if instance.notes:
             details.append(instance.notes)
         edit_link = reverse("core:sleep-update", args=[instance.id])
-        events.append(
-            {
-                "time": timezone.localtime(instance.start),
-                "event": _("%(child)s fell asleep.")
-                % {"child": instance.child.first_name},
+        if _in_day(instance.start, min_date, max_date):
+            events.append(
+                {
+                    "time": timezone.localtime(instance.start),
+                    "event": _("%(child)s fell asleep.")
+                    % {"child": instance.child.first_name},
+                    "details": details,
+                    "edit_link": edit_link,
+                    "model_name": instance.model_name,
+                    "type": "start",
+                    "tags": instance.tags.all(),
+                }
+            )
+
+        if _in_day(instance.end, min_date, max_date):
+            end = {
+                "time": timezone.localtime(instance.end),
+                "event": _("%(child)s woke up.") % {"child": instance.child.first_name},
                 "details": details,
                 "edit_link": edit_link,
                 "model_name": instance.model_name,
-                "type": "start",
+                "type": "end",
                 "tags": instance.tags.all(),
             }
-        )
-
-        end = {
-            "time": timezone.localtime(instance.end),
-            "event": _("%(child)s woke up.") % {"child": instance.child.first_name},
-            "details": details,
-            "edit_link": edit_link,
-            "model_name": instance.model_name,
-            "type": "end",
-            "tags": instance.tags.all(),
-        }
-        if instance.duration > timedelta(seconds=0):
-            end["duration"] = duration_string(instance.duration)
-        events.append(end)
+            if instance.duration > timedelta(seconds=0):
+                end["duration"] = duration_string(instance.duration)
+            events.append(end)
 
 
 def _feeding_method_label(instance):
@@ -179,13 +199,9 @@ def _feeding_method_label(instance):
 
 
 def _add_feedings(min_date, max_date, events, child=None):
-    # Ensure first feeding has a previous.
-    yesterday = min_date - timedelta(days=1)
-    prev_start = None
-
-    instances = Feeding.objects.filter(start__range=(yesterday, max_date)).order_by(
-        "start"
-    )
+    instances = Feeding.objects.filter(
+        start__lte=max_date, end__gte=min_date
+    ).order_by("start")
     if child:
         instances = instances.filter(child=child)
     for instance in instances:
@@ -193,12 +209,6 @@ def _add_feedings(min_date, max_date, events, child=None):
         details.append(_("Method") + ": " + _feeding_method_label(instance))
         if instance.notes:
             details.append(instance.notes)
-        time_since_prev = None
-        if prev_start:
-            time_since_prev = timesince.timesince(prev_start, now=instance.start)
-        prev_start = instance.start
-        if instance.start < min_date:
-            continue
         edit_link = reverse("core:feeding-update", args=[instance.id])
         if instance.amount:
             details.append(_("Amount") + ": " + str(instance.amount))
@@ -212,32 +222,34 @@ def _add_feedings(min_date, max_date, events, child=None):
         }
 
         if instance.duration > timedelta(seconds=0):
-            start_event = {
-                **base_object,
-                "event": _("%(child)s started feeding.")
-                % {"child": instance.child.first_name},
-                "time_since_prev": time_since_prev,
-                "type": "start",
-            }
-
-            end_event = {
-                **base_object,
-                "time": timezone.localtime(instance.end),
-                "event": _("%(child)s finished feeding.")
-                % {"child": instance.child.first_name},
-                "type": "end",
-                "duration": duration_string(instance.duration),
-            }
-
-            events.extend([start_event, end_event])
-        else:
-            feed_event = {
-                **base_object,
-                "event": _("%(child)s had a feeding.")
-                % {"child": instance.child.first_name},
-                "time_since_prev": time_since_prev,
-            }
-            events.append(feed_event)
+            if _in_day(instance.start, min_date, max_date):
+                events.append(
+                    {
+                        **base_object,
+                        "event": _("%(child)s started feeding.")
+                        % {"child": instance.child.first_name},
+                        "type": "start",
+                    }
+                )
+            if _in_day(instance.end, min_date, max_date):
+                events.append(
+                    {
+                        **base_object,
+                        "time": timezone.localtime(instance.end),
+                        "event": _("%(child)s finished feeding.")
+                        % {"child": instance.child.first_name},
+                        "type": "end",
+                        "duration": duration_string(instance.duration),
+                    }
+                )
+        elif _in_day(instance.start, min_date, max_date):
+            events.append(
+                {
+                    **base_object,
+                    "event": _("%(child)s had a feeding.")
+                    % {"child": instance.child.first_name},
+                }
+            )
 
 
 def _add_diaper_changes(min_date, max_date, events, child):

@@ -25,6 +25,24 @@
   }
   .timeline-summary span { white-space: nowrap; }
 
+  /* Compact event cards: the whole event on one line, so a day of events fits
+     on screen without a long scroll. */
+  .timeline > li { margin-bottom: 0.35rem; }
+  .timeline > li .card { margin-bottom: 0; }
+  .timeline > li .card-body.tl-body { padding: 0.4rem 0.7rem; line-height: 1.35; }
+  .tl-event { font-size: 0.9rem; font-weight: 600; }
+  .tl-detail, .tl-edit {
+    font-size: 0.78rem;
+    color: var(--bs-secondary-color, #6c757d);
+    white-space: nowrap;
+  }
+  .tl-detail::before, .tl-edit::before { content: "·"; margin: 0 0.3rem; opacity: 0.6; }
+  .tl-tags { margin-top: 0.2rem; }
+  @media (max-width: 767.98px) {
+    .tl-event { font-size: 0.85rem; }
+    .tl-detail, .tl-edit { font-size: 0.74rem; }
+  }
+
   /* Mobile single-column layout: shift the line to the right, narrow the event
      card, and place the exact time in a left gutter right next to the circle. */
   @media (max-width: 767.98px) {
@@ -87,43 +105,13 @@
                 </div>
                 <div class="timeline-time-m d-md-none">{{ object.time|time }}</div>
                 <div class="card text-end">
-                    <div class="card-body">
-                        {{ object.event }}
-                        {% for detail in object.details %}
-                            <div>
-                                <small>{{ detail }}</small>
-                            </div>
-                        {% endfor %}
+                    <div class="card-body tl-body">
+                        <span class="tl-event">{{ object.event }}</span>
+                        {% for detail in object.details %}<span class="tl-detail">{{ detail }}</span>{% endfor %}
+                        {% if object.duration %}<span class="tl-detail">{{ object.duration }}</span>{% endif %}
+                        {% if object.edit_link %}<a class="tl-edit" href="{{ object.edit_link }}">{% trans "Edit" %}</a>{% endif %}
                         {% if object.tags %}
-                            <div>{% include "core/render_tag_list.html" with tags=object.tags %}</div>
-                        {% endif %}
-                    </div>
-                    <div class="card-footer text-body-secondary">
-                        {% blocktrans trimmed with time_ago=object.time|timesince %}
-                            {{ time_ago }} ago
-                        {% endblocktrans %}
-                        {% if object.duration %}
-                            <div>
-                                <small>
-                                    {% blocktrans trimmed with duration=object.duration %}
-                                        Duration: {{ duration }}
-                                    {% endblocktrans %}
-                                </small>
-                            </div>
-                        {% endif %}
-                        {% if object.time_since_prev %}
-                            <div>
-                                <small>
-                                    {% blocktrans trimmed with since=object.time_since_prev %}
-                                        {{ since }} since previous
-                                    {% endblocktrans %}
-                                </small>
-                            </div>
-                        {% endif %}
-                        {% if object.edit_link %}
-                            <div>
-                                <small><a href="{{ object.edit_link }}">{% trans "Edit" %}</a></small>
-                            </div>
+                            <div class="tl-tags">{% include "core/render_tag_list.html" with tags=object.tags %}</div>
                         {% endif %}
                     </div>
                 </div>

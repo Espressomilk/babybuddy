@@ -122,6 +122,14 @@ class BottleFeedForm(forms.Form):
 
 
 class SleepNoteForm(forms.Form):
+    start = forms.DateTimeField(
+        label=_("Start time"),
+        widget=DateTimeInput(attrs={"step": 60, "id": "id_start"}),
+    )
+    end = forms.DateTimeField(
+        label=_("End time"),
+        widget=DateTimeInput(attrs={"step": 60, "id": "id_end"}),
+    )
     notes = forms.CharField(
         required=False,
         label=_("Notes"),
@@ -133,6 +141,33 @@ class SleepNoteForm(forms.Form):
             }
         ),
     )
+
+    def __init__(self, *args, start=None, end=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.is_bound:
+            if start:
+                self.initial["start"] = start
+            if end:
+                self.initial["end"] = end
+
+    def _make_aware(self, value):
+        if value and timezone.is_naive(value):
+            return timezone.make_aware(value, timezone.get_current_timezone())
+        return value
+
+    def clean_start(self):
+        return self._make_aware(self.cleaned_data.get("start"))
+
+    def clean_end(self):
+        return self._make_aware(self.cleaned_data.get("end"))
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start = cleaned_data.get("start")
+        end = cleaned_data.get("end")
+        if start and end and end <= start:
+            self.add_error("end", _("End time must be after the start time."))
+        return cleaned_data
 
 
 class DiaperChangeQuickForm(forms.ModelForm):
