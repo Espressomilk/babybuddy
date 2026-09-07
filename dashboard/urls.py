@@ -44,6 +44,11 @@ urlpatterns = [
         name="sleep-timer-save",
     ),
     path(
+        "children/<str:slug>/sleep-timer/<int:pk>/review/",
+        views.SleepTimerReview.as_view(),
+        name="sleep-timer-review",
+    ),
+    path(
         "children/<str:slug>/sleep-timer/<int:pk>/note/",
         views.SleepTimerNote.as_view(),
         name="sleep-timer-note",

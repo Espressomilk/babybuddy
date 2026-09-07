@@ -3779,3 +3779,34 @@ msgstr "瓶喂"
 
 msgid "Stopped the %(side)s timer."
 msgstr "已停止%(side)s计时。"
+
+#: sleep timer review / split
+msgid "Review Sleep"
+msgstr "核对睡眠"
+
+msgid "Review the sleep session, then save."
+msgstr "核对本次睡眠后保存。"
+
+msgid "Add another sleep session"
+msgstr "添加一段睡眠"
+
+msgid "These are naps"
+msgstr "这些是小睡"
+
+msgid "Add at least one sleep session."
+msgstr "请至少添加一段睡眠。"
+
+msgid "Enter a start and end time."
+msgstr "请填写开始和结束时间。"
+
+msgid "Saved %(count)d sleep session(s)."
+msgstr "已保存 %(count)d 段睡眠。"
+
+msgid "It looks like %(name)s woke during this sleep. We have split it into separate sleep sessions around the feeding(s) — adjust the times, add or remove sessions, then save."
+msgstr "看起来 %(name)s 在这段睡眠中醒过。我们已按喂养时间将其拆分为多段睡眠 —— 请调整时间、增删睡眠段后保存。"
+
+
+#: sleep review validation
+msgid "End time must be after the start time."
+msgstr "结束时间必须晚于开始时间。"
+

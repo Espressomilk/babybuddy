@@ -2,6 +2,7 @@
 from django.contrib import messages
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
@@ -240,8 +241,68 @@ class SleepTimerStart(PermissionRequiredMixin, View):
         )
 
 
+# Two awake periods closer together than this (e.g. a breast feed immediately
+# followed by a bottle top-up) are one waking, not two.
+WAKE_MERGE_GAP = timezone.timedelta(minutes=5)
+# Sleep shorter than this is a rounding sliver, not a session.
+MIN_SLEEP_SEGMENT = timezone.timedelta(minutes=1)
+
+
+def _sleep_busy(child, start, end):
+    """Merged intervals inside ``[start, end]`` that are not available as sleep.
+
+    The baby was awake for any feeding or tummy time in the window, and any
+    sleep already recorded there is spoken for. Intervals closer together than
+    ``WAKE_MERGE_GAP`` are merged into a single waking.
+    """
+    busy = []
+    for qs in (
+        Feeding.objects.filter(child=child, end__gt=start, start__lt=end),
+        TummyTime.objects.filter(child=child, end__gt=start, start__lt=end),
+        Sleep.objects.filter(child=child, end__gt=start, start__lt=end),
+    ):
+        for obj in qs:
+            ws, we = max(obj.start, start), min(obj.end, end)
+            if we > ws:
+                busy.append([ws, we])
+    busy.sort(key=lambda pair: pair[0])
+
+    merged = []
+    for ws, we in busy:
+        if merged and ws - merged[-1][1] < WAKE_MERGE_GAP:
+            merged[-1][1] = max(merged[-1][1], we)
+        else:
+            merged.append([ws, we])
+    return merged
+
+
+def _sleep_segments(child, start, end):
+    """The sleep window with every busy interval removed.
+
+    Returns a list of ``(start, end)`` pairs, so an interrupted night becomes
+    several sleeps with the awake gaps between them. May be empty if the whole
+    window is spoken for — callers must not fall back to the full window, which
+    would re-create the very overlap this avoids.
+    """
+    segments = []
+    cursor = start
+    for ws, we in _sleep_busy(child, start, end):
+        if ws - cursor >= MIN_SLEEP_SEGMENT:
+            segments.append((cursor, ws))
+        cursor = max(cursor, we)
+    if end - cursor >= MIN_SLEEP_SEGMENT:
+        segments.append((cursor, end))
+    return segments
+
+
 class SleepTimerSave(PermissionRequiredMixin, View):
-    """Directly save a sleep/nap entry from a running timer (no notes)."""
+    """Save a sleep/nap entry from a running timer.
+
+    Fast path: a clean sleep with no interruptions saves in one tap. If a
+    feeding falls inside the sleep window (or the entry would conflict with an
+    existing sleep), redirect to the review page where the sleep is suggested
+    as split segments the user can adjust.
+    """
 
     permission_required = ("core.add_sleep",)
     http_method_names = ["post"]
@@ -249,24 +310,170 @@ class SleepTimerSave(PermissionRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         child = get_object_or_404(Child, slug=kwargs["slug"])
         timer = get_object_or_404(Timer, pk=kwargs["pk"], child=child)
+        now = timezone.now()
+        review_url = reverse(
+            "dashboard:sleep-timer-review",
+            kwargs={"slug": kwargs["slug"], "pk": timer.pk},
+        )
+        # Anything inside the window (a feed, tummy time, sleep already logged)
+        # means the timer's span is not all sleep — review it rather than
+        # silently saving a block that swallows the interruption.
+        if _sleep_busy(child, timer.start, now):
+            return HttpResponseRedirect(review_url)
+        entry = Sleep(
+            child=child,
+            start=timer.start,
+            end=now,
+            nap=(timer.name == "Nap"),
+            notes="",
+        )
         try:
-            entry = Sleep(
-                child=child,
-                start=timer.start,
-                end=timezone.now(),
-                nap=(timer.name == "Nap"),
-                notes="",
-            )
             entry.full_clean()
             entry.save()
             timer.stop()
             messages.success(request, _("Sleep entry saved."))
-        except ValidationError as e:
-            for msg in e.messages:
-                messages.error(request, msg)
+        except ValidationError:
+            # Overlaps an existing sleep — let the user resolve it on the
+            # review form (which keeps the timer's start time) rather than
+            # dead-ending with an error.
+            return HttpResponseRedirect(review_url)
         _broadcast_track(kwargs["slug"])
         return HttpResponseRedirect(
             reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})
+        )
+
+
+class SleepTimerReview(PermissionRequiredMixin, View):
+    """Review and save a sleep as one or more segments (split around feeds)."""
+
+    permission_required = ("core.add_sleep",)
+    template_name = "dashboard/sleep_review.html"
+    MAX_ROWS = 24
+
+    def get_child(self):
+        return get_object_or_404(Child, slug=self.kwargs["slug"])
+
+    def get_timer(self):
+        return get_object_or_404(Timer, pk=self.kwargs["pk"], child=self.get_child())
+
+    # The form inputs have minute precision, so round each segment inwards:
+    # starts up, ends down. Truncating a start downwards could reach back into
+    # the feeding (or already-logged sleep) the gap was carved out of.
+    @staticmethod
+    def _ceil_minute(dt):
+        local = timezone.localtime(dt)
+        floored = local.replace(second=0, microsecond=0)
+        return floored + timezone.timedelta(minutes=1) if floored < local else floored
+
+    @staticmethod
+    def _floor_minute(dt):
+        return timezone.localtime(dt).replace(second=0, microsecond=0)
+
+    def get(self, request, *args, **kwargs):
+        child = self.get_child()
+        timer = self.get_timer()
+        now = timezone.now()
+        segments = []
+        for s, e in _sleep_segments(child, timer.start, now):
+            # Round inwards so a suggestion never reaches back into the
+            # interruption it was carved out of; drop anything that rounds away.
+            rs, re_ = self._ceil_minute(s), self._floor_minute(e)
+            if re_ > rs:
+                segments.append(
+                    {
+                        "start": rs.strftime("%Y-%m-%dT%H:%M"),
+                        "end": re_.strftime("%Y-%m-%dT%H:%M"),
+                    }
+                )
+        # Always give the user at least one editable row.
+        if not segments:
+            segments = [{"start": "", "end": ""}]
+        return render(
+            request,
+            self.template_name,
+            {
+                "child": child,
+                "timer": timer,
+                "segments": segments,
+                "spare_rows": range(len(segments), len(segments) + 3),
+                "is_nap": timer.name == "Nap",
+                "interrupted": bool(_sleep_busy(child, timer.start, now)),
+            },
+        )
+
+    def _parse(self, value):
+        import datetime
+
+        value = (value or "").strip()
+        if not value:
+            return None
+        try:
+            naive = datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M")
+        except ValueError:
+            return None
+        return timezone.make_aware(naive, timezone.get_current_timezone())
+
+    def post(self, request, *args, **kwargs):
+        child = self.get_child()
+        timer = self.get_timer()
+        is_nap = request.POST.get("is_nap") == "on"
+        notes = request.POST.get("notes", "").strip()
+
+        rows, submitted = [], []
+        for i in range(self.MAX_ROWS):
+            raw_start = request.POST.get(f"seg_start_{i}")
+            raw_end = request.POST.get(f"seg_end_{i}")
+            if not raw_start and not raw_end:
+                continue
+            submitted.append({"start": raw_start or "", "end": raw_end or ""})
+            start, end = self._parse(raw_start), self._parse(raw_end)
+            rows.append((start, end))
+
+        def rerender(error):
+            return render(
+                request,
+                self.template_name,
+                {
+                    "child": child,
+                    "timer": timer,
+                    "segments": submitted,
+                    "spare_rows": range(len(submitted), len(submitted) + 3),
+                    "is_nap": is_nap,
+                    "interrupted": len(submitted) > 1,
+                    "error": error,
+                },
+            )
+
+        if not rows:
+            return rerender(_("Add at least one sleep session."))
+
+        try:
+            with transaction.atomic():
+                created = []
+                for start, end in rows:
+                    if not start or not end:
+                        raise ValidationError(_("Enter a start and end time."))
+                    if end <= start:
+                        raise ValidationError(
+                            _("End time must be after the start time.")
+                        )
+                    entry = Sleep(
+                        child=child, start=start, end=end, nap=is_nap, notes=notes
+                    )
+                    entry.full_clean()
+                    entry.save()
+                    created.append(entry)
+                timer.stop()
+        except ValidationError as e:
+            return rerender(" ".join(e.messages))
+
+        messages.success(
+            request,
+            _("Saved %(count)d sleep session(s).") % {"count": len(created)},
+        )
+        _broadcast_track(self.kwargs["slug"])
+        return HttpResponseRedirect(
+            reverse("dashboard:track-child", kwargs={"slug": self.kwargs["slug"]})
         )
 
 
