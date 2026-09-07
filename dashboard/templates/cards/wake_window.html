@@ -1,0 +1,30 @@
+{% extends 'cards/base.html' %}
+{% load i18n %}
+{% block header %}
+    <a href="{% url "core:sleep-list" %}">{% trans "Wake Window" %}</a>
+{% endblock %}
+{% block title %}
+    {% if duration %}
+        <div>{{ duration }}</div>
+        {% if asleep %}
+            <small>{% trans "asleep" %}</small>
+        {% else %}
+            <small>{% trans "awake" %}</small>
+        {% endif %}
+    {% else %}
+        {% trans "None" %}
+    {% endif %}
+{% endblock %}
+{% block content %}
+    {% if since %}
+        {% if asleep %}
+            {% blocktrans trimmed with time=since|time %}
+                Asleep since {{ time }}
+            {% endblocktrans %}
+        {% else %}
+            {% blocktrans trimmed with time=since|time %}
+                Awake since {{ time }}
+            {% endblocktrans %}
+        {% endif %}
+    {% endif %}
+{% endblock %}

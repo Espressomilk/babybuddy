@@ -89,4 +89,5 @@ class UserSettingsForm(forms.ModelForm):
             "timezone",
             "pagination_count",
             "bottle_amount_roller_step",
+            "dashboard_triple_feeding",
         ]

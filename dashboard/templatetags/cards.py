@@ -311,36 +311,37 @@ def card_feeding_last(context, child):
     feedings = models.Feeding.objects.filter(child=child).filter(
         **_filter_data_age(context)
     )
-
-    last_breast = (
-        feedings.filter(
-            method__in=("left breast", "right breast", "both breasts")
-        )
-        .order_by("-end")
-        .first()
-    )
-    last_bottle_breast_milk = (
-        feedings.filter(method="bottle", type="breast milk").order_by("-end").first()
-    )
-    last_bottle_formula = (
-        feedings.filter(method="bottle", type="formula").order_by("-end").first()
-    )
-
-    triple = [
-        {"label": _("Breast feed"), "feeding": last_breast},
-        {"label": _("Bottle (breast milk)"), "feeding": last_bottle_breast_milk},
-        {"label": _("Bottle (formula)"), "feeding": last_bottle_formula},
-    ]
-
-    # Retained for backwards compatibility (overall most recent feeding).
     instance = feedings.order_by("-end").first()
-    empty = not instance
+
+    # The per-method breakdown is only useful while triple feeding; otherwise
+    # the card just shows the most recent feeding.
+    triple_feeding = context["request"].user.settings.dashboard_triple_feeding
+    triple = None
+    if triple_feeding:
+        last_breast = (
+            feedings.filter(method__in=("left breast", "right breast", "both breasts"))
+            .order_by("-end")
+            .first()
+        )
+        last_bottle_breast_milk = (
+            feedings.filter(method="bottle", type="breast milk")
+            .order_by("-end")
+            .first()
+        )
+        last_bottle_formula = (
+            feedings.filter(method="bottle", type="formula").order_by("-end").first()
+        )
+        triple = [
+            {"label": _("Breast feed"), "feeding": last_breast},
+            {"label": _("Bottle (breast milk)"), "feeding": last_bottle_breast_milk},
+            {"label": _("Bottle (formula)"), "feeding": last_bottle_formula},
+        ]
 
     return {
         "type": "feeding",
         "feeding": instance,
         "triple": triple,
-        "empty": empty,
+        "empty": not instance,
         "hide_empty": _hide_empty(context),
     }
 
@@ -469,6 +470,34 @@ def card_sleep_last(context, child):
         "type": "sleep",
         "sleep": instance,
         "empty": empty,
+        "hide_empty": _hide_empty(context),
+    }
+
+
+@register.inclusion_tag("cards/wake_window.html", takes_context=True)
+def card_wake_window(context, child):
+    """
+    The current wake window: how long the child has been awake since waking
+    from the last sleep. While a sleep timer is running the window has ended,
+    so the card shows how long they have been asleep instead.
+    :param child: an instance of the Child model.
+    """
+    now = timezone.localtime()
+    timer = models.Timer.objects.filter(child=child, name__in=["Sleep", "Nap"]).first()
+    asleep = timer is not None
+    if asleep:
+        since = timezone.localtime(timer.start)
+    else:
+        last_sleep = models.Sleep.objects.filter(child=child).order_by("-end").first()
+        since = timezone.localtime(last_sleep.end) if last_sleep else None
+
+    duration = now - since if since and since <= now else None
+    return {
+        "type": "sleep",
+        "asleep": asleep,
+        "since": since,
+        "duration": duration_string(duration, "m") if duration else None,
+        "empty": duration is None,
         "hide_empty": _hide_empty(context),
     }
 

@@ -139,6 +139,15 @@ class Settings(models.Model):
             "page."
         ),
     )
+    dashboard_triple_feeding = models.BooleanField(
+        default=True,
+        verbose_name=_("Triple feeding card"),
+        help_text=_(
+            "Show the last breast feed, bottle (breast milk) and bottle "
+            "(formula) separately on the Last Feeding card. When off, the card "
+            "shows only the most recent feeding."
+        ),
+    )
 
     def __str__(self):
         return str(format_lazy(_("{user}'s Settings"), user=self.user))

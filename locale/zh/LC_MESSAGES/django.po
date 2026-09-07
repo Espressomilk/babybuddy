@@ -3810,3 +3810,28 @@ msgstr "看起来 %(name)s 在这段睡眠中醒过。我们已按喂养时间�
 msgid "End time must be after the start time."
 msgstr "结束时间必须晚于开始时间。"
 
+
+#: triple feeding setting
+msgid "Triple feeding card"
+msgstr "三重喂养卡片"
+
+msgid "Show the last breast feed, bottle (breast milk) and bottle (formula) separately on the Last Feeding card. When off, the card shows only the most recent feeding."
+msgstr "在“最近喂养”卡片中分别显示最近一次亲喂、瓶喂（母乳）和瓶喂（配方奶）。关闭后，该卡片只显示最近的一次喂养。"
+
+
+#: wake window card
+msgid "Wake Window"
+msgstr "清醒时长"
+
+msgid "awake"
+msgstr "已清醒"
+
+msgid "asleep"
+msgstr "已入睡"
+
+msgid "Awake since %(time)s"
+msgstr "自 %(time)s 起清醒"
+
+msgid "Asleep since %(time)s"
+msgstr "自 %(time)s 起入睡"
+
