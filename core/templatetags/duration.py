@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import calendar
 import datetime
 
 from django import template
@@ -14,8 +13,10 @@ register = template.Library()
 @register.filter
 def child_age_string(birth_date):
     """
-    Format a Child's age precisely: days under one week, weeks + days under
-    nine weeks, calendar months + days under two years, then years + months.
+    Format a Child's age as a total number of days.
+
+    Days are what caregivers actually count, and they stay unambiguous where
+    weeks or calendar months blur the exact age.
     :param birth_date: datetime or date instance
     :return: a string representation of time since `birth_date`.
     """
@@ -25,49 +26,10 @@ def child_age_string(birth_date):
         birth = timezone.localtime(birth_date).date()
     except (AttributeError, ValueError):
         birth = birth_date.date() if hasattr(birth_date, "date") else birth_date
-    today = timezone.localdate()
-    days = (today - birth).days
+    days = (timezone.localdate() - birth).days
     if days < 0:
         return ""
-
-    def _days(count):
-        return ngettext("%(count)s day", "%(count)s days", count) % {"count": count}
-
-    if days < 7:
-        return _days(days)
-    if days < 63:
-        weeks, rem = divmod(days, 7)
-        result = ngettext("%(count)s week", "%(count)s weeks", weeks) % {
-            "count": weeks
-        }
-        if rem:
-            result += ", " + _days(rem)
-        return result
-
-    # Whole calendar months elapsed, plus exact remainder days from the
-    # month anniversary (clamped for short months).
-    months = (today.year - birth.year) * 12 + (today.month - birth.month)
-    if today.day < min(birth.day, calendar.monthrange(today.year, today.month)[1]):
-        months -= 1
-    anchor_year = birth.year + (birth.month - 1 + months) // 12
-    anchor_month = (birth.month - 1 + months) % 12 + 1
-    anchor_day = min(birth.day, calendar.monthrange(anchor_year, anchor_month)[1])
-    rem_days = (today - datetime.date(anchor_year, anchor_month, anchor_day)).days
-
-    if months < 24:
-        result = ngettext("%(count)s month", "%(count)s months", months) % {
-            "count": months
-        }
-        if rem_days:
-            result += ", " + _days(rem_days)
-        return result
-    years, rem_months = divmod(months, 12)
-    result = ngettext("%(count)s year", "%(count)s years", years) % {"count": years}
-    if rem_months:
-        result += ", " + ngettext(
-            "%(count)s month", "%(count)s months", rem_months
-        ) % {"count": rem_months}
-    return result
+    return ngettext("%(count)s day", "%(count)s days", days) % {"count": days}
 
 
 @register.filter
