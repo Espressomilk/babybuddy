@@ -20,6 +20,32 @@ from core.utils import duration_string
 BREAST_METHODS = ("left breast", "right breast", "both breasts")
 
 
+def _compact_duration(delta):
+    """Short duration for the timeline's stat pill, e.g. "3h12m" or "45m"."""
+    if delta is None:
+        return None
+    total = int(delta.total_seconds())
+    if total < 0:
+        return None
+    hours, remainder = divmod(total, 3600)
+    minutes = remainder // 60
+    if hours and minutes:
+        return "%dh%dm" % (hours, minutes)
+    if hours:
+        return "%dh" % hours
+    return "%dm" % minutes
+
+
+def _amount_text(amount):
+    """Format a feeding amount for the stat pill."""
+    if not amount:
+        return None
+    value = round(float(amount), 2)
+    if value == int(value):
+        return "%d ml" % int(value)
+    return ("%s ml" % value).rstrip("0").replace(".0 ", " ")
+
+
 def _in_day(dt, min_date, max_date):
     """Whether a moment falls on the day being shown.
 
@@ -128,31 +154,45 @@ def _add_tummy_times(min_date, max_date, events, child=None):
             )
 
         if _in_day(instance.end, min_date, max_date):
-            end = {
-                "time": timezone.localtime(instance.end),
-                "event": _("%(child)s finished tummy time.")
-                % {"child": instance.child.first_name},
-                "details": details,
-                "edit_link": edit_link,
-                "model_name": instance.model_name,
-                "type": "end",
-                "tags": instance.tags.all(),
-            }
-            if instance.duration > timedelta(seconds=0):
-                end["duration"] = duration_string(instance.duration)
-
-            events.append(end)
+            events.append(
+                {
+                    "time": timezone.localtime(instance.end),
+                    "event": _("%(child)s finished tummy time.")
+                    % {"child": instance.child.first_name},
+                    "details": details,
+                    "edit_link": edit_link,
+                    "model_name": instance.model_name,
+                    "type": "end",
+                    "stat": _compact_duration(instance.duration),
+                    "tags": instance.tags.all(),
+                }
+            )
 
 
 def _add_sleeps(min_date, max_date, events, child=None):
     # Overlapping, not just starting: an overnight sleep belongs to both days,
-    # contributing "fell asleep" to one and "woke up" to the next.
-    instances = Sleep.objects.filter(start__lte=max_date, end__gte=min_date).order_by(
-        "-start"
+    # contributing "fell asleep" to one and "woke up" to the next. Look back a
+    # day so the first sleep has a previous wake to measure the window from.
+    lookback = min_date - timedelta(days=1)
+    instances = Sleep.objects.filter(start__lte=max_date, end__gte=lookback).order_by(
+        "start"
     )
     if child:
         instances = instances.filter(child=child)
+    # Keyed by child: the wake window is only meaningful within one child's
+    # own stream, and the timeline can show every child at once.
+    prev_ends = {}
     for instance in instances:
+        prev_end = prev_ends.get(instance.child_id)
+        wake_window = (
+            _compact_duration(instance.start - prev_end)
+            if prev_end and instance.start > prev_end
+            else None
+        )
+        prev_ends[instance.child_id] = (
+            max(prev_end, instance.end) if prev_end else instance.end
+        )
+
         details = []
         if instance.notes:
             details.append(instance.notes)
@@ -167,23 +207,25 @@ def _add_sleeps(min_date, max_date, events, child=None):
                     "edit_link": edit_link,
                     "model_name": instance.model_name,
                     "type": "start",
+                    "stat": wake_window,
                     "tags": instance.tags.all(),
                 }
             )
 
         if _in_day(instance.end, min_date, max_date):
-            end = {
-                "time": timezone.localtime(instance.end),
-                "event": _("%(child)s woke up.") % {"child": instance.child.first_name},
-                "details": details,
-                "edit_link": edit_link,
-                "model_name": instance.model_name,
-                "type": "end",
-                "tags": instance.tags.all(),
-            }
-            if instance.duration > timedelta(seconds=0):
-                end["duration"] = duration_string(instance.duration)
-            events.append(end)
+            events.append(
+                {
+                    "time": timezone.localtime(instance.end),
+                    "event": _("%(child)s woke up.")
+                    % {"child": instance.child.first_name},
+                    "details": details,
+                    "edit_link": edit_link,
+                    "model_name": instance.model_name,
+                    "type": "end",
+                    "stat": _compact_duration(instance.duration),
+                    "tags": instance.tags.all(),
+                }
+            )
 
 
 def _feeding_method_label(instance):
@@ -199,19 +241,28 @@ def _feeding_method_label(instance):
 
 
 def _add_feedings(min_date, max_date, events, child=None):
+    # Look back a day so the first feeding shown has a previous one to measure
+    # the gap from.
+    lookback = min_date - timedelta(days=1)
     instances = Feeding.objects.filter(
-        start__lte=max_date, end__gte=min_date
+        start__lte=max_date, end__gte=lookback
     ).order_by("start")
     if child:
         instances = instances.filter(child=child)
+    # Keyed by child: the timeline can show every child at once, and the gap
+    # since the last feeding is only meaningful within one child's own stream.
+    prev_starts = {}
     for instance in instances:
-        details = []
-        details.append(_("Method") + ": " + _feeding_method_label(instance))
+        prev_start = prev_starts.get(instance.child_id)
+        since_prev = (
+            _compact_duration(instance.start - prev_start) if prev_start else None
+        )
+        prev_starts[instance.child_id] = instance.start
+
+        details = [_feeding_method_label(instance)]
         if instance.notes:
             details.append(instance.notes)
         edit_link = reverse("core:feeding-update", args=[instance.id])
-        if instance.amount:
-            details.append(_("Amount") + ": " + str(instance.amount))
 
         base_object = {
             "time": timezone.localtime(instance.start),
@@ -229,6 +280,7 @@ def _add_feedings(min_date, max_date, events, child=None):
                         "event": _("%(child)s started feeding.")
                         % {"child": instance.child.first_name},
                         "type": "start",
+                        "stat": since_prev,
                     }
                 )
             if _in_day(instance.end, min_date, max_date):
@@ -239,7 +291,7 @@ def _add_feedings(min_date, max_date, events, child=None):
                         "event": _("%(child)s finished feeding.")
                         % {"child": instance.child.first_name},
                         "type": "end",
-                        "duration": duration_string(instance.duration),
+                        "stat": _amount_text(instance.amount),
                     }
                 )
         elif _in_day(instance.start, min_date, max_date):
@@ -248,6 +300,7 @@ def _add_feedings(min_date, max_date, events, child=None):
                     **base_object,
                     "event": _("%(child)s had a feeding.")
                     % {"child": instance.child.first_name},
+                    "stat": _amount_text(instance.amount) or since_prev,
                 }
             )
 
@@ -287,16 +340,13 @@ def _add_medication(min_date, max_date, events, child):
         instances = instances.filter(child=child)
     for instance in instances:
         details = []
-        if instance.dosage:
-            details.append(
-                _("Dosage")
-                + ": "
-                + str(instance.dosage)
-                + " "
-                + instance.get_dosage_unit_display()
-            )
         if instance.notes:
             details.append(instance.notes)
+        dosage = (
+            str(instance.dosage) + " " + instance.get_dosage_unit_display()
+            if instance.dosage
+            else None
+        )
         edit_link = reverse("core:medication-update", args=[instance.id])
 
         events.append(
@@ -311,6 +361,7 @@ def _add_medication(min_date, max_date, events, child):
                 "edit_link": edit_link,
                 "model_name": instance.model_name,
                 "type": "start" if instance.next_dose_time else None,
+                "stat": dosage,
                 "tags": instance.tags.all(),
             }
         )
@@ -358,8 +409,6 @@ def _add_temperature_measurements(min_date, max_date, events, child):
         details = []
         if instance.notes:
             details.append(instance.notes)
-        if instance.temperature:
-            details.append(_("Temperature") + ": " + str(instance.temperature))
         events.append(
             {
                 "time": timezone.localtime(instance.time),
@@ -368,6 +417,7 @@ def _add_temperature_measurements(min_date, max_date, events, child):
                     "child": instance.child.first_name,
                 },
                 "details": details,
+                "stat": str(instance.temperature) if instance.temperature else None,
                 "edit_link": reverse("core:temperature-update", args=[instance.id]),
                 "model_name": instance.model_name,
                 "tags": instance.tags.all(),
