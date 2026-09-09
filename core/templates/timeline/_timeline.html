@@ -160,6 +160,7 @@
                class="tl-date-input"
                value="{{ date|date:'Y-m-d' }}"
                max="{% now 'Y-m-d' %}"
+               data-today="{% now 'Y-m-d' %}"
                aria-label="{% trans "Choose a date" %}">
     </span>
     {% if date_next %}
@@ -221,6 +222,7 @@
                class="tl-date-input"
                value="{{ date|date:'Y-m-d' }}"
                max="{% now 'Y-m-d' %}"
+               data-today="{% now 'Y-m-d' %}"
                aria-label="{% trans "Choose a date" %}">
     </span>
         {% if date_next %}
@@ -239,10 +241,22 @@
 (function () {
   document.querySelectorAll('.tl-date-input').forEach(function (input) {
     input.addEventListener('change', function () {
-      if (!input.value) return;
+      var today = input.dataset.today;
+      // iOS Safari's date picker offers a Reset button that only clears the
+      // field, which would otherwise do nothing here. Treat a cleared value as
+      // "jump to today" so that button becomes a useful shortcut.
+      var target = input.value || today;
+      if (!target) return;
+      // iOS treats max as advisory and still lets the wheel reach future
+      // dates, so clamp here rather than trusting the control. ISO dates
+      // compare correctly as strings.
+      if (today && target > today) {
+        target = today;
+        input.value = today;
+      }
       // Keep any other query parameters (e.g. a child filter) intact.
       var params = new URLSearchParams(window.location.search);
-      params.set('date', input.value);
+      params.set('date', target);
       window.location.search = params.toString();
     });
     // Browsers that support it open the picker straight away; elsewhere the
