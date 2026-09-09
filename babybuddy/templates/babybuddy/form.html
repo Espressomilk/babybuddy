@@ -40,6 +40,7 @@
 <div class="container-fluid pb-5 bb-form-modern">
     <form role="form" method="post" enctype="multipart/form-data">
         {% csrf_token %}
+        {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
         {% if form.fieldsets %}
             {% for fieldset in form.hydrated_fielsets %}
                 {% with "forms/layouts/"|add:fieldset.layout|add:".html" as template %}
@@ -58,7 +59,10 @@
                 {% with del_name="core:"|add:request.resolver_match.url_name|cut:"-update"|add:"-delete" %}
                     {% url del_name object.pk as del_url %}
                     {% if del_url %}
-                        <a href="{{ del_url }}" class="btn btn-outline-danger btn-lg">{% trans "Delete" %}</a>
+                        {# Carry the origin through, so deleting also returns there
+                           rather than to this page, which will no longer exist. #}
+                        <a href="{{ del_url }}{% if next_url %}?next={{ next_url|urlencode }}{% endif %}"
+                           class="btn btn-outline-danger btn-lg">{% trans "Delete" %}</a>
                     {% endif %}
                 {% endwith %}
             {% endif %}

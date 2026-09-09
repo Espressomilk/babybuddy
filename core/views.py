@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from urllib.parse import urlparse
+
 from django.contrib import messages
 from django.contrib.messages.views import SuccessMessageMixin
 from django.db.models import Count
@@ -7,6 +9,7 @@ from django.forms import Form
 from django.http import HttpResponseRedirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext as _
 from django.views.generic.base import RedirectView, TemplateView
 from django.views.generic.detail import DetailView
@@ -29,7 +32,49 @@ def _prepare_timeline_context_data(context, date, child=None):
     pass
 
 
-class CoreAddView(PermissionRequiredMixin, SuccessMessageMixin, CreateView):
+class NextUrlMixin:
+    """Return to the page the entry was opened from after saving.
+
+    Add and edit pages are reached from many places -- the timeline, the track
+    page, the nav menu -- and always landing on the record list loses that
+    context. The originating page is captured when the form is opened and
+    carried through the form itself, so it survives a validation error.
+    """
+
+    # Deleting an object from its own edit page would make the referring page
+    # a 404, so views that remove things only honour an explicit "next".
+    next_from_referer = True
+
+    def _safe_url(self, url):
+        if url and url_has_allowed_host_and_scheme(
+            url,
+            allowed_hosts={self.request.get_host()},
+            require_https=self.request.is_secure(),
+        ):
+            return url
+        return None
+
+    def get_next_url(self):
+        # POST first, so the value survives re-rendering after a form error.
+        candidate = self.request.POST.get("next") or self.request.GET.get("next")
+        if not candidate and self.next_from_referer and self.request.method == "GET":
+            candidate = self.request.META.get("HTTP_REFERER")
+        url = self._safe_url(candidate)
+        # Never send the user back to the page they are already on.
+        if url and urlparse(url).path == self.request.path:
+            return None
+        return url
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["next_url"] = self.get_next_url()
+        return context
+
+    def get_success_url(self):
+        return self.get_next_url() or super().get_success_url()
+
+
+class CoreAddView(NextUrlMixin, PermissionRequiredMixin, SuccessMessageMixin, CreateView):
     def get_success_message(self, cleaned_data):
         cleaned_data["model"] = self.model._meta.verbose_name.title()
         if "child" in cleaned_data:
@@ -57,7 +102,9 @@ class CoreAddView(PermissionRequiredMixin, SuccessMessageMixin, CreateView):
         return kwargs
 
 
-class CoreUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView):
+class CoreUpdateView(
+    NextUrlMixin, PermissionRequiredMixin, SuccessMessageMixin, UpdateView
+):
     def get_success_message(self, cleaned_data):
         cleaned_data["model"] = self.model._meta.verbose_name.title()
         if "child" in cleaned_data:
@@ -67,7 +114,11 @@ class CoreUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView):
         return self.success_message % cleaned_data
 
 
-class CoreDeleteView(PermissionRequiredMixin, SuccessMessageMixin, DeleteView):
+class CoreDeleteView(
+    NextUrlMixin, PermissionRequiredMixin, SuccessMessageMixin, DeleteView
+):
+    next_from_referer = False
+
     def get_success_message(self, cleaned_data):
         return _("%(model)s entry deleted.") % {
             "model": self.model._meta.verbose_name.title()

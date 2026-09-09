@@ -20,6 +20,7 @@
 <div class="bb-confirm">
   <form role="form" method="post">
     {% csrf_token %}
+    {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
     <div class="bb-confirm__card">
       <div class="bb-confirm__icon">🗑️</div>
       <p class="bb-confirm__text">{% confirm_delete_text object %}</p>
