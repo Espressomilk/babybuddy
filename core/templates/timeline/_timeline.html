@@ -26,6 +26,31 @@
   }
   .timeline-summary span { white-space: nowrap; }
 
+  /* The date itself opens a picker, so jumping to a distant day does not mean
+     stepping through it one arrow click at a time. A transparent native date
+     input sits over the text: tapping it opens the platform picker directly. */
+  .tl-date {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+    border-bottom: 2px dotted var(--bs-secondary-color, #6c757d);
+  }
+  .tl-date-input {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
   /* Compact event cards: two left-aligned lines (what happened, then the
      non-numeric detail), with the numeric stat and a chevron pinned right. */
   .timeline > li { margin-bottom: 0.35rem; }
@@ -129,7 +154,14 @@
             <span class="visually-hidden">{% trans "Previous" %}</span>
         </a>
     {% endif %}
-    {{ date|date }}
+    <span class="tl-date">
+        {{ date|date }}
+        <input type="date"
+               class="tl-date-input"
+               value="{{ date|date:'Y-m-d' }}"
+               max="{% now 'Y-m-d' %}"
+               aria-label="{% trans "Choose a date" %}">
+    </span>
     {% if date_next %}
         <a class="btn btn-sm btn-default"
            href="?date={{ date_next|date:"Y-m-d" }}"
@@ -183,7 +215,14 @@
                 <span class="visually-hidden">{% trans "Previous" %}</span>
             </a>
         {% endif %}
+        <span class="tl-date">
         {{ date|date }}
+        <input type="date"
+               class="tl-date-input"
+               value="{{ date|date:'Y-m-d' }}"
+               max="{% now 'Y-m-d' %}"
+               aria-label="{% trans "Choose a date" %}">
+    </span>
         {% if date_next %}
             <a class="btn btn-sm btn-default"
                href="?date={{ date_next|date:"Y-m-d" }}"
@@ -196,3 +235,23 @@
 {% else %}
     <div class="text-center">{% trans "No events" %}</div>
 {% endif %}
+<script>
+(function () {
+  document.querySelectorAll('.tl-date-input').forEach(function (input) {
+    input.addEventListener('change', function () {
+      if (!input.value) return;
+      // Keep any other query parameters (e.g. a child filter) intact.
+      var params = new URLSearchParams(window.location.search);
+      params.set('date', input.value);
+      window.location.search = params.toString();
+    });
+    // Browsers that support it open the picker straight away; elsewhere the
+    // transparent input over the date handles the tap natively.
+    input.addEventListener('click', function () {
+      if (typeof input.showPicker === 'function') {
+        try { input.showPicker(); } catch (e) { /* already open */ }
+      }
+    });
+  });
+})();
+</script>
