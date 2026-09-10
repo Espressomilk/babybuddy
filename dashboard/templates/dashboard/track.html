@@ -182,6 +182,31 @@
   }
 
   /* Start Quick Timer button */
+  /* Inline start-time correction on a running sleep timer. */
+  .qa-sleep-start {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .qa-sleep-start-label {
+    flex: 1;
+    font-size: 0.8rem;
+    color: #6c757d;
+    white-space: nowrap;
+  }
+  .qa-sleep-start .tr-display {
+    padding: 0.3rem 0.6rem;
+    border-radius: 8px;
+    border: 1.5px solid #bcc4d6;
+    background: #fff;
+    color: #2e3d5f;
+    font-size: 0.8rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .qa-sleep-start .tr-display:hover { border-color: #2e3d5f; background: #f0f4ff; }
   .qa-timer-start {
     width: 100%;
     padding: 0.65rem;
@@ -466,7 +491,7 @@
     <div class="qa-header">
       <span class="qa-label">{% trans "Sleep" %}</span>
       {% if perms.core.add_sleep %}
-        <a href="{% url 'core:sleep-add' %}?child={{ object.slug }}"
+        <a href="{% url 'dashboard:sleep-add' object.slug %}"
            class="qa-plus" title="{% trans "Add sleep" %}">+</a>
       {% endif %}
     </div>
@@ -491,22 +516,27 @@
             <span class="qa-timer-clock" data-start="{{ sleep_timer.start|date:'c' }}"
                   style="flex:1;text-align:right;">0:00:00</span>
           </div>
+          {% comment %}
+            The recorded start is usually a few minutes late: the phone gets
+            picked up once the child is asleep, not as they drop off. Tapping
+            the time opens the roller and saves the correction straight away.
+          {% endcomment %}
+          {% if perms.core.add_timer %}
+          <form method="post" id="qa-sleep-start-form"
+                action="{% url 'dashboard:sleep-timer-adjust' object.slug sleep_timer.pk %}"
+                class="qa-sleep-start">
+            {% csrf_token %}
+            <span class="qa-sleep-start-label">{% trans "Fell asleep" %}</span>
+            <input type="datetime-local" step="60" name="start" id="qa-sleep-start-input"
+                   value="{{ sleep_timer.start|date:'Y-m-d\TH:i' }}">
+          </form>
+          {% endif %}
           {% if perms.core.add_sleep %}
-          <div style="display:flex;gap:0.4rem;">
-            <form method="post"
-                  action="{% url 'dashboard:sleep-timer-save' object.slug sleep_timer.pk %}"
-                  style="flex:1;margin:0;">
-              {% csrf_token %}
-              <button type="submit" class="qa-timer-start" style="font-size:0.82rem;padding:0.4rem 0.5rem;">
-                {% trans "Save" %}
-              </button>
-            </form>
-            <a href="{% url 'dashboard:sleep-timer-note' object.slug sleep_timer.pk %}"
-               class="qa-timer-start"
-               style="flex:2;font-size:0.82rem;padding:0.4rem 0.5rem;text-align:center;text-decoration:none;">
-              {% trans "Add note & Save" %}
-            </a>
-          </div>
+          <a href="{% url 'dashboard:sleep-timer-note' object.slug sleep_timer.pk %}"
+             class="qa-timer-start"
+             style="font-size:0.82rem;padding:0.4rem 0.5rem;text-align:center;text-decoration:none;">
+            {% trans "Stop & Save" %}
+          </a>
           {% endif %}
         </div>
       </div>
@@ -938,6 +968,7 @@
     initClocks();
     bindForms();
     initSwipeToDiscard();
+    bindSleepStart();
     refreshing = false;
   }
 
@@ -1073,11 +1104,25 @@
     ws.onerror = function () { ws.close(); };
   }
 
+  // Tapping the "fell asleep" time opens the roller; picking a time saves the
+  // correction. The content swap replaces the input, so re-enhance and re-bind.
+  function bindSleepStart() {
+    if (window.TimeRoller) window.TimeRoller.init();
+    var input = document.getElementById('qa-sleep-start-input');
+    if (!input || input.dataset.bound) return;
+    input.dataset.bound = '1';
+    input.addEventListener('change', function () {
+      if (input.value) document.getElementById('qa-sleep-start-form').requestSubmit();
+    });
+  }
+
   // ── Boot ──────────────────────────────────────────────────────────────────
   initClocks();
   bindForms();
   initSwipeToDiscard();
+  bindSleepStart();
   connectWS();
 })();
 </script>
+{% include 'dashboard/_time_roller.html' %}
 {% endblock %}

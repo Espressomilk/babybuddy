@@ -3916,3 +3916,28 @@ msgstr "偏多，建议推后"
 msgid "Suggested start time"
 msgstr "建议开始时间"
 
+
+#: sleep timer start adjustment
+msgid "Fell asleep %(time)s"
+msgstr "%(time)s 入睡"
+
+msgid "A sleep cannot start in the future."
+msgstr "睡眠开始时间不能晚于现在。"
+
+msgid "That is too far back."
+msgstr "调整幅度过大。"
+
+
+#: weekly milk average card
+msgid "Milk per Day"
+msgstr "日均奶量"
+
+msgid "past 7 days"
+msgstr "过去 7 天"
+
+msgid "%(total)s ml over %(days)s days logged"
+msgstr "共 %(total)s 毫升，有记录 %(days)s 天"
+
+msgid "No milk logged this week"
+msgstr "本周没有奶量记录"
+

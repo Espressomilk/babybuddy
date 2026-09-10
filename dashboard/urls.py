@@ -39,14 +39,14 @@ urlpatterns = [
         name="sleep-timer-start",
     ),
     path(
-        "children/<str:slug>/sleep-timer/<int:pk>/save/",
-        views.SleepTimerSave.as_view(),
-        name="sleep-timer-save",
+        "children/<str:slug>/sleep/add/",
+        views.SleepAdd.as_view(),
+        name="sleep-add",
     ),
     path(
-        "children/<str:slug>/sleep-timer/<int:pk>/review/",
-        views.SleepTimerReview.as_view(),
-        name="sleep-timer-review",
+        "children/<str:slug>/sleep-timer/<int:pk>/adjust/",
+        views.SleepTimerAdjust.as_view(),
+        name="sleep-timer-adjust",
     ),
     path(
         "children/<str:slug>/sleep-timer/<int:pk>/note/",

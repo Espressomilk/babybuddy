@@ -138,6 +138,11 @@ class SleepNoteForm(forms.Form):
         label=_("End time"),
         widget=DateTimeInput(attrs={"step": 60, "id": "id_end"}),
     )
+    nap = forms.BooleanField(
+        required=False,
+        label=_("Nap"),
+        widget=forms.HiddenInput(attrs={"id": "id_nap"}),
+    )
     notes = forms.CharField(
         required=False,
         label=_("Notes"),
@@ -150,13 +155,15 @@ class SleepNoteForm(forms.Form):
         ),
     )
 
-    def __init__(self, *args, start=None, end=None, **kwargs):
+    def __init__(self, *args, start=None, end=None, nap=None, **kwargs):
         super().__init__(*args, **kwargs)
         if not self.is_bound:
             if start:
                 self.initial["start"] = start
             if end:
                 self.initial["end"] = end
+            if nap is not None:
+                self.initial["nap"] = nap
 
     def _make_aware(self, value):
         if value and timezone.is_naive(value):

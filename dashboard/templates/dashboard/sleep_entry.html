@@ -129,6 +129,23 @@
   }
   .sn-pill:hover { border-color: #2e3d5f; }
   .sn-pill.active { background: #2e3d5f; border-color: #2e3d5f; color: #fff; }
+  .sn-nap-pill {
+    flex: 1 1 45%;
+    padding: 0.7rem 0.6rem;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    background: transparent;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: inherit;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+    touch-action: manipulation;
+  }
+  .sn-nap-pill:hover { border-color: #2e3d5f; }
+  .sn-nap-pill.active { background: #2e3d5f; border-color: #2e3d5f; color: #fff; }
   .sn-label { font-size: 0.8rem; font-weight: 600; color: #777; margin: 0.6rem 0 0.3rem; }
   .sn-field input {
     width: 100%; max-width: 100%; padding: 0.7rem 1rem;
@@ -147,12 +164,22 @@
   <form method="post" id="sn-form">
     {% csrf_token %}
 
-    {# ── Timer summary ── #}
+    {% if timer %}
+    {# Frozen at the moment Stop & Save was tapped, not still counting. #}
     <p class="sn-section">{% trans "Timer" %}</p>
     <div class="sn-summary">
       <span class="sn-type-badge">{% if timer.name == "Sleep" %}{% trans "Sleep" %}{% elif timer.name == "Nap" %}{% trans "Nap" %}{% else %}{{ timer.name }}{% endif %}</span>
-      <span class="sn-elapsed" data-start="{{ timer.start|date:'c' }}">0:00:00</span>
+      <span class="sn-elapsed">{{ elapsed }}</span>
     </div>
+    {% else %}
+    {# Added by hand, so the kind of sleep has to be chosen. #}
+    <p class="sn-section">{% trans "Type" %}</p>
+    {{ form.nap }}
+    <div class="sn-settling">
+      <div class="sn-nap-pill" data-value="">🌙 {% trans "Sleep" %}</div>
+      <div class="sn-nap-pill" data-value="1">☀️ {% trans "Nap" %}</div>
+    </div>
+    {% endif %}
 
     {# ── Settling ── #}
     <p class="sn-section">{% trans "How did they go down?" %}</p>
@@ -226,6 +253,18 @@
     p.addEventListener('click', function () { choose(p.dataset.value); });
   });
   if (settling && settling.value) choose(settling.value);
+
+  // Sleep vs nap, only present when the entry is added by hand.
+  var nap = document.getElementById('id_nap');
+  var napPills = document.querySelectorAll('.sn-nap-pill');
+  function chooseNap(value) {
+    if (nap) nap.value = value;
+    napPills.forEach(function (p) { p.classList.toggle('active', p.dataset.value === value); });
+  }
+  napPills.forEach(function (p) {
+    p.addEventListener('click', function () { chooseNap(p.dataset.value); });
+  });
+  if (napPills.length) chooseNap(nap && nap.value ? '1' : '');
 })();
 </script>
 {% include 'dashboard/_time_roller.html' %}

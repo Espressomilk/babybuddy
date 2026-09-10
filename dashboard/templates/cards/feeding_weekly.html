@@ -1,0 +1,68 @@
+{% extends 'cards/base.html' %}
+{% load i18n %}
+{% block header %}
+    <a href="{% url "core:feeding-list" %}">{% trans "Milk per Day" %}</a>
+{% endblock %}
+{% block title %}
+    <style>
+        /* Keep the arrows in their own gutters so they never sit on the value. */
+        #feeding-weekly-carousel .carousel-item { padding: 0 2rem; }
+        #feeding-weekly-carousel .carousel-control-prev,
+        #feeding-weekly-carousel .carousel-control-next { width: 2rem; opacity: 0.65; }
+        #feeding-weekly-carousel .fw-value {
+            font-size: clamp(1rem, 6vw, 1.8em);
+            line-height: 1.15;
+            white-space: nowrap;
+        }
+        #feeding-weekly-carousel .fw-range,
+        #feeding-weekly-carousel .fw-detail {
+            font-size: 0.8rem;
+            font-weight: 400;
+            color: var(--bs-secondary-color, #6c757d);
+        }
+    </style>
+    <div id="feeding-weekly-carousel" class="carousel slide" data-bs-interval="false">
+        <div class="carousel-inner">
+            {% for week in weeks %}
+                <div class="carousel-item{% if forloop.first %} active{% endif %}">
+                    <div class="text-center">
+                        <div class="fw-value">
+                            {% if week.average %}{{ week.average }} ml{% else %}&mdash;{% endif %}
+                        </div>
+                        <div class="fw-range">
+                            {% if week.current %}
+                                {% trans "past 7 days" %}
+                            {% else %}
+                                {{ week.start|date:"M j" }} – {{ week.end|date:"M j" }}
+                            {% endif %}
+                        </div>
+                        <div class="fw-detail">
+                            {% if week.total %}
+                                {% blocktrans trimmed with total=week.total days=week.days_logged %}
+                                    {{ total }} ml over {{ days }} days logged
+                                {% endblocktrans %}
+                            {% else %}
+                                {% trans "No milk logged this week" %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        <button class="carousel-control-prev"
+                type="button"
+                data-bs-target="#feeding-weekly-carousel"
+                data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">{% trans "Previous" %}</span>
+        </button>
+        <button class="carousel-control-next"
+                type="button"
+                data-bs-target="#feeding-weekly-carousel"
+                data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">{% trans "Next" %}</span>
+        </button>
+    </div>
+{% endblock %}
+{% block content %}{% endblock %}

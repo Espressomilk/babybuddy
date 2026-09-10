@@ -476,8 +476,15 @@
   }
 
   function init() {
-    document.querySelectorAll('input[type="datetime-local"]').forEach(enhance);
+    document.querySelectorAll('input[type="datetime-local"]').forEach(function (input) {
+      // Pages that swap content in re-run this; do not enhance twice.
+      var prev = input.previousElementSibling;
+      if (prev && prev.classList && prev.classList.contains('tr-display')) return;
+      enhance(input);
+    });
   }
+  // Exposed so a page that replaces its DOM can re-enhance the new inputs.
+  window.TimeRoller = { init: init };
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
