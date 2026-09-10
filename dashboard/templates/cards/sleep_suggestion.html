@@ -1,0 +1,53 @@
+{% extends 'cards/base.html' %}
+{% load i18n %}
+{% block header %}
+    <a href="{% url "core:sleep-list" %}">{% trans "Next Sleep" %}</a>
+{% endblock %}
+{% block title %}
+    {% if state == "asleep" %}
+        {% trans "Sleeping" %}
+    {% elif state == "unknown" or state == "stale" %}
+        {% trans "None" %}
+    {% else %}
+        <div{% if state == "overdue" %} class="text-danger"{% elif state == "due" %} class="text-warning"{% endif %}>
+            {{ suggested_at|time }}
+        </div>
+        <small>
+            {% if state == "early" %}
+                {% blocktrans trimmed with remaining=remaining %}
+                    in {{ remaining }}
+                {% endblocktrans %}
+            {% elif state == "due" %}
+                {% trans "due now" %}
+            {% else %}
+                {% blocktrans trimmed with remaining=remaining %}
+                    {{ remaining }} overdue
+                {% endblocktrans %}
+            {% endif %}
+        </small>
+    {% endif %}
+{% endblock %}
+{% block content %}
+    {% if state == "asleep" %}
+        <div>{% trans "Sleeping now — a suggestion follows the next wake." %}</div>
+    {% elif state == "unknown" %}
+        <div class="small text-body-secondary">{% trans "Log some sleep to get a suggestion." %}</div>
+    {% elif state == "stale" %}
+        <div class="small text-body-secondary">{% trans "No sleep logged recently." %}</div>
+    {% else %}
+        <div>
+            {% blocktrans trimmed with target=target %}
+                After {{ target }} awake
+            {% endblocktrans %}
+        </div>
+        <div class="small text-body-secondary">
+            {% if personal %}
+                {% blocktrans trimmed with count=samples name=child.first_name %}
+                    Based on {{ name }}'s last {{ count }} naps
+                {% endblocktrans %}
+            {% else %}
+                {% trans "Typical for this age — not enough naps logged yet" %}
+            {% endif %}
+        </div>
+    {% endif %}
+{% endblock %}

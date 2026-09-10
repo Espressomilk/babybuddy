@@ -3835,3 +3835,40 @@ msgstr "自 %(time)s 起清醒"
 msgid "Asleep since %(time)s"
 msgstr "自 %(time)s 起入睡"
 
+
+#: next sleep suggestion card
+msgid "Next Sleep"
+msgstr "下次睡眠"
+
+msgid "Sleeping"
+msgstr "睡眠中"
+
+msgid "due now"
+msgstr "该睡了"
+
+msgid "in %(remaining)s"
+msgstr "还有 %(remaining)s"
+
+msgid "%(remaining)s overdue"
+msgstr "已超时 %(remaining)s"
+
+msgid "After %(target)s awake"
+msgstr "清醒 %(target)s 后"
+
+msgid "Sleeping now — a suggestion follows the next wake."
+msgstr "正在睡觉，下次醒来后会给出建议。"
+
+msgid "Log some sleep to get a suggestion."
+msgstr "记录一些睡眠后才能给出建议。"
+
+msgid "Typical for this age — not enough naps logged yet"
+msgstr "该月龄的典型值 —— 小睡记录还不够"
+
+msgid "Based on %(name)s's last %(count)s naps"
+msgstr "基于 %(name)s 最近 %(count)s 次小睡"
+
+
+#: next sleep suggestion - stale data
+msgid "No sleep logged recently."
+msgstr "最近没有睡眠记录。"
+

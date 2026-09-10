@@ -8,6 +8,7 @@ from django.utils.translation import gettext as _
 import collections
 
 from core import models
+from core.sleep_advice import suggest_next_sleep
 from core.utils import duration_string, group_feeding_sessions, milk_stash_status
 
 register = template.Library()
@@ -470,6 +471,35 @@ def card_sleep_last(context, child):
         "type": "sleep",
         "sleep": instance,
         "empty": empty,
+        "hide_empty": _hide_empty(context),
+    }
+
+
+@register.inclusion_tag("cards/sleep_suggestion.html", takes_context=True)
+def card_sleep_suggestion(context, child):
+    """
+    When the child is next due to sleep, learned from their own recent naps
+    with typical wake windows for their age as a fallback.
+    :param child: an instance of the Child model.
+    """
+    info = suggest_next_sleep(child)
+    remaining = info["remaining"]
+    return {
+        "type": "sleep",
+        "child": child,
+        "state": info["state"],
+        "asleep": info["asleep"],
+        "suggested_at": (
+            timezone.localtime(info["suggested_at"]) if info["suggested_at"] else None
+        ),
+        "awake_since": (
+            timezone.localtime(info["awake_since"]) if info["awake_since"] else None
+        ),
+        "target": duration_string(info["target"], "m"),
+        "personal": info["source"] == "personal",
+        "samples": info["samples"],
+        "remaining": duration_string(abs(remaining), "m") if remaining else None,
+        "empty": info["state"] == "unknown",
         "hide_empty": _hide_empty(context),
     }
 
