@@ -493,16 +493,19 @@ class SleepForm(CoreModelForm, TaggableModelForm):
             "fields": ["child", "start", "end", "nap"],
             "layout": "required",
         },
-        {"fields": ["notes", "tags"], "layout": "advanced"},
+        {"fields": ["settling", "notes", "tags"], "layout": "advanced"},
     ]
 
     class Meta:
         model = models.Sleep
-        fields = ["child", "start", "end", "nap", "notes", "tags"]
+        fields = ["child", "start", "end", "nap", "settling", "notes", "tags"]
         widgets = {
             "child": ChildRadioSelect,
             "start": DateTimeInput(),
             "end": DateTimeInput(),
+            # Driven by pills in the template, like the timer's save page.
+            "nap": forms.HiddenInput(attrs={"id": "id_nap"}),
+            "settling": forms.HiddenInput(attrs={"id": "id_settling"}),
             "notes": forms.Textarea(attrs={"rows": 5}),
         }
 

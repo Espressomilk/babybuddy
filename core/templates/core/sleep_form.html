@@ -1,7 +1,7 @@
 {% extends 'babybuddy/page.html' %}
-{% load datetime i18n %}
+{% load i18n widget_tweaks %}
 {% block title %}
-    {% if request.resolver_match.url_name == 'sleep-update' %}
+    {% if object %}
         {% trans "Update a Sleep Entry" %}
     {% else %}
         {% trans "Add a Sleep Entry" %}
@@ -18,12 +18,141 @@
     {% endif %}
 {% endblock %}
 {% block content %}
-    {% if object %}
-        <h1>
-            {% trans Update %} <span class="text-info">{{ object }}</span>
-        </h1>
+<style>
+  .sf-wrap { max-width: 480px; margin: 0 auto; padding: 0.5rem 0 3rem; }
+  .sf-section {
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #888; margin: 1.25rem 0 0.5rem;
+  }
+  .sf-pills { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .sf-pill {
+    flex: 1 1 45%; padding: 0.7rem 0.6rem; border: 2px solid #ddd;
+    border-radius: 12px; background: transparent; font-size: 0.95rem;
+    font-weight: 600; color: inherit; text-align: center; cursor: pointer;
+    transition: all 0.15s ease; user-select: none; touch-action: manipulation;
+  }
+  .sf-pill:hover { border-color: #2e3d5f; }
+  .sf-pill.active { background: #2e3d5f; border-color: #2e3d5f; color: #fff; }
+  .sf-label { font-size: 0.8rem; font-weight: 600; color: #777; margin: 0.6rem 0 0.3rem; }
+  .sf-field input[type="datetime-local"] {
+    width: 100%; padding: 0.7rem 1rem; border: 1.5px solid #ddd;
+    border-radius: 12px; font-size: 1.05rem; background: #fff; color: #2d2d2d;
+    box-sizing: border-box; -webkit-appearance: none; appearance: none;
+  }
+  .sf-field input:focus { outline: none; border-color: #2e3d5f; }
+  .sf-notes textarea {
+    width: 100%; padding: 0.7rem 1rem; border: 1.5px solid #ddd;
+    border-radius: 12px; font-size: 1rem; color: #2d2d2d; background: #fff;
+    box-sizing: border-box; resize: vertical;
+  }
+  .sf-notes textarea:focus { outline: none; border-color: #2e3d5f; }
+  .sf-errors {
+    background: #fdecea; border: 1.5px solid #c0392b; border-radius: 10px;
+    padding: 0.5rem 0.8rem; color: #c0392b; font-size: 0.85rem; margin-top: 0.4rem;
+  }
+  .sf-actions { display: flex; gap: 0.6rem; margin-top: 1.75rem; }
+  .sf-save {
+    flex: 2; padding: 0.85rem; border: none; border-radius: 14px;
+    background: #2e3d5f; color: #fff; font-size: 1.05rem; font-weight: 700;
+    cursor: pointer;
+  }
+  .sf-save:hover { background: #1a2a45; }
+  .sf-delete {
+    flex: 1; padding: 0.85rem; border: 2px solid #c0392b; border-radius: 14px;
+    background: transparent; color: #c0392b; font-size: 1rem; font-weight: 600;
+    text-align: center; text-decoration: none;
+  }
+  .sf-delete:hover { background: #c0392b; color: #fff; }
+</style>
+
+<div class="sf-wrap">
+  {% if form.non_field_errors %}
+    <div class="sf-errors">{{ form.non_field_errors|striptags }}</div>
+  {% endif %}
+
+  <form role="form" method="post">
+    {% csrf_token %}
+    {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+
+    {% if not object %}
+      {# Adding from the menu, where no child is implied. #}
+      <p class="sf-section">{{ form.child.label }}</p>
+      <div class="overflow-auto">{{ form.child }}</div>
+      {% if form.child.errors %}<div class="sf-errors">{{ form.child.errors|striptags }}</div>{% endif %}
     {% else %}
-        <h1>{% trans "Add a Sleep Entry" %}</h1>
+      {{ form.child.as_hidden }}
     {% endif %}
-    {% include 'babybuddy/form.html' %}
+
+    <p class="sf-section">{% trans "Type" %}</p>
+    {{ form.nap }}
+    <div class="sf-pills">
+      <div class="sf-pill" data-target="id_nap" data-value="">🌙 {% trans "Sleep" %}</div>
+      <div class="sf-pill" data-target="id_nap" data-value="True">☀️ {% trans "Nap" %}</div>
+    </div>
+
+    <p class="sf-section">{% trans "Time" %}</p>
+    <p class="sf-label">{% trans "Start time" %}</p>
+    <div class="sf-field">
+      {{ form.start }}
+      {% if form.start.errors %}<div class="sf-errors">{{ form.start.errors|striptags }}</div>{% endif %}
+    </div>
+    <p class="sf-label">{% trans "End time" %}</p>
+    <div class="sf-field">
+      {{ form.end }}
+      {% if form.end.errors %}<div class="sf-errors">{{ form.end.errors|striptags }}</div>{% endif %}
+    </div>
+
+    <p class="sf-section">{% trans "How did they go down?" %}</p>
+    {{ form.settling }}
+    {% if form.settling.errors %}<div class="sf-errors">{{ form.settling.errors|striptags }}</div>{% endif %}
+    <div class="sf-pills">
+      <div class="sf-pill" data-target="id_settling" data-value="self_settled">😴 {% trans "Self-settled" %}</div>
+      <div class="sf-pill" data-target="id_settling" data-value="easy">🙂 {% trans "Settled easily" %}</div>
+      <div class="sf-pill" data-target="id_settling" data-value="fussy">😣 {% trans "Fussy" %}</div>
+      <div class="sf-pill" data-target="id_settling" data-value="overtired">😭 {% trans "Overtired, crying" %}</div>
+      <div class="sf-pill" data-target="id_settling" data-value="wired">😃 {% trans "Wired, not tired" %}</div>
+      <div class="sf-pill" data-target="id_settling" data-value="">— {% trans "Not recorded" %}</div>
+    </div>
+
+    <p class="sf-section">{% trans "Notes" %}</p>
+    <div class="sf-notes">{{ form.notes }}</div>
+
+    <p class="sf-section">{{ form.tags.label }}</p>
+    {{ form.tags }}
+
+    <div class="sf-actions">
+      <button type="submit" class="sf-save">{% trans "Save" %}</button>
+      {% if object %}
+        <a href="{% url 'core:sleep-delete' object.pk %}{% if next_url %}?next={{ next_url|urlencode }}{% endif %}"
+           class="sf-delete">{% trans "Delete" %}</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  // Pills drive hidden inputs, so the form still posts plain field values.
+  document.querySelectorAll('.sf-pill').forEach(function (pill) {
+    pill.addEventListener('click', function () {
+      var input = document.getElementById(pill.dataset.target);
+      if (!input) return;
+      input.value = pill.dataset.value;
+      document.querySelectorAll('.sf-pill[data-target="' + pill.dataset.target + '"]')
+        .forEach(function (p) { p.classList.toggle('active', p === pill); });
+    });
+  });
+  // Reflect whatever the form arrived with.
+  ['id_nap', 'id_settling'].forEach(function (id) {
+    var input = document.getElementById(id);
+    if (!input) return;
+    var value = input.value === 'True' || input.value === 'on' ? 'True' : input.value;
+    document.querySelectorAll('.sf-pill[data-target="' + id + '"]').forEach(function (p) {
+      p.classList.toggle('active', p.dataset.value === value);
+    });
+  });
+})();
+</script>
+{{ form.media.js }}
+{% include 'dashboard/_time_roller.html' %}
 {% endblock %}

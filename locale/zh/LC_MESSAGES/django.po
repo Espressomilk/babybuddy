@@ -3949,3 +3949,8 @@ msgstr "每日喂养量"
 msgid "%(total)s ml total"
 msgstr "共 %(total)s 毫升"
 
+
+#: sleep edit form
+msgid "Not recorded"
+msgstr "未记录"
+

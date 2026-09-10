@@ -194,6 +194,8 @@ def _add_sleeps(min_date, max_date, events, child=None):
         )
 
         details = []
+        if instance.settling:
+            details.append(instance.get_settling_display())
         if instance.notes:
             details.append(instance.notes)
         edit_link = reverse("core:sleep-update", args=[instance.id])
