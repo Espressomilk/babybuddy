@@ -111,6 +111,24 @@
     transition: border-color 0.15s, color 0.15s;
   }
   .sn-cancel:hover { border-color: #555; color: #333; }
+  .sn-settling { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .sn-pill {
+    flex: 1 1 45%;
+    padding: 0.7rem 0.6rem;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    background: transparent;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: inherit;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+    touch-action: manipulation;
+  }
+  .sn-pill:hover { border-color: #2e3d5f; }
+  .sn-pill.active { background: #2e3d5f; border-color: #2e3d5f; color: #fff; }
   .sn-label { font-size: 0.8rem; font-weight: 600; color: #777; margin: 0.6rem 0 0.3rem; }
   .sn-field input {
     width: 100%; max-width: 100%; padding: 0.7rem 1rem;
@@ -134,6 +152,20 @@
     <div class="sn-summary">
       <span class="sn-type-badge">{% if timer.name == "Sleep" %}{% trans "Sleep" %}{% elif timer.name == "Nap" %}{% trans "Nap" %}{% else %}{{ timer.name }}{% endif %}</span>
       <span class="sn-elapsed" data-start="{{ timer.start|date:'c' }}">0:00:00</span>
+    </div>
+
+    {# ── Settling ── #}
+    <p class="sn-section">{% trans "How did they go down?" %}</p>
+    {{ form.settling }}
+    {% if form.settling.errors %}
+      <div class="sn-errors">{{ form.settling.errors|striptags }}</div>
+    {% endif %}
+    <div class="sn-settling">
+      <div class="sn-pill" data-value="self_settled">😴 {% trans "Self-settled" %}</div>
+      <div class="sn-pill" data-value="easy">🙂 {% trans "Settled easily" %}</div>
+      <div class="sn-pill" data-value="fussy">😣 {% trans "Fussy" %}</div>
+      <div class="sn-pill" data-value="overtired">😭 {% trans "Overtired, crying" %}</div>
+      <div class="sn-pill" data-value="wired">😃 {% trans "Wired, not tired" %}</div>
     </div>
 
     {# ── Time ── #}
@@ -182,6 +214,18 @@
   }
   tick();
   setInterval(tick, 1000);
+
+  // Settling pills drive the hidden field the form validates.
+  var settling = document.getElementById('id_settling');
+  var pills = document.querySelectorAll('.sn-pill');
+  function choose(value) {
+    if (settling) settling.value = value;
+    pills.forEach(function (p) { p.classList.toggle('active', p.dataset.value === value); });
+  }
+  pills.forEach(function (p) {
+    p.addEventListener('click', function () { choose(p.dataset.value); });
+  });
+  if (settling && settling.value) choose(settling.value);
 })();
 </script>
 {% include 'dashboard/_time_roller.html' %}

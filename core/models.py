@@ -626,6 +626,30 @@ class Sleep(models.Model):
         blank=False, default=timezone.localtime, null=False, verbose_name=_("End time")
     )
     nap = models.BooleanField(null=False, blank=True, verbose_name=_("Nap"))
+    # How the child went down. Settling is the signal for whether the wake
+    # window before this sleep was right: crying from overtiredness means it
+    # ran long, going down wide awake means it was cut short.
+    SETTLED_WELL = ("self_settled", "easy")
+    SETTLING_TOO_LONG = "overtired"
+    SETTLING_TOO_SHORT = "wired"
+    settling = models.CharField(
+        blank=True,
+        default="",
+        max_length=255,
+        choices=[
+            ("self_settled", _("Self-settled")),
+            ("easy", _("Settled easily")),
+            ("fussy", _("Fussy")),
+            ("overtired", _("Overtired, crying")),
+            ("wired", _("Wired, not tired")),
+        ],
+        verbose_name=_("Settling"),
+    )
+    # What the app suggested at the time, so the gap between advice and what
+    # actually happened can be measured.
+    suggested_start = models.DateTimeField(
+        blank=True, null=True, editable=False, verbose_name=_("Suggested start time")
+    )
     duration = models.DurationField(
         editable=False, null=True, verbose_name=_("Duration")
     )

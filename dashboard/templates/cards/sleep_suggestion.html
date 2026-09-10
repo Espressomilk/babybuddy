@@ -41,12 +41,30 @@
             {% endblocktrans %}
         </div>
         <div class="small text-body-secondary">
-            {% if personal %}
+            {% if basis == "settled" %}
+                {% blocktrans trimmed with count=samples name=child.first_name %}
+                    From {{ count }} times {{ name }} settled well
+                {% endblocktrans %}
+            {% elif basis == "restorative" %}
+                {% blocktrans trimmed with count=samples name=child.first_name %}
+                    From {{ name }}'s {{ count }} longest naps
+                {% endblocktrans %}
+            {% elif basis == "all" %}
                 {% blocktrans trimmed with count=samples name=child.first_name %}
                     Based on {{ name }}'s last {{ count }} naps
                 {% endblocktrans %}
             {% else %}
                 {% trans "Typical for this age — not enough naps logged yet" %}
+            {% endif %}
+        </div>
+        <div class="small text-body-secondary">
+            {% blocktrans trimmed with slept=slept_24h low=recommended_low high=recommended_high %}
+                {{ slept }} in 24h (recommended {{ low }}–{{ high }}h)
+            {% endblocktrans %}
+            {% if pace == "behind" %}
+                &middot; <span class="text-warning">{% trans "behind, suggesting sooner" %}</span>
+            {% elif pace == "ahead" %}
+                &middot; {% trans "ahead, suggesting later" %}
             {% endif %}
         </div>
     {% endif %}

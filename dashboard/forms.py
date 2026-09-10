@@ -122,6 +122,14 @@ class BottleFeedForm(forms.Form):
 
 
 class SleepNoteForm(forms.Form):
+    # Required: this is the signal the sleep suggestion learns from, and it can
+    # only be answered now, while the caregiver remembers how it went.
+    settling = forms.ChoiceField(
+        choices=models.Sleep._meta.get_field("settling").choices,
+        label=_("How did they go down?"),
+        widget=forms.HiddenInput(attrs={"id": "id_settling"}),
+        error_messages={"required": _("Choose how they went down.")},
+    )
     start = forms.DateTimeField(
         label=_("Start time"),
         widget=DateTimeInput(attrs={"step": 60, "id": "id_start"}),

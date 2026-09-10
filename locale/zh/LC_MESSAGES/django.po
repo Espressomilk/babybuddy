@@ -3872,3 +3872,47 @@ msgstr "基于 %(name)s 最近 %(count)s 次小睡"
 msgid "No sleep logged recently."
 msgstr "最近没有睡眠记录。"
 
+
+#: sleep settling feedback
+msgid "Settling"
+msgstr "入睡状态"
+
+msgid "Self-settled"
+msgstr "自主入睡"
+
+msgid "Settled easily"
+msgstr "正常入睡"
+
+msgid "Fussy"
+msgstr "有点闹"
+
+msgid "Overtired, crying"
+msgstr "过累大哭"
+
+msgid "Wired, not tired"
+msgstr "太兴奋不困"
+
+msgid "How did they go down?"
+msgstr "这一觉是怎么入睡的？"
+
+msgid "Choose how they went down."
+msgstr "请选择入睡状态。"
+
+msgid "From %(count)s times %(name)s settled well"
+msgstr "基于 %(name)s 顺利入睡的 %(count)s 次"
+
+msgid "From %(name)s's %(count)s longest naps"
+msgstr "基于 %(name)s 最长的 %(count)s 次小睡"
+
+msgid "%(slept)s in 24h (recommended %(low)s–%(high)s h)"
+msgstr "24 小时内已睡 %(slept)s（建议 %(low)s–%(high)s 小时）"
+
+msgid "behind, suggesting sooner"
+msgstr "偏少，建议提前"
+
+msgid "ahead, suggesting later"
+msgstr "偏多，建议推后"
+
+msgid "Suggested start time"
+msgstr "建议开始时间"
+

@@ -45,6 +45,19 @@
     cursor: pointer; margin-bottom: 1.25rem;
   }
   .sr-add:hover { border-color: #2e3d5f; background: #f0f4ff; }
+  .sr-section {
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #888; margin: 1.25rem 0 0.5rem;
+  }
+  .sr-settling { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem; }
+  .sr-pill {
+    flex: 1 1 45%; padding: 0.65rem 0.5rem; border: 2px solid #ddd;
+    border-radius: 12px; background: transparent; font-size: 0.92rem;
+    font-weight: 600; color: inherit; text-align: center; cursor: pointer;
+    transition: all 0.15s ease; user-select: none; touch-action: manipulation;
+  }
+  .sr-pill:hover { border-color: #2e3d5f; }
+  .sr-pill.active { background: #2e3d5f; border-color: #2e3d5f; color: #fff; }
   .sr-nap { display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0 1rem; color: #444; }
   .sr-notes textarea {
     width: 100%; padding: 0.7rem 1rem; border: 1.5px solid #ddd; border-radius: 12px;
@@ -111,6 +124,16 @@
 
     <button type="button" class="sr-add" id="sr-add">＋ {% trans "Add another sleep session" %}</button>
 
+    <p class="sr-section">{% trans "How did they go down?" %}</p>
+    <input type="hidden" name="settling" id="id_settling" value="{{ settling }}">
+    <div class="sr-settling">
+      <div class="sr-pill" data-value="self_settled">😴 {% trans "Self-settled" %}</div>
+      <div class="sr-pill" data-value="easy">🙂 {% trans "Settled easily" %}</div>
+      <div class="sr-pill" data-value="fussy">😣 {% trans "Fussy" %}</div>
+      <div class="sr-pill" data-value="overtired">😭 {% trans "Overtired, crying" %}</div>
+      <div class="sr-pill" data-value="wired">😃 {% trans "Wired, not tired" %}</div>
+    </div>
+
     <label class="sr-nap">
       <input type="checkbox" name="is_nap" {% if is_nap %}checked{% endif %}>
       {% trans "These are naps" %}
@@ -174,6 +197,18 @@
   });
 
   renumber();
+
+  // Settling pills drive the hidden field the view requires.
+  var settling = document.getElementById('id_settling');
+  var pills = document.querySelectorAll('.sr-pill');
+  function choose(value) {
+    if (settling) settling.value = value;
+    pills.forEach(function (p) { p.classList.toggle('active', p.dataset.value === value); });
+  }
+  pills.forEach(function (p) {
+    p.addEventListener('click', function () { choose(p.dataset.value); });
+  });
+  if (settling && settling.value) choose(settling.value);
 })();
 </script>
 

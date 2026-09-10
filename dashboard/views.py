@@ -15,6 +15,7 @@ from django.views.generic.edit import CreateView, FormView
 
 from babybuddy.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from core.models import BMI, Child, Feeding, HeadCircumference, Height, Medication, Pumping, Sleep, Temperature, Timer, TummyTime, Vaccine, Weight
+from core.sleep_advice import suggestion_for
 
 from .forms import BottleFeedForm, BreastfeedForm, BreastfeedQuickForm, DiaperChangeQuickForm, FeedCommitForm, FeedQuickForm, PumpCommitForm, PumpQuickForm, SleepNoteForm, TummyTimeMilestoneForm
 from .models import FeedPending, PumpPending
@@ -296,12 +297,12 @@ def _sleep_segments(child, start, end):
 
 
 class SleepTimerSave(PermissionRequiredMixin, View):
-    """Save a sleep/nap entry from a running timer.
+    """Stop a sleep timer.
 
-    Fast path: a clean sleep with no interruptions saves in one tap. If a
-    feeding falls inside the sleep window (or the entry would conflict with an
-    existing sleep), redirect to the review page where the sleep is suggested
-    as split segments the user can adjust.
+    Saving always passes through the settling step: how the child went down is
+    the signal the suggestion learns from, and it is only knowable now. An
+    interrupted sleep goes to the review page instead, which asks the same
+    thing alongside the split.
     """
 
     permission_required = ("core.add_sleep",)
@@ -310,36 +311,18 @@ class SleepTimerSave(PermissionRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         child = get_object_or_404(Child, slug=kwargs["slug"])
         timer = get_object_or_404(Timer, pk=kwargs["pk"], child=child)
-        now = timezone.now()
-        review_url = reverse(
-            "dashboard:sleep-timer-review",
-            kwargs={"slug": kwargs["slug"], "pk": timer.pk},
-        )
-        # Anything inside the window (a feed, tummy time, sleep already logged)
-        # means the timer's span is not all sleep — review it rather than
-        # silently saving a block that swallows the interruption.
-        if _sleep_busy(child, timer.start, now):
-            return HttpResponseRedirect(review_url)
-        entry = Sleep(
-            child=child,
-            start=timer.start,
-            end=now,
-            nap=(timer.name == "Nap"),
-            notes="",
-        )
-        try:
-            entry.full_clean()
-            entry.save()
-            timer.stop()
-            messages.success(request, _("Sleep entry saved."))
-        except ValidationError:
-            # Overlaps an existing sleep — let the user resolve it on the
-            # review form (which keeps the timer's start time) rather than
-            # dead-ending with an error.
-            return HttpResponseRedirect(review_url)
-        _broadcast_track(kwargs["slug"])
+        if _sleep_busy(child, timer.start, timezone.now()):
+            return HttpResponseRedirect(
+                reverse(
+                    "dashboard:sleep-timer-review",
+                    kwargs={"slug": kwargs["slug"], "pk": timer.pk},
+                )
+            )
         return HttpResponseRedirect(
-            reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})
+            reverse(
+                "dashboard:sleep-timer-note",
+                kwargs={"slug": kwargs["slug"], "pk": timer.pk},
+            )
         )
 
 
@@ -398,6 +381,7 @@ class SleepTimerReview(PermissionRequiredMixin, View):
                 "spare_rows": range(len(segments), len(segments) + 3),
                 "is_nap": timer.name == "Nap",
                 "interrupted": bool(_sleep_busy(child, timer.start, now)),
+                "settling": "",
             },
         )
 
@@ -418,6 +402,7 @@ class SleepTimerReview(PermissionRequiredMixin, View):
         timer = self.get_timer()
         is_nap = request.POST.get("is_nap") == "on"
         notes = request.POST.get("notes", "").strip()
+        settling = request.POST.get("settling", "")
 
         rows, submitted = [], []
         for i in range(self.MAX_ROWS):
@@ -440,12 +425,21 @@ class SleepTimerReview(PermissionRequiredMixin, View):
                     "spare_rows": range(len(submitted), len(submitted) + 3),
                     "is_nap": is_nap,
                     "interrupted": len(submitted) > 1,
+                    "settling": settling,
                     "error": error,
                 },
             )
 
         if not rows:
             return rerender(_("Add at least one sleep session."))
+        if not settling:
+            return rerender(_("Choose how they went down."))
+
+        # The settling describes the initial settle, so it belongs to the first
+        # segment rather than every piece of an interrupted night.
+        rows.sort(key=lambda pair: (pair[0] or timezone.now()))
+        first_start = rows[0][0]
+        suggested = suggestion_for(child, first_start) if first_start else None
 
         try:
             with transaction.atomic():
@@ -457,8 +451,15 @@ class SleepTimerReview(PermissionRequiredMixin, View):
                         raise ValidationError(
                             _("End time must be after the start time.")
                         )
+                    first = start == first_start
                     entry = Sleep(
-                        child=child, start=start, end=end, nap=is_nap, notes=notes
+                        child=child,
+                        start=start,
+                        end=end,
+                        nap=is_nap,
+                        notes=notes,
+                        settling=settling if first else "",
+                        suggested_start=suggested if first else None,
                     )
                     entry.full_clean()
                     entry.save()
@@ -515,13 +516,18 @@ class SleepTimerNote(PermissionRequiredMixin, FormView):
         child = self.get_child()
         timer = self.get_timer()
         notes = form.cleaned_data.get("notes", "")
+        start = form.cleaned_data.get("start") or timer.start
         try:
             entry = Sleep(
                 child=child,
-                start=form.cleaned_data.get("start") or timer.start,
+                start=start,
                 end=form.cleaned_data.get("end") or timezone.now(),
                 nap=(timer.name == "Nap"),
                 notes=notes,
+                settling=form.cleaned_data.get("settling", ""),
+                # Recorded before saving, while the previous sleep is still the
+                # most recent one.
+                suggested_start=suggestion_for(child, start),
             )
             entry.full_clean()
             entry.save()
