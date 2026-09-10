@@ -479,57 +479,75 @@ def card_sleep_last(context, child):
 @register.inclusion_tag("cards/feeding_weekly.html", takes_context=True)
 def card_feeding_weekly(context, child, weeks=8):
     """
-    Average milk per day over a week, with earlier weeks to page back through.
+    Feeding amount for each day of a week, with earlier weeks to page through.
 
-    Milk is bottles plus any amount recorded against a breast feed, matching
-    the daily total on the timeline.
+    The amount counts bottles plus anything recorded against a breast feed,
+    matching the daily total on the timeline.
     :param child: an instance of the Child model.
     :param weeks: how many weeks back to make available.
     """
     today = timezone.localdate()
-    milk_methods = ("bottle",) + BREAST_METHODS
-    # One query for the whole range, bucketed in Python.
-    earliest = today - timezone.timedelta(days=7 * weeks - 1)
+    # Weeks run Monday to Sunday.
+    this_monday = today - timezone.timedelta(days=today.weekday())
+    earliest = this_monday - timezone.timedelta(weeks=weeks - 1)
+
     instances = models.Feeding.objects.filter(
         child=child,
-        method__in=milk_methods,
+        method__in=("bottle",) + BREAST_METHODS,
         start__gte=timezone.make_aware(
             timezone.datetime.combine(earliest, timezone.datetime.min.time())
         ),
     )
 
-    buckets = [{"total": 0.0, "days_with_data": set(), "count": 0} for _ in range(weeks)]
+    per_day = {}
     for instance in instances:
         day = timezone.localtime(instance.start).date()
-        index = (today - day).days // 7
-        if 0 <= index < weeks:
-            bucket = buckets[index]
-            bucket["total"] += instance.amount or 0
-            bucket["count"] += 1
-            if instance.amount:
-                bucket["days_with_data"].add(day)
+        per_day[day] = per_day.get(day, 0.0) + (instance.amount or 0)
 
     results = []
-    for index, bucket in enumerate(buckets):
-        end = today - timezone.timedelta(days=7 * index)
-        start = end - timezone.timedelta(days=6)
+    for index in range(weeks):
+        monday = this_monday - timezone.timedelta(weeks=index)
+        days = []
+        for offset in range(7):
+            day = monday + timezone.timedelta(days=offset)
+            amount = per_day.get(day)
+            days.append(
+                {
+                    "date": day,
+                    "amount": amount,
+                    "text": _format_amount(amount) if amount else None,
+                    "future": day > today,
+                }
+            )
+        total = sum(d["amount"] or 0 for d in days)
+        logged = [d for d in days if d["amount"]]
         results.append(
             {
-                "start": start,
-                "end": end,
+                "start": monday,
+                "end": monday + timezone.timedelta(days=6),
                 "current": index == 0,
-                # Averaged over the whole week, so a missed day reads as less
-                # milk rather than vanishing from the average.
-                "average": _format_amount(bucket["total"] / 7) if bucket["count"] else None,
-                "total": _format_amount(bucket["total"]) if bucket["count"] else None,
-                "days_logged": len(bucket["days_with_data"]),
+                "days": days,
+                "total": _format_amount(total) if total else None,
+                "average": _format_amount(total / len(logged)) if logged else None,
+                "days_logged": len(logged),
             }
         )
 
+    # Scale every bar against the same maximum, so paging between weeks
+    # compares like with like instead of rescaling each week to itself.
+    peak = max((d["amount"] or 0 for w in results for d in w["days"]), default=0)
+    for week in results:
+        for day in week["days"]:
+            day["percent"] = round(day["amount"] / peak * 100) if peak and day["amount"] else 0
+
+    # Oldest first, so the left arrow moves back in time and the right one
+    # forward; the current week is the last slide and starts active.
+    results.reverse()
     return {
         "type": "feeding",
         "weeks": results,
-        "empty": not any(w["average"] for w in results),
+        "today": today,
+        "empty": peak == 0,
         "hide_empty": _hide_empty(context),
     }
 

@@ -1,50 +1,81 @@
 {% extends 'cards/base.html' %}
 {% load i18n %}
 {% block header %}
-    <a href="{% url "core:feeding-list" %}">{% trans "Milk per Day" %}</a>
+    <a href="{% url "core:feeding-list" %}">{% trans "Feeding amount per day" %}</a>
 {% endblock %}
 {% block title %}
     <style>
-        /* Keep the arrows in their own gutters so they never sit on the value. */
-        #feeding-weekly-carousel .carousel-item { padding: 0 2rem; }
+        #feeding-weekly-carousel .carousel-item { padding: 0 1.75rem; }
         #feeding-weekly-carousel .carousel-control-prev,
-        #feeding-weekly-carousel .carousel-control-next { width: 2rem; opacity: 0.65; }
-        #feeding-weekly-carousel .fw-value {
-            font-size: clamp(1rem, 6vw, 1.8em);
-            line-height: 1.15;
+        #feeding-weekly-carousel .carousel-control-next { width: 1.75rem; opacity: 0.65; }
+        /* Bars share one baseline; each column keeps its own width so the
+           value and the weekday stay under the bar they belong to. */
+        .fw-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 0.2rem;
+            height: 110px;
+        }
+        .fw-col {
+            flex: 1 1 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            height: 100%;
+            min-width: 0;
+        }
+        .fw-amount {
+            font-size: 0.62rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+            margin-bottom: 0.15rem;
+            color: var(--bs-body-color, #dee2e6);
             white-space: nowrap;
         }
-        #feeding-weekly-carousel .fw-range,
-        #feeding-weekly-carousel .fw-detail {
-            font-size: 0.8rem;
-            font-weight: 400;
-            color: var(--bs-secondary-color, #6c757d);
+        .fw-bar {
+            width: 100%;
+            border-radius: 3px 3px 0 0;
+            background: #37abe9;
+            min-height: 2px;
         }
+        .fw-bar.fw-none { background: rgba(128, 128, 128, 0.25); height: 2px; }
+        .fw-day {
+            font-size: 0.62rem;
+            font-weight: 600;
+            color: var(--bs-secondary-color, #6c757d);
+            margin-top: 0.2rem;
+            white-space: nowrap;
+        }
+        .fw-day.fw-today { color: #37abe9; }
+        .fw-range { font-size: 0.78rem; font-weight: 400; color: var(--bs-secondary-color, #6c757d); }
     </style>
-    <div id="feeding-weekly-carousel" class="carousel slide" data-bs-interval="false">
+    <div id="feeding-weekly-carousel" class="carousel slide"
+         data-bs-interval="false" data-bs-wrap="false">
         <div class="carousel-inner">
             {% for week in weeks %}
-                <div class="carousel-item{% if forloop.first %} active{% endif %}">
-                    <div class="text-center">
-                        <div class="fw-value">
-                            {% if week.average %}{{ week.average }} ml{% else %}&mdash;{% endif %}
-                        </div>
-                        <div class="fw-range">
-                            {% if week.current %}
-                                {% trans "past 7 days" %}
-                            {% else %}
-                                {{ week.start|date:"M j" }} – {{ week.end|date:"M j" }}
-                            {% endif %}
-                        </div>
-                        <div class="fw-detail">
-                            {% if week.total %}
-                                {% blocktrans trimmed with total=week.total days=week.days_logged %}
-                                    {{ total }} ml over {{ days }} days logged
-                                {% endblocktrans %}
-                            {% else %}
-                                {% trans "No milk logged this week" %}
-                            {% endif %}
-                        </div>
+                <div class="carousel-item{% if week.current %} active{% endif %}">
+                    <div class="fw-chart">
+                        {% for day in week.days %}
+                            <div class="fw-col">
+                                {% if day.text %}<span class="fw-amount">{{ day.text }}</span>{% endif %}
+                                <div class="fw-bar{% if not day.amount %} fw-none{% endif %}"
+                                     style="height: {{ day.percent }}%;"
+                                     title="{{ day.date|date:'M j' }}"></div>
+                                <span class="fw-day{% if day.date == today %} fw-today{% endif %}">{{ day.date|date:"D" }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div class="text-center fw-range mt-2">
+                        {{ week.start|date:"M j" }} – {{ week.end|date:"M j" }}
+                        {% if week.total %}
+                            &middot;
+                            {% blocktrans trimmed with total=week.total %}
+                                {{ total }} ml total
+                            {% endblocktrans %}
+                        {% endif %}
                     </div>
                 </div>
             {% endfor %}

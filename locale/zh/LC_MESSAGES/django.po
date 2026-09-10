@@ -3941,3 +3941,11 @@ msgstr "共 %(total)s 毫升，有记录 %(days)s 天"
 msgid "No milk logged this week"
 msgstr "本周没有奶量记录"
 
+
+#: daily feeding amount histogram
+msgid "Feeding amount per day"
+msgstr "每日喂养量"
+
+msgid "%(total)s ml total"
+msgstr "共 %(total)s 毫升"
+
