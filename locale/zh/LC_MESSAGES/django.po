@@ -3820,8 +3820,8 @@ msgstr "在“最近喂养”卡片中分别显示最近一次亲喂、瓶喂（
 
 
 #: wake window card
-msgid "Wake Window"
-msgstr "清醒时长"
+msgid "Wake / Sleep Window"
+msgstr "清醒 / 睡眠时长"
 
 msgid "awake"
 msgstr "已清醒"
@@ -3957,6 +3957,20 @@ msgstr "已复制"
 
 msgid "Share to app"
 msgstr "分享到应用"
+
+
+#: suggested start time, recorded with each sleep
+msgid "This sleep was suggested for %(time)s"
+msgstr "这一觉的建议时间是 %(time)s"
+
+msgid "started %(offset)s later"
+msgstr "实际晚了 %(offset)s"
+
+msgid "started %(offset)s earlier"
+msgstr "实际早了 %(offset)s"
+
+msgid "Suggested"
+msgstr "建议入睡"
 
 msgid "Suggested start time"
 msgstr "建议开始时间"

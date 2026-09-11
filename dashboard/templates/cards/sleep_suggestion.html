@@ -30,6 +30,25 @@
 {% block content %}
     {% if state == "asleep" %}
         <div>{% trans "Sleeping now — a suggestion follows the next wake." %}</div>
+        {% if suggested_at %}
+            <div class="small text-body-secondary">
+                {% blocktrans trimmed with time=suggested_at|time %}
+                    This sleep was suggested for {{ time }}
+                {% endblocktrans %}
+                {% if started_off_by %}
+                    &middot;
+                    {% if started_late %}
+                        {% blocktrans trimmed with offset=started_off_by %}
+                            started {{ offset }} later
+                        {% endblocktrans %}
+                    {% else %}
+                        {% blocktrans trimmed with offset=started_off_by %}
+                            started {{ offset }} earlier
+                        {% endblocktrans %}
+                    {% endif %}
+                {% endif %}
+            </div>
+        {% endif %}
     {% elif state == "unknown" %}
         <div class="small text-body-secondary">{% trans "Log some sleep to get a suggestion." %}</div>
     {% elif state == "stale" %}

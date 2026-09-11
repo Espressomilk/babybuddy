@@ -357,11 +357,23 @@ def suggest_next_sleep(child):
         "awake_since": None,
         "suggested_at": None,
         "remaining": None,
+        "started_off_by": None,
     }
 
     timer = Timer.objects.filter(child=child, name__in=SLEEP_TIMER_NAMES).first()
     if timer:
-        result.update({"asleep": True, "state": "asleep", "awake_since": timer.start})
+        # Asleep now: show the advice this sleep started against, so the card
+        # still says something useful while the timer runs.
+        suggested = suggestion_for(child, timer.start)
+        result.update(
+            {
+                "asleep": True,
+                "state": "asleep",
+                "awake_since": timer.start,
+                "suggested_at": suggested,
+                "started_off_by": timer.start - suggested if suggested else None,
+            }
+        )
         return result
 
     last_sleep = Sleep.objects.filter(child=child).order_by("-end").first()

@@ -18,6 +18,7 @@ from django.views.generic.edit import CreateView, UpdateView, DeleteView, FormVi
 from babybuddy.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from babybuddy.views import BabyBuddyFilterView, BabyBuddyPaginatedView
 from core import filters, forms, models, timeline
+from core.sleep_advice import suggestion_for
 
 
 def _prepare_timeline_context_data(context, date, child=None):
@@ -476,6 +477,14 @@ class SleepAdd(CoreAddView):
     permission_required = ("core.add_sleep",)
     form_class = forms.SleepForm
     success_url = reverse_lazy("core:sleep-list")
+
+    def form_valid(self, form):
+        # Record the advice that stood when this sleep began, as the
+        # dashboard's own entry pages do.
+        form.instance.suggested_start = suggestion_for(
+            form.instance.child, form.instance.start
+        )
+        return super().form_valid(form)
 
 
 class SleepUpdate(CoreUpdateView):

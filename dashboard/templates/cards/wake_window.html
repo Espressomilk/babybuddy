@@ -1,7 +1,7 @@
 {% extends 'cards/base.html' %}
 {% load i18n %}
 {% block header %}
-    <a href="{% url "core:sleep-list" %}">{% trans "Wake Window" %}</a>
+    <a href="{% url "core:sleep-list" %}">{% trans "Wake / Sleep Window" %}</a>
 {% endblock %}
 {% block title %}
     {% if duration %}

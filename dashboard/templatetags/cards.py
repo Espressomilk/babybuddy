@@ -585,6 +585,15 @@ def card_sleep_suggestion(context, child):
         "recommended_low": info["recommended_low"],
         "recommended_high": info["recommended_high"],
         "remaining": duration_string(abs(remaining), "m") if remaining else None,
+        # How the sleep that is running now compares to what was suggested.
+        "started_off_by": (
+            duration_string(abs(info["started_off_by"]), "m")
+            if info["started_off_by"]
+            else None
+        ),
+        "started_late": bool(
+            info["started_off_by"] and info["started_off_by"].total_seconds() > 0
+        ),
         "empty": info["state"] == "unknown",
         "hide_empty": _hide_empty(context),
     }

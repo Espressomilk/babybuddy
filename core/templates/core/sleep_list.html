@@ -21,6 +21,7 @@
             <thead>
                 <tr>
                     <th>{% trans "Actions" %}</th>
+                    <th>{% trans "Suggested" %}</th>
                     <th>{% trans "Start" %}</th>
                     <th>{% trans "End" %}</th>
                     {% if not unique_child %}
@@ -52,6 +53,13 @@
                                     {% endif %}
                                 </div>
                             </td>
+                            <td class="text-body-secondary">
+                                {% if sleep.suggested_start %}
+                                    {{ sleep.suggested_start|datetime_short }}
+                                {% else %}
+                                    &mdash;
+                                {% endif %}
+                            </td>
                             <th scope="row">{{ sleep.start|datetime_short }}</th>
                             <td>{{ sleep.end|datetime_short }}</td>
                             {% if not unique_child %}
@@ -73,7 +81,7 @@
                         </tr>
                         {% if sleep.notes %}
                             <tr class="{{ row_class }} row-details">
-                                <td colspan="8">
+                                <td colspan="9">
                                     <i class="icon-note me-2" aria-hidden="true"></i>{{ sleep.notes }}
                                 </td>
                             </tr>
@@ -81,7 +89,7 @@
                     {% endwith %}
                 {% empty %}
                     <tr>
-                        <th colspan="8">{% trans "No sleep entries found." %}</th>
+                        <th colspan="9">{% trans "No sleep entries found." %}</th>
                     </tr>
                 {% endfor %}
             </tbody>

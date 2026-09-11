@@ -92,7 +92,8 @@ class ChildRadioSelect(RadioSelect):
 
     def build_attrs(self, base_attrs, extra_attrs=None):
         attrs = super().build_attrs(base_attrs, extra_attrs)
-        attrs["class"] += " btn-check d-none"
+        # Templates that render the field directly pass no class of their own.
+        attrs["class"] = ("%s btn-check d-none" % attrs.get("class", "")).strip()
         return attrs
 
     def create_option(
