@@ -5,16 +5,20 @@ from django.utils import timezone
 
 
 def set_sleep_nap_values(apps, schema_editor):
-    # The model must be imported to ensure its overridden `save` method is run.
-    from core.models import Sleep
+    # The historical model, not core.models.Sleep: the live model carries
+    # fields added by later migrations, and selecting them here fails on a
+    # fresh database. Only `nap` changes, so the live model's `save` is not
+    # needed; the nap window settings still come from the live model.
+    from core.models import Sleep as LiveSleep
 
+    Sleep = apps.get_model("core", "Sleep")
     for sleep in Sleep.objects.all():
         sleep.nap = (
-            Sleep.settings.nap_start_min
+            LiveSleep.settings.nap_start_min
             <= timezone.localtime(sleep.start).time()
-            <= Sleep.settings.nap_start_max
+            <= LiveSleep.settings.nap_start_max
         )
-        sleep.save()
+        sleep.save(update_fields=["nap"])
 
 
 class Migration(migrations.Migration):

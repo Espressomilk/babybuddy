@@ -3925,6 +3925,39 @@ msgstr "介于过累与太兴奋之间"
 msgid "kept at the minimum for this age"
 msgstr "已取该月龄的下限"
 
+
+#: copy for AI export
+msgid "Copy for AI"
+msgstr "复制给AI"
+
+msgid "Below is my baby's recent log, exported from the baby tracking app Baby Buddy. Times are local. Please answer my questions from this data; if something is not in the data, say so rather than guess."
+msgstr "以下是从宝宝记录应用 Baby Buddy 导出的宝宝近期记录，时间均为本地时间。请根据这些数据回答我的问题；数据里没有的信息请直接说明，不要猜测。"
+
+msgid "Paste this into Claude, ChatGPT or any AI chat, then ask your question."
+msgstr "把这段文字粘贴到 Claude、ChatGPT 等任意 AI 聊天中，然后提问。"
+
+msgid "Includes the first name and age only, no last name or birth date."
+msgstr "只包含名字和日龄，不含姓氏和出生日期。"
+
+msgid "Range"
+msgstr "范围"
+
+msgid "%(days)s day"
+msgid_plural "%(days)s days"
+msgstr[0] "%(days)s 天"
+
+msgid "%(count)s characters"
+msgstr "%(count)s 个字符"
+
+msgid "Copy text"
+msgstr "复制文本"
+
+msgid "Copied"
+msgstr "已复制"
+
+msgid "Share to app"
+msgstr "分享到应用"
+
 msgid "Suggested start time"
 msgstr "建议开始时间"
 

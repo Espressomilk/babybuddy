@@ -23,6 +23,11 @@
            title="{% trans "Reports" %}">
             <i class="icon-graph" aria-hidden="true"></i>
         </a>
+        <a href="{% url 'dashboard:ai-export' object.slug %}"
+           class="btn"
+           title="{% trans "Copy for AI" %}">
+            <i class="icon-chat" aria-hidden="true"></i>
+        </a>
     {% endif %}
     {% if perms.core.change_child %}
         <a class="btn d-none d-md-inline-block"

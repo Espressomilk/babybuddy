@@ -13,6 +13,12 @@ urlpatterns = [
         views.ChildDashboard.as_view(),
         name="dashboard-child",
     ),
+    path("ai-export/", views.AIExportRouter.as_view(), name="ai-export-router"),
+    path(
+        "children/<str:slug>/ai-export/",
+        views.AIExport.as_view(),
+        name="ai-export",
+    ),
     path(
         "children/<str:slug>/track/",
         views.ChildTrack.as_view(),

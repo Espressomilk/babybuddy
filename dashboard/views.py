@@ -15,6 +15,7 @@ from django.views.generic.edit import CreateView, FormView
 
 from babybuddy.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from core.models import BMI, Child, Feeding, HeadCircumference, Height, Medication, Pumping, Sleep, Temperature, Timer, TummyTime, Vaccine, Weight
+from core.ai_export import build_export
 from core.sleep_advice import suggestion_for
 from core.utils import duration_string
 
@@ -68,6 +69,46 @@ class ChildDashboard(PermissionRequiredMixin, DetailView):
     def get(self, request, *args, **kwargs):
         request.session["last_child_slug"] = kwargs["slug"]
         return super().get(request, *args, **kwargs)
+
+
+class AIExport(PermissionRequiredMixin, View):
+    """The child's recent log as text to paste into an AI chat."""
+
+    permission_required = ("core.view_child",)
+    template_name = "dashboard/ai_export.html"
+    RANGES = (3, 7, 14, 30)
+    DEFAULT_DAYS = 14
+
+    def get(self, request, *args, **kwargs):
+        child = get_object_or_404(Child, slug=kwargs["slug"])
+        try:
+            days = int(request.GET.get("days", self.DEFAULT_DAYS))
+        except ValueError:
+            days = self.DEFAULT_DAYS
+        if days not in self.RANGES:
+            days = self.DEFAULT_DAYS
+        return render(
+            request,
+            self.template_name,
+            {
+                "child": child,
+                "days": days,
+                "ranges": self.RANGES,
+                "text": build_export(child, days),
+            },
+        )
+
+
+class AIExportRouter(LoginRequiredMixin, View):
+    """The menu has no child in scope: go to the one last looked at."""
+
+    def get(self, request, *args, **kwargs):
+        slug = request.session.get("last_child_slug")
+        child = Child.objects.filter(slug=slug).first() if slug else None
+        child = child or Child.objects.order_by("last_name", "first_name", "id").first()
+        if not child:
+            return HttpResponseRedirect(reverse("babybuddy:welcome"))
+        return HttpResponseRedirect(reverse("dashboard:ai-export", args=[child.slug]))
 
 
 class ChildTrack(PermissionRequiredMixin, DetailView):

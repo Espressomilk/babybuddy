@@ -50,3 +50,23 @@ class ViewsTestCase(TestCase):
         )
         page = self.c.get("/dashboard/")
         self.assertEqual(page.status_code, 200)
+
+    def test_ai_export_views(self):
+        call_command("fake", verbosity=0, children=1, days=2)
+        child = Child.objects.first()
+
+        page = self.c.get("/ai-export/")
+        self.assertEqual(page.url, "/children/{}/ai-export/".format(child.slug))
+
+        page = self.c.get("/children/{}/ai-export/".format(child.slug))
+        self.assertEqual(page.status_code, 200)
+        self.assertEqual(page.context["days"], 14)
+        text = page.context["text"]
+        self.assertIn("# Baby Buddy log: {}".format(child.first_name), text)
+        self.assertIn("## Daily summary", text)
+        self.assertIn("## Log", text)
+
+        page = self.c.get("/children/{}/ai-export/?days=3".format(child.slug))
+        self.assertEqual(page.context["days"], 3)
+        page = self.c.get("/children/{}/ai-export/?days=abc".format(child.slug))
+        self.assertEqual(page.context["days"], 14)
