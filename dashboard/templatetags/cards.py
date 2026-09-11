@@ -561,6 +561,8 @@ def card_sleep_suggestion(context, child):
     """
     info = suggest_next_sleep(child)
     remaining = info["remaining"]
+    # "all+capped": where the estimate came from, then how feedback moved it.
+    basis, *adjustments = info["source"].split("+")
     return {
         "type": "sleep",
         "child": child,
@@ -573,8 +575,10 @@ def card_sleep_suggestion(context, child):
             timezone.localtime(info["awake_since"]) if info["awake_since"] else None
         ),
         "target": duration_string(info["target"], "m"),
-        "basis": info["source"],
-        "personal": info["source"] != "age",
+        "basis": basis,
+        # The last adjustment is the one that decided the value.
+        "adjustment": adjustments[-1] if adjustments else "",
+        "personal": basis != "age",
         "samples": info["samples"],
         "pace": info["pace"],
         "slept_24h": duration_string(info["slept_24h"], "m"),

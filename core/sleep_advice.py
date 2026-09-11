@@ -48,17 +48,26 @@ CEILING_QUANTILE = 0.25  # low end of the windows that ended overtired
 FLOOR_QUANTILE = 0.75  # high end of the windows that ended wide awake
 BOUND_MARGIN_DOWN = 0.9
 BOUND_MARGIN_UP = 1.1
+# Failed settles bound the estimate only once they repeat; one is an anecdote.
+MIN_BOUND_SAMPLES = 3
 
 # How much history to learn from, and how many naps are needed before the
 # child's own pattern is trusted over the age fallback.
 LOOKBACK_DAYS = 14
 MIN_SAMPLES = 5
 
-# A gap outside these bounds is a logging artefact rather than a wake window.
-MIN_WAKE_WINDOW = timedelta(minutes=15)
+# A gap longer than this is a logging artefact rather than a wake window.
 MAX_WAKE_WINDOW = timedelta(hours=6)
+# A sleep starting within this fraction of the typical window for the age is a
+# resettle -- the same nap broken and restarted, say on a failed transfer --
+# not a new nap after a wake window. How the resettle went says nothing about
+# the gap before it, so it is left out of both the estimate and its bounds.
+RESETTLE_FRACTION = 0.5
 # Samples far above what is plausible for the age are dropped before averaging.
 OUTLIER_FACTOR = 2.5
+# Whatever the feedback and the sleep budget say, never suggest less than this
+# fraction of the typical window for the age.
+MIN_TARGET_FRACTION = 0.5
 
 # How close to the suggested time counts as "due now" rather than "later".
 DUE_SOON = timedelta(minutes=15)
@@ -100,12 +109,14 @@ def observed_wake_windows(child, lookback_days=LOOKBACK_DAYS, with_sleep=False):
     """The wake windows that actually preceded this child's recent naps.
 
     Only naps count: the stretch before the night sleep is a bedtime, not a
-    wake window, and would skew the estimate upwards.
+    wake window, and would skew the estimate upwards. Resettles do not count
+    either: a nap restarted minutes after it broke is still that nap.
 
     :param with_sleep: return (window, sleep) pairs instead of just windows, so
         callers can weigh each window by how that sleep went.
     """
     since = timezone.now() - timedelta(days=lookback_days)
+    min_gap = age_wake_window(child) * RESETTLE_FRACTION
     # Reach back an extra day so a nap early in the window still has the sleep
     # before it available to measure from.
     sleeps = (
@@ -122,7 +133,7 @@ def observed_wake_windows(child, lookback_days=LOOKBACK_DAYS, with_sleep=False):
             and is_nap(sleep)
         ):
             gap = sleep.start - prev_end
-            if MIN_WAKE_WINDOW <= gap <= MAX_WAKE_WINDOW:
+            if min_gap <= gap <= MAX_WAKE_WINDOW:
                 windows.append((gap, sleep) if with_sleep else gap)
         prev_end = max(prev_end, sleep.end) if prev_end else sleep.end
     return windows
@@ -223,8 +234,8 @@ def feedback_bounds(child):
     A settle that failed says which way the window was wrong, which is useful
     even though it says nothing about the right value: going down overtired
     means the window ran long, going down wide awake means it was cut short.
-    Taking a quantile rather than the extreme keeps one bad afternoon from
-    dictating the answer.
+    Requiring a few of them, and taking a quantile rather than the extreme,
+    keeps one bad afternoon from dictating the answer.
 
     :returns: (ceiling, floor), either of which may be None.
     """
@@ -236,8 +247,16 @@ def feedback_bounds(child):
     too_long = [w for w, s in pairs if s.settling == Sleep.SETTLING_TOO_LONG]
     too_short = [w for w, s in pairs if s.settling == Sleep.SETTLING_TOO_SHORT]
 
-    ceiling = _quantile(too_long, CEILING_QUANTILE)
-    floor = _quantile(too_short, FLOOR_QUANTILE)
+    ceiling = (
+        _quantile(too_long, CEILING_QUANTILE)
+        if len(too_long) >= MIN_BOUND_SAMPLES
+        else None
+    )
+    floor = (
+        _quantile(too_short, FLOOR_QUANTILE)
+        if len(too_short) >= MIN_BOUND_SAMPLES
+        else None
+    )
     # Aim inside the failing region rather than right at its edge.
     if ceiling:
         ceiling = ceiling * BOUND_MARGIN_DOWN
@@ -277,7 +296,20 @@ def target_wake_window(child):
         if ceiling and target > ceiling:
             target, basis = ceiling, basis + "+capped"
 
-    return max(target, MIN_WAKE_WINDOW), basis, samples
+    minimum = baseline * MIN_TARGET_FRACTION
+    if target < minimum:
+        target, basis = minimum, basis + "+floored"
+    return target, basis, samples
+
+
+def _paced(child, base, factor):
+    """The wake window nudged by the sleep budget, but never outside what is
+    plausible for the age."""
+    baseline = age_wake_window(child)
+    target = timedelta(seconds=base.total_seconds() * factor)
+    return min(
+        max(target, baseline * MIN_TARGET_FRACTION), baseline * OUTLIER_FACTOR
+    )
 
 
 def suggestion_for(child, sleep_start):
@@ -294,7 +326,7 @@ def suggestion_for(child, sleep_start):
         return None
     base, _, _ = target_wake_window(child)
     factor = pace_factor(child, now=sleep_start)[0]
-    return previous.end + timedelta(seconds=base.total_seconds() * factor)
+    return previous.end + _paced(child, base, factor)
 
 
 def suggest_next_sleep(child):
@@ -310,10 +342,7 @@ def suggest_next_sleep(child):
     now = timezone.now()
     base, source, samples = target_wake_window(child)
     factor, slept_24h, low, high = pace_factor(child, now)
-    # The sleep budget nudges the timing, but never outside what is plausible
-    # for the age.
-    target = timedelta(seconds=base.total_seconds() * factor)
-    target = min(max(target, MIN_WAKE_WINDOW), age_wake_window(child) * OUTLIER_FACTOR)
+    target = _paced(child, base, factor)
     result = {
         "target": target,
         "base_target": base,

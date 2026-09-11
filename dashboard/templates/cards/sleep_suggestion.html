@@ -56,6 +56,15 @@
             {% else %}
                 {% trans "Typical for this age — not enough naps logged yet" %}
             {% endif %}
+            {% if adjustment == "capped" %}
+                &middot; {% trans "shortened after overtired settles" %}
+            {% elif adjustment == "raised" %}
+                &middot; {% trans "lengthened after wired settles" %}
+            {% elif adjustment == "bounded" %}
+                &middot; {% trans "between overtired and wired settles" %}
+            {% elif adjustment == "floored" %}
+                &middot; {% trans "kept at the minimum for this age" %}
+            {% endif %}
         </div>
         <div class="small text-body-secondary">
             {% blocktrans trimmed with slept=slept_24h low=recommended_low high=recommended_high %}

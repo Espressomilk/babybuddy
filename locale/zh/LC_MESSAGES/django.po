@@ -3913,6 +3913,18 @@ msgstr "偏少，建议提前"
 msgid "ahead, suggesting later"
 msgstr "偏多，建议推后"
 
+msgid "shortened after overtired settles"
+msgstr "因过累入睡已缩短"
+
+msgid "lengthened after wired settles"
+msgstr "因太兴奋不困已延长"
+
+msgid "between overtired and wired settles"
+msgstr "介于过累与太兴奋之间"
+
+msgid "kept at the minimum for this age"
+msgstr "已取该月龄的下限"
+
 msgid "Suggested start time"
 msgstr "建议开始时间"
 
