@@ -33,9 +33,17 @@ class ViewsTestCase(TestCase):
 
         cls.c.login(**cls.credentials)
 
+    def setUp(self):
+        super().setUp()
+        # The client is shared by the whole class, and some tests end logged
+        # out or with a changed password. Each test's changes are rolled back,
+        # so logging in again here keeps them independent of running order.
+        self.c.login(**self.credentials)
+
     def test_root_router(self):
         page = self.c.get("/")
-        self.assertEqual(page.url, "/dashboard/")
+        # The track page is this instance's landing page.
+        self.assertEqual(page.url, "/track/")
 
     @override_settings(ROLLING_SESSION_REFRESH=1)
     def test_rolling_sessions(self):

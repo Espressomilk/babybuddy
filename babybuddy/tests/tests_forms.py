@@ -49,6 +49,9 @@ class FormsTestCase(TestCase):
             "timezone": "UTC",
             "next": "/user/settings/",
             "pagination_count": 25,
+            # Required by the settings form, so the post validates.
+            "bottle_amount_roller_step": 10,
+            "dashboard_triple_feeding": "on",
         }
 
     def test_change_password(self):
@@ -229,7 +232,7 @@ class FormsTestCase(TestCase):
     def test_user_settings_timezone(self):
         self.c.login(**self.credentials)
 
-        self.assertEqual(timezone.get_default_timezone_name(), "UTC")
+        self.assertEqual(timezone.get_default_timezone_name(), settings.TIME_ZONE)
         params = self.settings_template.copy()
         params["timezone"] = "US/Pacific"
         page = self.c.post("/user/settings/", data=params, follow=True)

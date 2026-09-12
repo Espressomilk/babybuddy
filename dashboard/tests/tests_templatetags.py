@@ -163,17 +163,34 @@ class TemplateTagsTestCase(TestCase):
         self.assertFalse(data["empty"])
         self.assertFalse(data["hide_empty"])
 
-        # most recent day
-        self.assertEqual(data["feedings"][0]["total"], 2.5)
-        self.assertEqual(data["feedings"][0]["count"], 3)
+        # Each day breaks down into the three "triple feeding" methods, in a
+        # fixed order: breast feed (a duration), then the two bottles.
+        breast, bottle_breast_milk, bottle_formula = range(3)
 
-        # yesterday
-        self.assertEqual(data["feedings"][1]["total"], 0.25)
-        self.assertEqual(data["feedings"][1]["count"], 1)
+        # Most recent day: two 30 minute breast feeds and one formula bottle.
+        today = data["feedings"][0]
+        self.assertEqual(today["count"], 3)
+        self.assertEqual(
+            today["methods"][breast]["total"], timezone.timedelta(minutes=60)
+        )
+        self.assertEqual(today["methods"][breast]["count"], 2)
+        self.assertEqual(today["methods"][bottle_breast_milk]["count"], 0)
+        self.assertEqual(today["methods"][bottle_formula]["total"], 2.5)
+        self.assertEqual(today["methods"][bottle_formula]["count"], 1)
 
-        # last day
-        self.assertEqual(data["feedings"][-1]["total"], 20.0)
-        self.assertEqual(data["feedings"][-1]["count"], 2)
+        # Yesterday: one formula bottle and nothing else.
+        yesterday = data["feedings"][1]
+        self.assertEqual(yesterday["count"], 1)
+        self.assertEqual(yesterday["methods"][breast]["total"], timezone.timedelta())
+        self.assertEqual(yesterday["methods"][breast]["count"], 0)
+        self.assertEqual(yesterday["methods"][bottle_formula]["total"], 0.25)
+        self.assertEqual(yesterday["methods"][bottle_formula]["count"], 1)
+
+        # Last day of the range: two formula bottles.
+        last = data["feedings"][-1]
+        self.assertEqual(last["count"], 2)
+        self.assertEqual(last["methods"][bottle_formula]["total"], 20.0)
+        self.assertEqual(last["methods"][bottle_formula]["count"], 2)
 
     def test_card_feeding_last(self):
         data = cards.card_feeding_last(self.context, self.child)

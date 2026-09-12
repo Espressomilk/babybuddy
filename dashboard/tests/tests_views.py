@@ -48,6 +48,15 @@ class ViewsTestCase(TestCase):
         Child.objects.create(
             first_name="Second", last_name="Child", birth_date="2000-01-01"
         )
+        # Visiting a child's dashboard is remembered, so /dashboard/ returns
+        # there instead of listing the children.
+        page = self.c.get("/dashboard/")
+        self.assertEqual(page.url, "/children/{}/dashboard/".format(child.slug))
+
+        # Without that memory, several children mean the list itself.
+        session = self.c.session
+        del session["last_child_slug"]
+        session.save()
         page = self.c.get("/dashboard/")
         self.assertEqual(page.status_code, 200)
 

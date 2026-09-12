@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from babybuddy.models import get_user_model
 from core import models
+from django.conf import settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
@@ -955,7 +956,8 @@ class TestProfileAPITestCase(APITestCase):
             response.data
             | {
                 "language": "en-US",
-                "timezone": "UTC",
+                # No timezone of their own, so the site default stands.
+                "timezone": settings.TIME_ZONE,
             },
         )
         self.assertEqual(
