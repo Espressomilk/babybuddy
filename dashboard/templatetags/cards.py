@@ -604,16 +604,22 @@ def card_wake_window(context, child):
     """
     The current wake window: how long the child has been awake since waking
     from the last sleep. While a sleep timer is running the window has ended,
-    so the card shows how long they have been asleep instead.
+    so the card shows how long they have been asleep instead. Either way it
+    carries the last completed sleep, which is what the child woke from.
     :param child: an instance of the Child model.
     """
     now = timezone.localtime()
     timer = models.Timer.objects.filter(child=child, name__in=["Sleep", "Nap"]).first()
     asleep = timer is not None
+    last_sleep = (
+        models.Sleep.objects.filter(child=child)
+        .filter(**_filter_data_age(context))
+        .order_by("-end")
+        .first()
+    )
     if asleep:
         since = timezone.localtime(timer.start)
     else:
-        last_sleep = models.Sleep.objects.filter(child=child).order_by("-end").first()
         since = timezone.localtime(last_sleep.end) if last_sleep else None
 
     duration = now - since if since and since <= now else None
@@ -621,6 +627,7 @@ def card_wake_window(context, child):
         "type": "sleep",
         "asleep": asleep,
         "since": since,
+        "last_sleep": last_sleep,
         "duration": duration_string(duration, "m") if duration else None,
         "empty": duration is None,
         "hide_empty": _hide_empty(context),

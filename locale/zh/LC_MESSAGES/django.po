@@ -3972,6 +3972,9 @@ msgstr "实际早了 %(offset)s"
 msgid "Suggested"
 msgstr "建议入睡"
 
+msgid "Last sleep %(duration)s (%(start)s to %(end)s)"
+msgstr "上次睡眠 %(duration)s（%(start)s 至 %(end)s）"
+
 msgid "Suggested start time"
 msgstr "建议开始时间"
 

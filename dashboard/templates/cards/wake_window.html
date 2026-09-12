@@ -1,5 +1,5 @@
 {% extends 'cards/base.html' %}
-{% load i18n %}
+{% load duration i18n %}
 {% block header %}
     <a href="{% url "core:sleep-list" %}">{% trans "Wake / Sleep Window" %}</a>
 {% endblock %}
@@ -26,5 +26,12 @@
                 Awake since {{ time }}
             {% endblocktrans %}
         {% endif %}
+    {% endif %}
+    {% if last_sleep %}
+        <div class="small text-body-secondary">
+            {% blocktrans trimmed with duration=last_sleep.duration|duration_string start=last_sleep.start|time end=last_sleep.end|time %}
+                Last sleep {{ duration }} ({{ start }} to {{ end }})
+            {% endblocktrans %}
+        </div>
     {% endif %}
 {% endblock %}
