@@ -20,7 +20,7 @@ from core.sleep_advice import suggestion_for
 from core.utils import duration_string
 
 from .forms import BottleFeedForm, BreastfeedForm, BreastfeedQuickForm, DiaperChangeQuickForm, FeedCommitForm, FeedQuickForm, PumpCommitForm, PumpQuickForm, SleepNoteForm, TummyTimeMilestoneForm
-from .models import FeedPending, PumpPending
+from .models import FeedPending, PumpPending, SleepSettlingDraft
 
 
 def _broadcast_track(child_slug):
@@ -142,6 +142,15 @@ class ChildTrack(PermissionRequiredMixin, DetailView):
             Timer.objects.filter(child=self.object, name__in=self.SLEEP_TIMER_NAMES)
             .first()
         )
+        # Settling can be answered while the sleep is still running, which is
+        # when the caregiver actually knows the answer.
+        ctx["settling_choices"] = Sleep._meta.get_field("settling").choices
+        draft = (
+            SleepSettlingDraft.objects.filter(timer=ctx["sleep_timer"]).first()
+            if ctx["sleep_timer"]
+            else None
+        )
+        ctx["sleep_settling"] = draft.settling if draft else ""
         ctx["pump_left_timer"] = Timer.objects.filter(
             child=self.object, name="Pump Left"
         ).first()
@@ -326,12 +335,49 @@ class SleepTimerAdjust(PermissionRequiredMixin, View):
         )
 
 
+class SleepTimerSettling(PermissionRequiredMixin, View):
+    """Record how a running sleep is going down, before the timer is stopped.
+
+    Kept against the timer rather than the session, so the answer survives a
+    refresh, reaches whoever stops the timer, and opens the save page already
+    chosen.
+    """
+
+    permission_required = ("core.add_sleep",)
+    http_method_names = ["post"]
+
+    def post(self, request, *args, **kwargs):
+        child = get_object_or_404(Child, slug=kwargs["slug"])
+        timer = get_object_or_404(Timer, pk=kwargs["pk"], child=child)
+        value = (request.POST.get("settling") or "").strip()
+        choices = dict(Sleep._meta.get_field("settling").choices)
+        if value in choices:
+            SleepSettlingDraft.objects.update_or_create(
+                timer=timer, defaults={"settling": value}
+            )
+            _broadcast_track(kwargs["slug"])
+        elif not value:
+            SleepSettlingDraft.objects.filter(timer=timer).delete()
+            _broadcast_track(kwargs["slug"])
+        return HttpResponseRedirect(
+            reverse("dashboard:track-child", kwargs={"slug": kwargs["slug"]})
+        )
+
+
 class SleepTimerNote(PermissionRequiredMixin, FormView):
     """Stop a running sleep timer and save the entry."""
 
     permission_required = ("core.add_sleep",)
     form_class = SleepNoteForm
     template_name = "dashboard/sleep_entry.html"
+
+    def get_initial(self):
+        initial = super().get_initial()
+        # Whatever was chosen on the card while the sleep was running.
+        draft = SleepSettlingDraft.objects.filter(timer=self.get_timer()).first()
+        if draft:
+            initial["settling"] = draft.settling
+        return initial
 
     def get_child(self):
         return get_object_or_404(Child, slug=self.kwargs["slug"])

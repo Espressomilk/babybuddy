@@ -207,6 +207,19 @@
     touch-action: manipulation;
   }
   .qa-sleep-start .tr-display:hover { border-color: #2e3d5f; background: #f0f4ff; }
+  .qa-sleep-settling {
+    max-width: 62%;
+    padding: 0.3rem 0.5rem;
+    border-radius: 8px;
+    border: 1.5px solid #bcc4d6;
+    background: #fff;
+    color: #2e3d5f;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .qa-sleep-settling:hover { border-color: #2e3d5f; }
   .qa-timer-start {
     width: 100%;
     padding: 0.65rem;
@@ -529,6 +542,25 @@
             <span class="qa-sleep-start-label">{% trans "Fell asleep" %}</span>
             <input type="datetime-local" step="60" name="start" id="qa-sleep-start-input"
                    value="{{ sleep_timer.start|date:'Y-m-d\TH:i' }}">
+          </form>
+          {% endif %}
+          {% comment %}
+            How they went down describes the child before they fell asleep, so
+            it is answered here rather than at the end. The save page opens
+            with whatever is chosen.
+          {% endcomment %}
+          {% if perms.core.add_sleep %}
+          <form method="post" id="qa-sleep-settling-form"
+                action="{% url 'dashboard:sleep-timer-settling' object.slug sleep_timer.pk %}"
+                class="qa-sleep-start">
+            {% csrf_token %}
+            <span class="qa-sleep-start-label">{% trans "Settling" %}</span>
+            <select name="settling" id="qa-sleep-settling-input" class="qa-sleep-settling">
+              <option value="">{% trans "Not recorded" %}</option>
+              {% for value, label in settling_choices %}
+                <option value="{{ value }}"{% if value == sleep_settling %} selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
           </form>
           {% endif %}
           {% if perms.core.add_sleep %}
@@ -969,6 +1001,7 @@
     bindForms();
     initSwipeToDiscard();
     bindSleepStart();
+    bindSleepSettling();
     refreshing = false;
   }
 
@@ -1116,11 +1149,21 @@
     });
   }
 
+  function bindSleepSettling() {
+    var select = document.getElementById('qa-sleep-settling-input');
+    if (!select || select.dataset.bound) return;
+    select.dataset.bound = '1';
+    select.addEventListener('change', function () {
+      document.getElementById('qa-sleep-settling-form').requestSubmit();
+    });
+  }
+
   // ── Boot ──────────────────────────────────────────────────────────────────
   initClocks();
   bindForms();
   initSwipeToDiscard();
   bindSleepStart();
+  bindSleepSettling();
   connectWS();
 })();
 </script>

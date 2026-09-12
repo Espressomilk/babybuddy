@@ -3975,6 +3975,10 @@ msgstr "建议入睡"
 msgid "Last sleep %(duration)s (%(start)s to %(end)s)"
 msgstr "上次睡眠 %(duration)s（%(start)s 至 %(end)s）"
 
+#: running sleep timer card
+msgid "Fell asleep"
+msgstr "入睡时间"
+
 msgid "Suggested start time"
 msgstr "建议开始时间"
 

@@ -6,7 +6,8 @@ from django.core.management import call_command
 
 from faker import Faker
 
-from core.models import Child
+from core.models import Child, Sleep, Timer
+from dashboard.models import SleepSettlingDraft
 
 
 class ViewsTestCase(TestCase):
@@ -59,6 +60,35 @@ class ViewsTestCase(TestCase):
         session.save()
         page = self.c.get("/dashboard/")
         self.assertEqual(page.status_code, 200)
+
+    def test_sleep_settling_draft(self):
+        call_command("fake", verbosity=0, children=1, days=1)
+        child = Child.objects.first()
+        Timer.objects.filter(child=child).delete()
+        timer = Timer.objects.create(child=child, name="Nap", user=self.user)
+
+        self.c.post(
+            "/children/{}/sleep-timer/{}/settling/".format(child.slug, timer.pk),
+            {"settling": "fussy"},
+        )
+        self.assertEqual(SleepSettlingDraft.objects.filter(timer=timer).count(), 1)
+
+        # Whoever opens the card next sees the choice, on any device.
+        page = self.c.get("/children/{}/track/".format(child.slug))
+        self.assertEqual(page.context["sleep_settling"], "fussy")
+
+        # And the save page opens with it already chosen.
+        page = self.c.get(
+            "/children/{}/sleep-timer/{}/note/".format(child.slug, timer.pk)
+        )
+        self.assertEqual(page.context["form"].initial["settling"], "fussy")
+
+        # Discarding the timer takes the draft with it and records no sleep.
+        sleeps = Sleep.objects.filter(child=child).count()
+        self.c.post("/children/{}/timer/{}/stop/".format(child.slug, timer.pk))
+        self.assertFalse(Timer.objects.filter(pk=timer.pk).exists())
+        self.assertEqual(SleepSettlingDraft.objects.count(), 0)
+        self.assertEqual(Sleep.objects.filter(child=child).count(), sleeps)
 
     def test_ai_export_views(self):
         call_command("fake", verbosity=0, children=1, days=2)

@@ -55,6 +55,11 @@ urlpatterns = [
         name="sleep-timer-adjust",
     ),
     path(
+        "children/<str:slug>/sleep-timer/<int:pk>/settling/",
+        views.SleepTimerSettling.as_view(),
+        name="sleep-timer-settling",
+    ),
+    path(
         "children/<str:slug>/sleep-timer/<int:pk>/note/",
         views.SleepTimerNote.as_view(),
         name="sleep-timer-note",
