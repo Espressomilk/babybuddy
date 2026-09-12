@@ -16,6 +16,26 @@ guess work.
 
 <br clear="left"/>
 
+## 📸 Screenshots
+
+The dashboard, with the sleep suggestion, milk stash and per-day feeding cards
+this fork adds:
+
+![Dashboard](screenshot.png)
+
+On a phone — the dashboard, and the track page where a nap is running:
+
+<table>
+  <tr>
+    <td width="50%"><img src="screenshot_mobile.png" alt="Dashboard on a phone"></td>
+    <td width="50%"><img src="screenshot_track_mobile.png" alt="Track page on a phone"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Dashboard</sub></td>
+    <td align="center"><sub>Track — one tap per entry</sub></td>
+  </tr>
+</table>
+
 ## 📘 Documentation
 
 Visit [https://docs.baby-buddy.net](https://docs.baby-buddy.net) for full
