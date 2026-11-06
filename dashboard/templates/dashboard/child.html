@@ -42,4 +42,16 @@
     {% else %}
         <script type="application/javascript">BabyBuddy.Dashboard.watch('dashboard-child', false);</script>
     {% endif %}
+    <script type="application/javascript">
+        /* Added to the home screen, returning from the background fires no
+           "focus" event, which is all BabyBuddy.Dashboard.watch listens for, so
+           the cards would still show whatever they showed when it was put away. */
+        (function () {
+            var hiddenSince = null;
+            document.addEventListener('visibilitychange', function () {
+                if (document.hidden) { hiddenSince = Date.now(); return; }
+                if (hiddenSince && Date.now() - hiddenSince > 5000) location.reload();
+            });
+        })();
+    </script>
 {% endblock %}

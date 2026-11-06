@@ -1158,6 +1158,25 @@
     });
   }
 
+  // ── Resume ────────────────────────────────────────────────────────────────
+  // Added to the home screen, the page keeps its old DOM while it is in the
+  // background: a timer another caregiver has already stopped would still look
+  // like it is running. Catch up the moment it is shown again.
+  function handleResume() {
+    if (document.hidden) return;
+    if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+      if (wsReconnectTimer) clearTimeout(wsReconnectTimer);
+      connectWS();
+    }
+    initClocks();
+    // A fetch interrupted by backgrounding can leave the guard raised, which
+    // would block every later refresh.
+    refreshing = false;
+    if (!postInFlight) refreshContent(window.scrollY);
+  }
+  document.addEventListener('visibilitychange', handleResume);
+  window.addEventListener('pageshow', function (e) { if (e.persisted) handleResume(); });
+
   // ── Boot ──────────────────────────────────────────────────────────────────
   initClocks();
   bindForms();
