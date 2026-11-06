@@ -1,0 +1,39 @@
+{% comment %}
+  Keeps a duration readout in step with a pair of start/end inputs, so the
+  figure on screen is always the one that will be saved.
+{% endcomment %}
+<script>
+(function () {
+  function parse(value) {
+    if (!value) return null;
+    var date = new Date(value);
+    return isNaN(date.getTime()) ? null : date;
+  }
+  function format(seconds) {
+    var h = Math.floor(seconds / 3600),
+        m = Math.floor((seconds % 3600) / 60),
+        s = seconds % 60;
+    return h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
+  window.LiveDuration = {
+    bind: function (startId, endId, outputSelector, emptyText) {
+      var start = document.getElementById(startId);
+      var end = document.getElementById(endId);
+      var outputs = document.querySelectorAll(outputSelector);
+      if (!start || !end || !outputs.length) return;
+      function render() {
+        var from = parse(start.value), to = parse(end.value);
+        var seconds = from && to ? Math.round((to.getTime() - from.getTime()) / 1000) : null;
+        // An end before the start is the form's error to report, not ours.
+        var text = seconds === null || seconds < 0 ? (emptyText || '—') : format(seconds);
+        outputs.forEach(function (el) { el.textContent = text; });
+      }
+      ['change', 'input'].forEach(function (name) {
+        start.addEventListener(name, render);
+        end.addEventListener(name, render);
+      });
+      render();
+    }
+  };
+})();
+</script>

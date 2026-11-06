@@ -132,6 +132,10 @@
       {{ form.breast_end }}
       {% if form.breast_end.errors %}<div class="fc-errors" style="margin-top:0.4rem;">{{ form.breast_end.errors|striptags }}</div>{% endif %}
     </div>
+    <div class="fc-session-row" style="margin-top:0.6rem;">
+      <span class="fc-side-label">{% trans "Duration" %}</span>
+      <span class="fc-duration" data-breast-duration>—</span>
+    </div>
     {% endif %}
 
     {% if has_bottle %}
@@ -146,6 +150,10 @@
     <div class="ft-field">
       {{ form.bottle_end }}
       {% if form.bottle_end.errors %}<div class="fc-errors" style="margin-top:0.4rem;">{{ form.bottle_end.errors|striptags }}</div>{% endif %}
+    </div>
+    <div class="fc-session-row" style="margin-top:0.6rem;">
+      <span class="fc-side-label">{% trans "Duration" %}</span>
+      <span class="fc-duration" data-bottle-duration>—</span>
     </div>
 
     {# ── Bottle type & amount ── #}
@@ -201,8 +209,15 @@
 
 </div>
 
+{% include 'dashboard/_live_duration.html' %}
 <script>
 (function () {
+  // Durations follow the time inputs, so they match what will be saved.
+  if (window.LiveDuration) {
+    LiveDuration.bind('id_breast_start', 'id_breast_end', '[data-breast-duration]');
+    LiveDuration.bind('id_bottle_start', 'id_bottle_end', '[data-bottle-duration]');
+  }
+
   document.querySelectorAll('.fc-stepper-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
       var input = document.getElementById(btn.dataset.target);

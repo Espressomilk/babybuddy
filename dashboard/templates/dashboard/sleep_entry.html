@@ -48,6 +48,16 @@
     font-weight: 700;
     white-space: nowrap;
   }
+  .sn-duration-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 0.75rem; padding: 0.6rem 1rem;
+    background: #f0f4fb; border-radius: 12px;
+  }
+  .sn-duration-label { font-size: 0.85rem; font-weight: 600; color: #777; }
+  .sn-duration-value {
+    font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums;
+    letter-spacing: 0.03em; color: #2e3d5f;
+  }
   .sn-elapsed {
     font-size: 1.5rem;
     font-weight: 700;
@@ -169,7 +179,7 @@
     <p class="sn-section">{% trans "Timer" %}</p>
     <div class="sn-summary">
       <span class="sn-type-badge">{% if timer.name == "Sleep" %}{% trans "Sleep" %}{% elif timer.name == "Nap" %}{% trans "Nap" %}{% else %}{{ timer.name }}{% endif %}</span>
-      <span class="sn-elapsed">{{ elapsed }}</span>
+      <span class="sn-elapsed" data-sleep-duration>{{ elapsed }}</span>
     </div>
     {% else %}
     {# Added by hand, so the kind of sleep has to be chosen. #}
@@ -210,6 +220,10 @@
       {{ form.end }}
       {% if form.end.errors %}<div class="sn-errors">{{ form.end.errors|striptags }}</div>{% endif %}
     </div>
+    <div class="sn-duration-row">
+      <span class="sn-duration-label">{% trans "Duration" %}</span>
+      <span class="sn-duration-value" data-sleep-duration>—</span>
+    </div>
 
     {# ── Notes ── #}
     <p class="sn-section">{% trans "Notes" %}</p>
@@ -226,6 +240,7 @@
   </form>
 </div>
 
+{% include 'dashboard/_live_duration.html' %}
 <script>
 (function () {
   const pad = n => String(n).padStart(2, '0');
@@ -241,6 +256,11 @@
   }
   tick();
   setInterval(tick, 1000);
+
+  // The duration follows the time inputs, so it matches what will be saved.
+  if (window.LiveDuration) {
+    LiveDuration.bind('id_start', 'id_end', '[data-sleep-duration]');
+  }
 
   // Settling pills drive the hidden field the form validates.
   var settling = document.getElementById('id_settling');
