@@ -342,6 +342,7 @@ class HeadCircumferenceForm(CoreModelForm, TaggableModelForm):
     class Meta:
         model = models.HeadCircumference
         fields = ["child", "head_circumference", "date", "notes", "tags"]
+        help_texts = {"head_circumference": _("In centimeters (cm).")}
         widgets = {
             "child": ChildRadioSelect,
             "date": DateInput(),
@@ -361,6 +362,7 @@ class HeightForm(CoreModelForm, TaggableModelForm):
     class Meta:
         model = models.Height
         fields = ["child", "height", "date", "notes", "tags"]
+        help_texts = {"height": _("In centimeters (cm).")}
         widgets = {
             "child": ChildRadioSelect,
             "date": DateInput(),
@@ -597,6 +599,7 @@ class WeightForm(CoreModelForm, TaggableModelForm):
     class Meta:
         model = models.Weight
         fields = ["child", "weight", "date", "notes", "tags"]
+        help_texts = {"weight": _("In kilograms (kg).")}
         widgets = {
             "child": ChildRadioSelect,
             "date": DateInput(),

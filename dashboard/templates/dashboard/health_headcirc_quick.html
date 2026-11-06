@@ -58,6 +58,10 @@
   }
   .hq-stepper-val::-webkit-outer-spin-button,
   .hq-stepper-val::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .hq-stepper-unit {
+    font-size: 1rem; font-weight: 700; color: #777;
+    flex-shrink: 0; min-width: 1.6rem;
+  }
   .hq-notes textarea {
     width: 100%; padding: 0.7rem 1rem; border: 1.5px solid #ddd;
     border-radius: 12px; font-size: 1rem; color: #2d2d2d;
@@ -93,6 +97,7 @@
       <button type="button" class="hq-stepper-btn" id="hq-dec">−</button>
       <input type="number" name="head_circumference" id="hq-display" class="hq-stepper-val"
              step="any" min="0" value="40.0">
+      <span class="hq-stepper-unit" id="hq-unit-label">cm</span>
       <button type="button" class="hq-stepper-btn" id="hq-inc">+</button>
     </div>
 
@@ -111,6 +116,7 @@
   var valCm = 40.0;
   var display  = document.getElementById('hq-display');
   var hiddenU  = document.getElementById('hq-unit-val');
+  var unitLabel = document.getElementById('hq-unit-label');
   var unitBtns = document.querySelectorAll('.hq-unit-btn');
   var dateEl   = document.getElementById('hq-date-display');
 
@@ -123,6 +129,7 @@
     var shown = unit === 'cm' ? valCm : cmToIn(valCm);
     display.value = shown.toFixed(1);
     hiddenU.value = unit;
+    if (unitLabel) unitLabel.textContent = unit;
   }
 
   function syncFromInput() {

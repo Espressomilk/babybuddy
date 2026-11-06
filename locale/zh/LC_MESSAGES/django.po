@@ -4020,3 +4020,11 @@ msgstr "共 %(total)s 毫升"
 msgid "Not recorded"
 msgstr "未记录"
 
+
+#: measurement units on the add/update forms
+
+msgid "In kilograms (kg)."
+msgstr "单位：千克（kg）。"
+
+msgid "In centimeters (cm)."
+msgstr "单位：厘米（cm）。"
