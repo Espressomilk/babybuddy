@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from django.shortcuts import get_object_or_404
-from django.utils import timezone, translation
+from django.utils import formats, timezone, translation
 from django.utils.timesince import timesince
 from django.utils.translation import gettext as _
 
@@ -10,10 +10,17 @@ from rest_framework.response import Response
 from rest_framework.schemas.openapi import AutoSchema
 
 from core import models
-from core.utils import duration_string, group_feeding_sessions
+from core.sleep_advice import suggest_next_sleep
+from core.utils import duration_parts, duration_string, group_feeding_sessions
 from babybuddy import models as babybuddy_models
 
 from . import serializers, filters
+
+
+def _spoken_duration(delta):
+    """A duration for speech: "2 hours", not "2 hours, 0 minutes"."""
+    hours, minutes, _seconds = duration_parts(delta)
+    return duration_string(delta, "h" if hours and not minutes else "m")
 
 
 def _format_amount(value):
@@ -254,6 +261,82 @@ class QuickStatusView(views.APIView):
             return _("breast-milk bottle")
         return feeding.get_method_display()
 
+    def _sleep_summary(self, child, now):
+        """How long they have been up, and when the next sleep is due.
+
+        Asked while the child is awake, that is the part worth hearing; asleep,
+        the answer is simply how long they have been down.
+
+        :returns: (sentence or None, structured fields)
+        """
+        info = suggest_next_sleep(child)
+        state = info["state"]
+        awake_since = info["awake_since"]
+        suggested_at = info["suggested_at"]
+        remaining = info["remaining"]
+
+        data = {
+            "state": state,
+            "awake_since": (
+                timezone.localtime(awake_since).isoformat() if awake_since else None
+            ),
+            "awake_minutes": None,
+            "suggested_at": (
+                timezone.localtime(suggested_at).isoformat() if suggested_at else None
+            ),
+            "minutes_until_suggested": (
+                int(remaining.total_seconds() // 60) if remaining is not None else None
+            ),
+        }
+
+        if state == "unknown" or awake_since is None:
+            return None, data
+
+        since = now - timezone.localtime(awake_since)
+        if state == "asleep":
+            return (
+                _("%(child)s has been asleep for %(duration)s.")
+                % {"child": child.first_name, "duration": _spoken_duration(since)},
+                data,
+            )
+
+        data["awake_minutes"] = int(since.total_seconds() // 60)
+        awake_for = _spoken_duration(since)
+
+        if state == "stale":
+            return (
+                _("No sleep recorded for %(child)s in the last %(duration)s.")
+                % {"child": child.first_name, "duration": awake_for},
+                data,
+            )
+
+        time_text = formats.time_format(timezone.localtime(suggested_at))
+        if state == "early":
+            sentence = _(
+                "%(child)s has been awake %(awake)s; next sleep suggested at "
+                "%(time)s, in %(remaining)s."
+            ) % {
+                "child": child.first_name,
+                "awake": awake_for,
+                "time": time_text,
+                "remaining": _spoken_duration(remaining),
+            }
+        elif state == "due":
+            sentence = _(
+                "%(child)s has been awake %(awake)s and is due to sleep now."
+            ) % {"child": child.first_name, "awake": awake_for}
+        else:  # overdue
+            sentence = _(
+                "%(child)s has been awake %(awake)s; sleep was suggested at "
+                "%(time)s, %(remaining)s ago."
+            ) % {
+                "child": child.first_name,
+                "awake": awake_for,
+                "time": time_text,
+                "remaining": _spoken_duration(-remaining),
+            }
+        return sentence, data
+
     def _build(self, child):
         now = timezone.localtime()
         day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -301,6 +384,10 @@ class QuickStatusView(views.APIView):
                     % {"amount": _format_amount(last.amount)}
                 )
 
+        sleep_sentence, sleep_data = self._sleep_summary(child, now)
+        if sleep_sentence:
+            parts.append(sleep_sentence)
+
         parts.append(
             _(
                 "Today: %(sessions)s feeding sessions, %(breast)s of "
@@ -322,6 +409,7 @@ class QuickStatusView(views.APIView):
             "last_feeding": (
                 None if last is None else timezone.localtime(last.start).isoformat()
             ),
+            "sleep": sleep_data,
             "today": {
                 "feeding_sessions": sessions_today,
                 "breastfeeding_minutes": int(breast_total.total_seconds() // 60),

@@ -976,3 +976,59 @@ class TestProfileAPITestCase(APITestCase):
         self.assertIn("api_key", response.data)
         self.assertTrue(isinstance(response.data["api_key"], str))
         self.assertGreater(len(response.data["api_key"]), 30)
+
+
+class TestQuickStatusAPITestCase(APITestCase):
+    """The Siri status summary: what it says about sleep."""
+
+    fixtures = ["tests.json"]
+    endpoint = "/api/quick/status"
+
+    def setUp(self):
+        self.client.login(username="admin", password="admin")
+        self.child = models.Child.objects.first()
+        models.Timer.objects.filter(child=self.child).delete()
+        models.Sleep.objects.filter(child=self.child).delete()
+
+    def test_awake_suggests_the_next_sleep(self):
+        now = timezone.now()
+        # A nap to measure a wake window from, ending a moment ago.
+        models.Sleep.objects.create(
+            child=self.child,
+            start=now - timezone.timedelta(hours=3),
+            end=now - timezone.timedelta(minutes=30),
+            nap=True,
+            settling="easy",
+        )
+
+        response = self.client.get(self.endpoint, {"child": self.child.slug})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        sleep = response.data["sleep"]
+        self.assertIn(sleep["state"], ("early", "due", "overdue"))
+        self.assertIsNotNone(sleep["suggested_at"])
+        self.assertEqual(sleep["awake_minutes"], 30)
+        self.assertIn("awake", response.data["speech"])
+
+    def test_asleep_says_how_long(self):
+        models.Timer.objects.create(
+            child=self.child,
+            name="Nap",
+            start=timezone.now() - timezone.timedelta(minutes=20),
+            user=get_user_model().objects.first(),
+        )
+
+        response = self.client.get(self.endpoint, {"child": self.child.slug})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        sleep = response.data["sleep"]
+        self.assertEqual(sleep["state"], "asleep")
+        self.assertIsNone(sleep["suggested_at"])
+        self.assertIn("asleep", response.data["speech"])
+
+    def test_no_sleep_logged_says_nothing_about_it(self):
+        response = self.client.get(self.endpoint, {"child": self.child.slug})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["sleep"]["state"], "unknown")
+        self.assertNotIn("asleep", response.data["speech"])
+        self.assertNotIn("awake", response.data["speech"])

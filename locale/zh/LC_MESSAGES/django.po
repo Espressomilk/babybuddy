@@ -4028,3 +4028,21 @@ msgstr "单位：千克（kg）。"
 
 msgid "In centimeters (cm)."
 msgstr "单位：厘米（cm）。"
+
+
+#: sleep in the Siri status summary
+
+msgid "%(child)s has been asleep for %(duration)s."
+msgstr "%(child)s 已经睡了 %(duration)s。"
+
+msgid "No sleep recorded for %(child)s in the last %(duration)s."
+msgstr "最近 %(duration)s 内没有 %(child)s 的睡眠记录。"
+
+msgid "%(child)s has been awake %(awake)s; next sleep suggested at %(time)s, in %(remaining)s."
+msgstr "%(child)s 已清醒 %(awake)s，建议下次入睡时间 %(time)s，还有 %(remaining)s。"
+
+msgid "%(child)s has been awake %(awake)s and is due to sleep now."
+msgstr "%(child)s 已清醒 %(awake)s，现在该睡了。"
+
+msgid "%(child)s has been awake %(awake)s; sleep was suggested at %(time)s, %(remaining)s ago."
+msgstr "%(child)s 已清醒 %(awake)s；建议入睡时间 %(time)s，已过去 %(remaining)s。"

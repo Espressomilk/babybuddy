@@ -157,7 +157,7 @@ confirmation back, and give the Shortcut a phrase (e.g. "Log a diaper").
 
 | Action              | Method | Endpoint (append `?child=<slug>`) | Notes |
 | ------------------- | ------ | --------------------------------- | ----- |
-| Status summary      | GET    | `/api/quick/status`               | Speaks today's totals & last feed |
+| Status summary      | GET    | `/api/quick/status`               | Last feed, when the next sleep is due, today's totals |
 | Diaper              | POST   | `/api/quick/diaper`               | `text` (free text) or `type`/`color`; `preview=1` to confirm first |
 | Bottle feeding      | POST   | `/api/quick/bottle`               | `amount` (ml), `type` (`breast_milk`/`formula`) |
 | Breastfeeding       | POST   | `/api/quick/breast/start` · `/stop` | say a side to start (`left`/`right`); stop ends it. One side at a time |
